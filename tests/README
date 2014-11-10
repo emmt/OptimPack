@@ -1,0 +1,32 @@
+CONTENTS
+========
+
+* Unconstrained minimization test suite from the MINPACK-1 project.
+  These tests are described in references [1] and [2] ("MGH" stands
+  for "Moré, Garbow and Hillstrom" the authors of the original FORTRAN
+  tests).
+
+   - mgh-port.c, mgh-port.h
+             Routines for unconstrained optimization tests ported in
+	     C.  This was needed for people not having a FORTRAN
+	     compiler and as a preliminary step to make the tests
+	     available in Java.
+
+   - mgh-tests.c
+             This program checks whether the C version (in mgh-port.c)
+             gives the same results as the original FORTRAN routines.
+             To run these tests, the original FORTRAN routines (in
+             directory ../orig/mgh) must be available.
+
+   - mgh-wrappers.c, mgh-wrappers.h
+             Wrapper functions to make the FORTRAN routines (in
+             directory ../orig/mgh) easy to call from C test codes.
+
+
+REFERENCES
+==========
+[1] J. J. Moré, B. S. Garbow and K. E. Hillstrom, "Testing unconstrained
+    optimization software," ACM Trans. Math. Software 7, 17-41 (1981).
+[2] J. J. Moré, B. S. Garbow and K. E. Hillstrom, "Fortran subroutines for
+    testing unconstrained optimization software," ACM Trans. Math. Software
+    7, 136-140 (1981).
