@@ -45,10 +45,10 @@
 
 opk_lnsrch_workspace_t*
 _opk_lnsrch_new(size_t size,
-		int (*start)(opk_lnsrch_workspace_t* ws),
-		int (*iterate)(opk_lnsrch_workspace_t* ws,
-			       double* stp_ptr, double f1, double g1),
-	        void (*delete)(opk_lnsrch_workspace_t* ws))
+                int (*start)(opk_lnsrch_workspace_t* ws),
+                int (*iterate)(opk_lnsrch_workspace_t* ws,
+                               double* stp_ptr, double f1, double g1),
+                void (*delete)(opk_lnsrch_workspace_t* ws))
 {
   opk_lnsrch_workspace_t* ws;
 
@@ -72,7 +72,7 @@ _opk_lnsrch_new(size_t size,
 
 int
 opk_lnsrch_start(opk_lnsrch_workspace_t* ws, double f0, double g0,
-		 double stp, double stpmin, double stpmax)
+                 double stp, double stpmin, double stpmax)
 {
   if (ws == NULL) {
     return OPK_LNSRCH_ERROR_ILLEGAL_ADDRESS;
@@ -100,7 +100,7 @@ opk_lnsrch_start(opk_lnsrch_workspace_t* ws, double f0, double g0,
 
 int
 opk_lnsrch_iterate(opk_lnsrch_workspace_t* ws, double* stp_ptr,
-		   double f1, double g1)
+                   double f1, double g1)
 {
   if (ws == NULL || stp_ptr == NULL) {
     return OPK_LNSRCH_ERROR_ILLEGAL_ADDRESS;
@@ -111,15 +111,15 @@ opk_lnsrch_iterate(opk_lnsrch_workspace_t* ws, double* stp_ptr,
     } else {
       ws->status = ws->iterate(ws, stp_ptr, f1, g1);
       if (*stp_ptr > ws->stpmax) {
-	if (ws->stp >= ws->stpmax) {
-	  ws->status = OPK_LNSRCH_WARNING_STP_EQ_STPMAX;
-	}
-	*stp_ptr = ws->stpmax;
+        if (ws->stp >= ws->stpmax) {
+          ws->status = OPK_LNSRCH_WARNING_STP_EQ_STPMAX;
+        }
+        *stp_ptr = ws->stpmax;
       } else if (*stp_ptr < ws->stpmin) {
-	if (ws->stp <= ws->stpmin) {
-	  ws->status = OPK_LNSRCH_WARNING_STP_EQ_STPMIN;
-	}
-	*stp_ptr = ws->stpmin;
+        if (ws->stp <= ws->stpmin) {
+          ws->status = OPK_LNSRCH_WARNING_STP_EQ_STPMIN;
+        }
+        *stp_ptr = ws->stpmin;
       }
       ws->stp = *stp_ptr;
     }
@@ -195,7 +195,7 @@ backtrack_start(opk_lnsrch_workspace_t* _ws)
 
 static int
 backtrack_iterate(opk_lnsrch_workspace_t* _ws,
-		  double* stp_ptr, double f1, double g1)
+                  double* stp_ptr, double f1, double g1)
 {
   backtrack_workspace_t* ws = (backtrack_workspace_t*)_ws;
   int status;
@@ -227,7 +227,7 @@ opk_lnsrch_new_backtrack(double ftol)
     return NULL;
   }
   _ws = _opk_lnsrch_new(sizeof(backtrack_workspace_t),
-			backtrack_start, backtrack_iterate, NULL);
+                        backtrack_start, backtrack_iterate, NULL);
   if (_ws != NULL) {
     backtrack_workspace_t* ws = (backtrack_workspace_t*)_ws;
     ws->ftol = ftol;
@@ -311,7 +311,7 @@ csrch_start(opk_lnsrch_workspace_t* _ws)
 
 static int
 csrch_iterate(opk_lnsrch_workspace_t* _ws,
-	      double* stp_ptr, double f1, double g1)
+              double* stp_ptr, double f1, double g1)
 {
   double ftest;
   csrch_workspace_t* ws;
@@ -363,9 +363,9 @@ csrch_iterate(opk_lnsrch_workspace_t* _ws,
     double gxm = ws->gx - ws->gtest;
     double gym = ws->gy - ws->gtest;
     result = opk_cstep(&ws->stx, &fxm, &gxm,
-		       &ws->sty, &fym, &gym,
-		       stp_ptr, fm, gm,
-		       &ws->brackt, ws->stmin, ws->stmax);
+                       &ws->sty, &fym, &gym,
+                       stp_ptr, fm, gm,
+                       &ws->brackt, ws->stmin, ws->stmax);
     if (result < 0) {
       return result;
     }
@@ -376,9 +376,9 @@ csrch_iterate(opk_lnsrch_workspace_t* _ws,
   } else {
     /* Call CSTEP to update STX, STY, and to compute the new step. */
     result = opk_cstep(&ws->stx, &ws->fx, &ws->gx,
-		       &ws->sty, &ws->fy, &ws->gy,
-		       stp_ptr, f1, g1,
-		       &ws->brackt, ws->stmin, ws->stmax);
+                       &ws->sty, &ws->fy, &ws->gy,
+                       stp_ptr, f1, g1,
+                       &ws->brackt, ws->stmin, ws->stmax);
     if (result < 0) {
       return result;
     }
@@ -449,7 +449,7 @@ opk_lnsrch_new_csrch(double ftol, double gtol, double xtol)
     return NULL;
   }
   _ws = _opk_lnsrch_new(sizeof(csrch_workspace_t),
-			csrch_start, csrch_iterate, NULL);
+                        csrch_start, csrch_iterate, NULL);
   if (_ws != NULL) {
     csrch_workspace_t* ws = (csrch_workspace_t*)_ws;
     ws->ftol = ftol;
@@ -696,9 +696,9 @@ static double max3(double val1, double val2, double val3)
  * Brett M. Averick and Jorge J. Moré.
  */
 int opk_cstep(double* stx_ptr, double* fx_ptr, double* dx_ptr,
-	      double* sty_ptr, double* fy_ptr, double* dy_ptr,
-	      double* stp_ptr, double  fp,     double  dp,
-	      int* brackt_ptr, double stpmin, double stpmax)
+              double* sty_ptr, double* fy_ptr, double* dy_ptr,
+              double* stp_ptr, double  fp,     double  dp,
+              int* brackt_ptr, double stpmin, double stpmax)
 {
   /* Constants. */
   const double ZERO = 0.0;
@@ -719,7 +719,7 @@ int opk_cstep(double* stx_ptr, double* fx_ptr, double* dx_ptr,
 
   /* Check the input parameters for errors. */
   if ((*brackt_ptr) && (stx < sty ? (stp <= stx || stp >= sty)
-		                  : (stp <= sty || stp >= stx))) {
+                                  : (stp <= sty || stp >= stx))) {
     return OPK_LNSRCH_ERROR_STP_OUTSIDE_BRACKET;
   } else if (dx*(stp - stx) >= ZERO) {
     return OPK_LNSRCH_ERROR_NOT_A_DESCENT;
@@ -806,25 +806,25 @@ int opk_cstep(double* stx_ptr, double* fx_ptr, double* dx_ptr,
 
     if (*brackt_ptr) {
       /* A minimizer has been bracketed.  If the cubic step is closer to STP
-	 than the secant step, the cubic step is taken, otherwise the secant
-	 step is taken. */
+         than the secant step, the cubic step is taken, otherwise the secant
+         step is taken. */
       if (fabs(stpc - stp) < fabs(stpq - stp)) {
-	stpf = stpc;
+        stpf = stpc;
       } else {
-	stpf = stpq;
+        stpf = stpq;
       }
       temp = stp + 0.66*(sty - stp);
       if (stp > stx ? stpf > temp : stpf < temp) {
-	stpf = temp;
+        stpf = temp;
       }
     } else {
       /* A minimizer has not been bracketed. If the cubic step is farther from
-	 stp than the secant step, the cubic step is taken, otherwise the
-	 secant step is taken. */
+         stp than the secant step, the cubic step is taken, otherwise the
+         secant step is taken. */
       if (fabs(stpc - stp) > fabs(stpq - stp)) {
-	stpf = stpc;
+        stpf = stpc;
       } else {
-	stpf = stpq;
+        stpf = stpq;
       }
       if (stpf > stpmax) stpf = stpmax;
       if (stpf < stpmin) stpf = stpmin;
@@ -879,7 +879,8 @@ int opk_cstep(double* stx_ptr, double* fx_ptr, double* dx_ptr,
  * mode: C
  * tab-width: 8
  * c-basic-offset: 2
- * fill-column: 78
+ * indent-tabs-mode: nil
+ * fill-column: 79
  * coding: utf-8
  * ispell-local-dictionary: "american"
  * End:

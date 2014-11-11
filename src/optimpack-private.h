@@ -7,30 +7,23 @@
  *
  * Copyright (C) 2014 Éric Thiébaut <thiebaut@obs.univ-lyon1.fr>
  *
- * This software is governed by the CeCILL-C license under French law and
- * abiding by the rules of distribution of free software.  You can use, modify
- * and/or redistribute the software under the terms of the CeCILL-C license as
- * circulated by CEA, CNRS and INRIA at the following URL
- * "http://www.cecill.info".
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to
+ * deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- * As a counterpart to the access to the source code and rights to copy,
- * modify and redistribute granted by the license, users are provided only
- * with a limited warranty and the software's author, the holder of the
- * economic rights, and the successive licensors have only limited liability.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
- * In this respect, the user's attention is drawn to the risks associated with
- * loading, using, modifying and/or developing or reproducing the software by
- * the user in light of its specific status of free software, that may mean
- * that it is complicated to manipulate, and that also therefore means that it
- * is reserved for developers and experienced professionals having in-depth
- * computer knowledge. Users are therefore encouraged to load and test the
- * software's suitability as regards their requirements in conditions enabling
- * the security of their systems and/or data to be ensured and, more
- * generally, to use and operate it in the same conditions as regards
- * security.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-C license and that you accept its terms.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
  *
  *-----------------------------------------------------------------------------
  */
@@ -80,7 +73,7 @@ struct _opk_lnsrch_workspace {
      FIXME: On exit, if convergence is achieved (or in case of error/warning)
      STP, F and D are left unchanged; otherwise STP is the new step to try. */
   int (*iterate)(opk_lnsrch_workspace_t* ws,
-		 double* stp_ptr, double f1, double d1);
+                 double* stp_ptr, double f1, double d1);
 
   /* Method used to release any ressources speciffically allocated by the
      line search method (not the workspace itself). */
@@ -92,10 +85,10 @@ struct _opk_lnsrch_workspace {
 
 extern opk_lnsrch_workspace_t*
 _opk_lnsrch_new(size_t size,
-		int (*start)(opk_lnsrch_workspace_t* ws),
-		int (*iterate)(opk_lnsrch_workspace_t* ws,
-			       double* stp_ptr, double f1, double g1),
-	        void (*delete)(opk_lnsrch_workspace_t* ws));
+                int (*start)(opk_lnsrch_workspace_t* ws),
+                int (*iterate)(opk_lnsrch_workspace_t* ws,
+                               double* stp_ptr, double f1, double g1),
+                void (*delete)(opk_lnsrch_workspace_t* ws));
 
 #endif /* _OPTIMPACK_PRIVATE_H */
 
@@ -104,6 +97,7 @@ _opk_lnsrch_new(size_t size,
  * mode: C
  * tab-width: 8
  * c-basic-offset: 2
+ * indent-tabs-mode: nil
  * fill-column: 79
  * coding: utf-8
  * ispell-local-dictionary: "american"

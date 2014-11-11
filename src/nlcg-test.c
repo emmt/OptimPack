@@ -159,7 +159,7 @@ main(int argc, const char* argv[])
   }
 
   fprintf(output, "Problem: %s (n = %d)  method: non-linear conjugate gradient (%u)\n",
-	  descr, n, method);
+          descr, n, method);
   mxfun = n*500;
 
   /* Fill X1 with initial solution. */
@@ -174,9 +174,9 @@ main(int argc, const char* argv[])
       fprintf(output,
               "ITER = %3d / NEVALS = %3d / TASK = %d / START = %d%s",
               opk_nlcg_get_iterations(ws),
-	      opk_nlcg_get_evaluations(ws),
-	      opk_nlcg_get_task(ws),
-	      opk_nlcg_get_starting(ws),
+              opk_nlcg_get_evaluations(ws),
+              opk_nlcg_get_task(ws),
+              opk_nlcg_get_starting(ws),
               (opk_nlcg_get_task(ws) == OPK_TASK_COMPUTE_FG ? " / " : "\n"));
     }
     if (task == OPK_TASK_COMPUTE_FG) {
@@ -226,7 +226,7 @@ main(int argc, const char* argv[])
                    "   final:  f =%16.8E,  ||g|| =%10.2E, %d iterations, %d function calls\n"),
           reason, task,
           factor, f0, g0norm, f1, opk_vnorm2(g1), opk_nlcg_get_iterations(ws),
-	  opk_nlcg_get_evaluations(ws));
+          opk_nlcg_get_evaluations(ws));
 
 #if 0
   /* Write final X and G vectors. */
@@ -249,7 +249,8 @@ main(int argc, const char* argv[])
  * mode: C
  * tab-width: 8
  * c-basic-offset: 2
- * fill-column: 78
+ * indent-tabs-mode: nil
+ * fill-column: 79
  * coding: utf-8
  * ispell-local-dictionary: "american"
  * End:

@@ -155,8 +155,8 @@ opk_fmin_get_status(opk_fmin_context_t* ctx)
 
 int
 opk_fmin_start(opk_fmin_context_t* ctx,
-	       double a, double b,
-	       unsigned int flags)
+               double a, double b,
+               unsigned int flags)
 {
   if (ctx == NULL) {
     errno = EFAULT;
@@ -180,8 +180,8 @@ opk_fmin_start(opk_fmin_context_t* ctx,
 
 int
 opk_fmin_get_initial(opk_fmin_context_t* ctx,
-		     double* a, double* b,
-		     unsigned int* flags)
+                     double* a, double* b,
+                     unsigned int* flags)
 {
   if (ctx == NULL) {
     errno = EFAULT;
@@ -199,9 +199,9 @@ opk_fmin_get_initial(opk_fmin_context_t* ctx,
 
 int
 opk_fmin_get_final(opk_fmin_context_t* ctx,
-		   double* xmin, double* xlo, double* xup,
-		   double* fmin, double* flo, double* fup,
-		   long* nevals)
+                   double* xmin, double* xlo, double* xup,
+                   double* fmin, double* flo, double* fup,
+                   long* nevals)
 {
   if (ctx == NULL) {
     errno = EFAULT;
@@ -624,6 +624,7 @@ int func(args)
  * mode: C
  * tab-width: 8
  * c-basic-offset: 2
+ * indent-tabs-mode: nil
  * fill-column: 79
  * coding: utf-8
  * ispell-local-dictionary: "american"

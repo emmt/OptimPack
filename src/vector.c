@@ -203,8 +203,8 @@ opk_vnorminf(const opk_vector_t* x)
 
 void
 opk_vaxpby(opk_vector_t* dst,
-	   double alpha, const opk_vector_t* x,
-	   double beta,  const opk_vector_t* y)
+           double alpha, const opk_vector_t* x,
+           double beta,  const opk_vector_t* y)
 {
   opk_vspace_t* vspace = dst->owner;
   if (x->owner != vspace || y->owner != vspace) {
@@ -220,9 +220,9 @@ opk_vaxpby(opk_vector_t* dst,
 
 void
 opk_vaxpbypcz(opk_vector_t* dst,
-	      double alpha, const opk_vector_t* x,
-	      double beta,  const opk_vector_t* y,
-	      double gamma, const opk_vector_t* z)
+              double alpha, const opk_vector_t* x,
+              double beta,  const opk_vector_t* y,
+              double gamma, const opk_vector_t* z)
 {
   opk_vspace_t* vspace = dst->owner;
   if (x->owner != vspace || y->owner != vspace || z->owner != vspace) {
@@ -243,7 +243,9 @@ opk_vaxpbypcz(opk_vector_t* dst,
  * mode: C
  * tab-width: 8
  * c-basic-offset: 2
+ * indent-tabs-mode: nil
  * fill-column: 79
  * coding: utf-8
+ * ispell-local-dictionary: "american"
  * End:
  */

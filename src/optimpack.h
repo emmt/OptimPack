@@ -322,13 +322,13 @@ struct _opk_vspace {
   /* Copy vector SRC to vector DST.  When this method is called, it is
      guaranteed that DST and SRC are different and both belong to VSPACE. */
   void (*copy)(opk_vspace_t* vspace,
-	       opk_vector_t* dst, const opk_vector_t* src);
+               opk_vector_t* dst, const opk_vector_t* src);
 
   /* Exchange contents of vector SRC and vector DST.  When this method is
      called, it is guaranteed that DST and SRC are different and both belong
      to VSPACE. */
   void (*swap)(opk_vspace_t* vspace,
-	       opk_vector_t* x, opk_vector_t* y);
+               opk_vector_t* x, opk_vector_t* y);
 
   /* Scale vector by a scalar.  This methods performs the operation:
      DST = ALPHA*SRC.   When this method is called, it is guaranteed that
@@ -341,8 +341,8 @@ struct _opk_vspace {
      guaranteed that all vectors (DST, X and Y) belong to VSPACE and that
      neither ALPHA, nor BETA are equal to zero. */
   void (*axpby)(opk_vspace_t* vspace, opk_vector_t* dst,
-		double alpha, const opk_vector_t* x,
-		double beta,  const opk_vector_t* y);
+                double alpha, const opk_vector_t* x,
+                double beta,  const opk_vector_t* y);
 
   /* Compute the linear combination of three elements of this vector space
      (DST = ALPHA*X + BETA*Y + GAMMA*Z).  When this method is called, it is
@@ -579,14 +579,14 @@ opk_vnorminf(const opk_vector_t* v);
 
 extern void
 opk_vaxpby(opk_vector_t* dst,
-	   double alpha, const opk_vector_t* x,
-	   double beta,  const opk_vector_t* y);
+           double alpha, const opk_vector_t* x,
+           double beta,  const opk_vector_t* y);
 
 extern void
 opk_vaxpbypcz(opk_vector_t* dst,
-	      double alpha, const opk_vector_t* x,
-	      double beta,  const opk_vector_t* y,
-	      double gamma, const opk_vector_t* z);
+              double alpha, const opk_vector_t* x,
+              double beta,  const opk_vector_t* y,
+              double gamma, const opk_vector_t* z);
 
 /*---------------------------------------------------------------------------*/
 /* ERROR MANAGEMENT */
@@ -686,7 +686,7 @@ opk_lnsrch_new_backtrack(double ftol);
    indicate an error; it is equal to zero otherwise. */
 extern int
 opk_lnsrch_start(opk_lnsrch_workspace_t* ws, double f0, double g0,
-		 double stp, double stpmin, double stpmax);
+                 double stp, double stpmin, double stpmax);
 
 /* Check whether line search has converged or update the step size.  The
    returned value is strictly negative to indicate an error; it is equal to
@@ -694,7 +694,7 @@ opk_lnsrch_start(opk_lnsrch_workspace_t* ws, double f0, double g0,
    has converged or cannot make any more progresses.*/
 extern int
 opk_lnsrch_iterate(opk_lnsrch_workspace_t* ws, double* stp_ptr,
-		   double f1, double g1);
+                   double f1, double g1);
 
 /* Destroy a line search workspace. */
 extern void
@@ -755,7 +755,7 @@ opk_nlcg_new(opk_vspace_t* vspace, unsigned int method);
 
 extern opk_nlcg_workspace_t*
 opk_nlcg_new_with_line_search(opk_vspace_t* vspace, unsigned int method,
-			      opk_lnsrch_workspace_t* lnsrch);
+                              opk_lnsrch_workspace_t* lnsrch);
 extern void
 opk_nlcg_delete(opk_nlcg_workspace_t* ws);
 
@@ -764,15 +764,15 @@ opk_nlcg_start(opk_nlcg_workspace_t* ws);
 
 extern opk_task_t
 opk_nlcg_iterate(opk_nlcg_workspace_t* ws, opk_vector_t* x1,
-		 double f1, opk_vector_t* g1);
+                 double f1, opk_vector_t* g1);
 
 extern int
 opk_nlcg_get_ftol(opk_nlcg_workspace_t* ws, double* frtol,
-		  double* fatol);
+                  double* fatol);
 
 extern int
 opk_nlcg_get_gtol(opk_nlcg_workspace_t* ws, double* grtol,
-		  double* gatol);
+                  double* gatol);
 
 extern int
 opk_nlcg_get_fmin(opk_nlcg_workspace_t* ws, double* fmin);
@@ -818,7 +818,7 @@ opk_nlcg_get_beta(opk_nlcg_workspace_t* ws);
 #define OPK_NLCG_HAGER_ZHANG            8
 #define OPK_NLCG_POWELL              (1<<8) /* force beta >= 0 */
 #define OPK_NLCG_SHANNO_PHUA         (1<<9) /* compute scale from previous
-					       iteration */
+                                               iteration */
 
 /* For instance: (OPK_NLCG_POLAK_RIBIERE_POLYAK | OPK_NLCG_POWELL) merely
    corresponds to PRP+ (Polak, Ribiere, Polyak) while (OPK_NLCG_PERRY_SHANNO |
@@ -923,8 +923,8 @@ opk_nlcg_get_beta(opk_nlcg_workspace_t* ws);
  */
 extern int
 opk_fmin(double (*f)(double x), double a, double b,
-	 unsigned int flags, long maxeval, double prec,
-	 double out[7]);
+         unsigned int flags, long maxeval, double prec,
+         double out[7]);
 
 
 /*
@@ -959,9 +959,9 @@ opk_fmin(double (*f)(double x), double a, double b,
  */
 extern int
 opk_fmin_with_context(double (*f)(void *data, double x),
-		      double a, double b, unsigned int flags,
-		      long maxeval, double prec,
-		      double out[7], void *data);
+                      double a, double b, unsigned int flags,
+                      long maxeval, double prec,
+                      double out[7], void *data);
 
 OPK_END_C_DECLS
 
@@ -971,9 +971,9 @@ OPK_END_C_DECLS
  * Local Variables:
  * mode: C
  * tab-width: 8
- * indent-tabs-mode: nil
  * c-basic-offset: 2
- * fill-column: 78
+ * indent-tabs-mode: nil
+ * fill-column: 79
  * coding: utf-8
  * ispell-local-dictionary: "american"
  * End:
