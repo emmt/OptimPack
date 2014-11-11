@@ -373,17 +373,105 @@ opk_vfree(opk_vector_t* vect);
 /*---------------------------------------------------------------------------*/
 /* HIGH-LEVEL ROUTINES FOR VECTOR SPACES */
 
+/**
+ * Create a vector space for array of double's in conventional memory.
+ *
+ * This particular type of vector space deals with arrays of values stored
+ * contiguously and accessible as conventional arrays.  This include arrays
+ * allocated from the heap, dynamically allocated with `malloc()`, arrays in
+ * shared memory, memory mapped files, etc.
+ *
+ * To create vectors belonging to this kind of vector space, as for any type
+ * of vector spaces, it is possible to call `opk_vcreate()` but it is also
+ * possible to call `opk_wrap_simple_double_vector()` to wrap an existing
+ * array (of the correct size and type of course) into a vector.
+ *
+ * @param size - The number of elements of the vectors of the space.
+ *
+ * @return A new vector space or `NULL` in case of errors.
+ */
 extern opk_vspace_t*
 opk_new_simple_double_vector_space(opk_index_t size);
 
+/**
+ * Wrap an existing array into a simple vector.
+ *
+ * This function creates a new vector whose elements are stored into an array
+ * provided by the caller.  The caller is responsible of ensuring that the
+ * memory is sufficiently large (the array has at least `vspace->size`
+ * elements) and correctly aligned.
+ *
+ * When the vector is destroyed, the function `free_client_data()`, if not
+ * `NULL`, is called with argument `client_data` to release ressources.  Then
+ * the container is freed.  If function `free_client_data()` is `NULL`, it is
+ * assumed that the caller is responsible of releasing the data when no longer
+ * needed.
+ *
+ * A typical usage is:
+ * <pre>
+ *     #define N 1000
+ *     opk_vspace_t* vspace = opk_new_simple_double_vector_space(N);
+ *     double heap_array[N];
+ *     opk_vector_t* v1 = opk_wrap_simple_double_vector(vspace, heap_array,
+ *                                                      NULL, NULL);
+ *     double* dynamic_array = (double*)malloc(N*sizeof(double));
+ *     opk_vector_t* v2 = opk_wrap_simple_double_vector(vspace, dynamic_array,
+ *                                                      dynamic_array, free);
+ * </pre>
+ *
+ * which creates two vectors `v1` and `v2` which are respectively wrapped
+ * around an array allocated on the heap and around a dynamically allocated
+ * array.
+ *
+ * In the above example, the `client_data` and the `data` are the same but the
+ * possible distinction is needed to allow for using of various kind of
+ * objects which contains an array of values that can be wrapped into a
+ * vector.  For objects of type `object_t`, we can do somthing like:
+ * <pre>
+ *     object_t* obj = ...;
+ *     opk_vspace_t* vspace = opk_new_simple_double_vector_space(get_number(obj));
+ *     opk_vector_t* v = opk_wrap_simple_double_vector(vspace, get_data(obj),
+ *                                                     (void*)obj,
+ *                                                     delete_object);
+ * </pre>
+ * where `get_number()` returns the number of elements stored in the data part
+ * of the object, `get_data()` returns the address of these elements, and
+ * `delete_object()` delete the object.  Of course, if one prefers to keep the
+ * control on the object management, passing `NULL` for the
+ * `free_client_data()` function is always possible.
+ *
+ * @param vspace - The vector space which will own the vector.
+ * @param data   - The array of values, must have at least `vspace->size`
+ *                 elements.
+ * @param client_data - Anything required by the `free_client_data()` method.
+ * @param free_client_data - Function called to release ressources.  If not
+ *                 `NULL`, it is called with argument `client_data` when the
+ *                 vector is destroyed.
+ *
+ * @return A new vector of `vspace`, `NULL` in case of error.
+ */
 extern opk_vector_t*
-opk_wrap_simple_double_vector(opk_vspace_t* vspace, double data[]);
+opk_wrap_simple_double_vector(opk_vspace_t* vspace, double data[],
+                              void* client_data,
+                              void (*free_client_data)(void*));
 
+/**
+ * Create a vector space for array of float's in conventional memory.
+ *
+ * See `opk_new_simple_double_vector()` for a description.
+ */
 extern opk_vspace_t*
 opk_new_simple_float_vector_space(opk_index_t size);
 
+/**
+ * Wrap an existing array into a simple vector.
+ *
+ * See `opk_wrap_simple_double_vector()` for a description.
+ */
 extern opk_vector_t*
-opk_wrap_simple_float_vector(opk_vspace_t* vspace, float data[]);
+opk_wrap_simple_float_vector(opk_vspace_t* vspace, float data[],
+                             void* client_data,
+                             void (*free_client_data)(void*));
 
 extern opk_vspace_t*
 opk_allocate_vector_space(const void* ident,

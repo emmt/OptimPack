@@ -64,6 +64,8 @@ typedef struct _simple_vector simple_vector_t;
 struct _simple_vector {
   opk_vector_t base;
   REAL* data;
+  void* client_data;
+  void (*free_client_data)(void* client_data);
 };
 
 #define DATA(v) ((simple_vector_t*)(v))->data
@@ -83,7 +85,10 @@ create(opk_vspace_t* vspace)
   size_t size = offset + vspace->size*sizeof(REAL);
   opk_vector_t* v = opk_valloc(vspace, size);
   if (v != NULL) {
-    ((simple_vector_t*)v)->data = (REAL*)(((char*)v) + offset);
+    simple_vector_t* sv = (simple_vector_t*)v;
+    sv->data = (REAL*)(((char*)v) + offset);
+    sv->client_data = NULL;
+    sv->free_client_data = NULL;
   }
   return v;
 }
@@ -92,6 +97,10 @@ static void
 delete(opk_vspace_t* vspace,
        opk_vector_t* v)
 {
+  simple_vector_t* sv = (simple_vector_t*)v;
+  if (sv->free_client_data != NULL) {
+    sv->free_client_data(sv->client_data);
+  }
   opk_vfree(v);
 }
 
@@ -341,7 +350,8 @@ NEW_VECTOR_SPACE(opk_index_t size)
    releasing the data when no longer needed and of ensuring that the memory is
    sufficiently large and correctly aligned. */
 opk_vector_t*
-WRAP_VECTOR(opk_vspace_t* vspace, REAL data[])
+WRAP_VECTOR(opk_vspace_t* vspace, REAL data[],
+	    void* client_data, void (*free_client_data)(void*))
 {
   opk_vector_t* v;
   if (vspace->ident != ident) {
@@ -354,7 +364,10 @@ WRAP_VECTOR(opk_vspace_t* vspace, REAL data[])
   }
   v = opk_valloc(vspace, sizeof(simple_vector_t));
   if (v != NULL) {
-    DATA(v) = data;
+    simple_vector_t* sv = (simple_vector_t*)v;
+    sv->data = data;
+    sv->client_data = client_data;
+    sv->free_client_data = free_client_data;
   }
   return v;
 }

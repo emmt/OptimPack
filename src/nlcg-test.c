@@ -144,11 +144,11 @@ main(int argc, const char* argv[])
   }
   x1buf = data;
   g1buf = data + n;
-  x1 = opk_wrap_simple_double_vector(vspace, x1buf);
+  x1 = opk_wrap_simple_double_vector(vspace, x1buf, NULL, NULL);
   if (x1 == NULL) {
     fatal_error("failed to create vector wrapper X1");
   }
-  g1 = opk_wrap_simple_double_vector(vspace, g1buf);
+  g1 = opk_wrap_simple_double_vector(vspace, g1buf, NULL, NULL);
   if (g1 == NULL) {
     fatal_error("failed to create vector wrapper G1");
   }
