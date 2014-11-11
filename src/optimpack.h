@@ -373,6 +373,8 @@ opk_vfree(opk_vector_t* vect);
 /*---------------------------------------------------------------------------*/
 /* HIGH-LEVEL ROUTINES FOR VECTOR SPACES */
 
+typedef void opk_free_proc(void*);
+
 /**
  * Create a vector space for array of double's in conventional memory.
  *
@@ -455,6 +457,45 @@ opk_wrap_simple_double_vector(opk_vspace_t* vspace, double data[],
                               void* client_data,
                               void (*free_client_data)(void*));
 
+extern double*
+opk_get_simple_double_vector_data(opk_vector_t* v);
+
+extern void*
+opk_get_simple_double_vector_client_data(opk_vector_t* v);
+
+extern opk_free_proc*
+opk_get_simple_double_vector_free_client_data(opk_vector_t* v);
+
+/**
+ * Re-wrap an array into an existing simple vector.
+ *
+ * This functions replaces the contents of a simple wrapped vector.  It is
+ * assumed that the vector `v` is a wrapped vector, that the new data
+ * `new_data` is correctly aligned and large enough.  If the former
+ * `free_client_data()` method of the wrapped vector `v` is not `NULL` and if
+ * either the new `free_client_data()` method or the new `client_data` differ
+ * from the former ones, then the former `free_client_data()` method is
+ * applied to the former `client_data`.
+ *
+ * Re-wrapping is considered as a hack which merely saves the time needed to
+ * allocate a container for a wrapped vector.  It is the caller responsibility
+ * to ensure that all the assumptions hold.  In many cases deleting the old
+ * vector and wrapping the arguments into a new vector is safer.
+ *
+ * @param v - The vector to re-wrap.
+ * @param new_data - The new array of values.
+ * @param new_client_data - The new client data.
+ * @param new_free_client_data - The new method to free client data.
+ *
+ * @return `OPK_SUCCESS` or `OPK_FAILURE`.  In case of failure, global
+ *         variable `errno` is set to: `EFAULT` if `v` or `new_data` are
+ *         `NULL`, `EINVAL` if `v` is not a vector of the correct kind.
+ */
+extern int
+opk_rewrap_simple_double_vector(opk_vector_t* v, double new_data[],
+                                void* new_client_data,
+                                void (*new_free_client_data)(void*));
+
 /**
  * Create a vector space for array of float's in conventional memory.
  *
@@ -472,6 +513,22 @@ extern opk_vector_t*
 opk_wrap_simple_float_vector(opk_vspace_t* vspace, float data[],
                              void* client_data,
                              void (*free_client_data)(void*));
+
+
+extern float*
+opk_get_simple_float_vector_data(opk_vector_t* v);
+
+extern void*
+opk_get_simple_float_vector_client_data(opk_vector_t* v);
+
+extern opk_free_proc*
+opk_get_simple_float_vector_free_client_data(opk_vector_t* v);
+
+extern int
+opk_rewrap_simple_float_vector(opk_vector_t* v, float new_data[],
+                               void* new_client_data,
+                               void (*new_free_client_data)(void*));
+
 
 extern opk_vspace_t*
 opk_allocate_vector_space(const void* ident,

@@ -313,6 +313,10 @@ axpbypcz(opk_vspace_t* vspace, opk_vector_t *vdst,
 
 #define NEW_VECTOR_SPACE OPK_JOIN3(opk_new_simple_, REAL, _vector_space)
 #define WRAP_VECTOR OPK_JOIN3(opk_wrap_simple_, REAL, _vector)
+#define REWRAP_VECTOR OPK_JOIN3(opk_rewrap_simple_, REAL, _vector)
+#define GET_DATA OPK_JOIN3(opk_get_simple_, REAL, _vector_data)
+#define GET_CLIENT_DATA OPK_JOIN3(opk_get_simple_, REAL, _vector_client_data)
+#define GET_FREE_CLIENT_DATA OPK_JOIN3(opk_get_simple_, REAL, _vector_free_client_data)
 
 #if SINGLE_PRECISION
 #  define NOUN "single"
@@ -346,9 +350,6 @@ NEW_VECTOR_SPACE(opk_index_t size)
   return vspace;
 }
 
-/* Wrap existing data into a simple vector.  The caller is responsible of
-   releasing the data when no longer needed and of ensuring that the memory is
-   sufficiently large and correctly aligned. */
 opk_vector_t*
 WRAP_VECTOR(opk_vspace_t* vspace, REAL data[],
 	    void* client_data, void (*free_client_data)(void*))
@@ -370,6 +371,91 @@ WRAP_VECTOR(opk_vspace_t* vspace, REAL data[],
     sv->free_client_data = free_client_data;
   }
   return v;
+}
+
+REAL*
+GET_DATA(opk_vector_t* v)
+{
+  if (v == NULL) {
+    errno = EFAULT;
+    return NULL;
+  }
+  if (v->owner->ident != ident) {
+    errno = EINVAL;
+    return NULL;
+  }
+  return ((simple_vector_t*)v)->data;
+}
+
+void*
+GET_CLIENT_DATA(opk_vector_t* v)
+{
+  if (v == NULL) {
+    errno = EFAULT;
+    return NULL;
+  }
+  if (v->owner->ident != ident) {
+    errno = EINVAL;
+    return NULL;
+  }
+  return ((simple_vector_t*)v)->client_data;
+}
+
+opk_free_proc*
+GET_FREE_CLIENT_DATA(opk_vector_t* v)
+{
+  if (v == NULL) {
+    errno = EFAULT;
+    return NULL;
+  }
+  if (v->owner->ident != ident) {
+    errno = EINVAL;
+    return NULL;
+  }
+  return ((simple_vector_t*)v)->free_client_data;
+}
+
+int
+REWRAP_VECTOR(opk_vector_t* v, REAL new_data[],
+	      void* new_client_data,
+	      void (*new_free_client_data)(void*))
+{
+  simple_vector_t* sv;
+  void *old_client_data;
+  void (*old_free_client_data)(void*);
+
+  /* Check arguments. */
+  if (v == NULL) {
+    errno = EFAULT;
+    return OPK_FAILURE;
+  }
+  if (v->owner->ident != ident) {
+    errno = EINVAL;
+    return OPK_FAILURE;
+  }
+  if (new_data == NULL) {
+    errno = EFAULT;
+    return OPK_FAILURE;
+  }
+
+  /* Get old members and make sure to not apply free_client_data again. */
+  sv = (simple_vector_t*)v;
+  old_client_data = sv->client_data;
+  old_free_client_data = sv->free_client_data;
+  sv->client_data = NULL;
+  sv->free_client_data = NULL;
+  if (old_free_client_data != NULL
+      && (old_free_client_data != new_free_client_data
+	  || old_client_data != new_client_data)) {
+    /* Apply old callback. */
+    old_free_client_data(old_client_data);
+  }
+
+  /* Update contents. */
+  sv->data = new_data;
+  sv->client_data = new_client_data;
+  sv->free_client_data = new_free_client_data;
+  return OPK_SUCCESS;
 }
 
 /*
