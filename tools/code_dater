@@ -1,0 +1,42 @@
+#! /bin/sh
+#
+# This script is a filter to replace $Date$ fields by a timestamp in text
+# file.  When called with arguments, the files are modified in-place and
+# touched to have the same date as the timestamp.
+#
+
+debug=no
+
+if test $# -eq 0; then
+    date=$(git log --pretty=format:"%ai" -1)
+    sed "s/\\\$Date[^\\\$]*\\\$/\\\$Date: ${date}\\\$/g"
+else
+    tmpdir=${TMPDIR:-/tmp}
+    tmppfx="stamp"
+    tmpsfx=".tmp"
+    tmp=$(mktemp "${tmpdir}/${tmppfx}-XXXXXX" 2>/dev/null \
+        || tempfile -d "$tmpdir" -p "$tmppfx" -s "$tmpsfx" 2>/dev/null \
+        || echo "${tmpdir}/${tmppfx}-$$")
+    if test "$debug" = "yes"; then
+        echo "Temporary file is: $tmp"
+    else
+        trap "rm -f '$tmp'" 0
+    fi
+    while test $# -gt 0; do
+        src=$1
+        shift
+        date=$(git log --pretty=format:"%ai" "$src" | head -1)
+        sed "s/\\\$Date[^\\\$]*\\\$/\\\$Date: ${date}\\\$/g" <"$src" >"$tmp"
+        cp "$tmp" "$src"
+        touch -d "$date" "$src"
+        chmod 644 "$src"
+    done
+fi
+
+# Local Variables:
+# mode: sh
+# tab-width: 8
+# indent-tabs-mode: nil
+# fill-column: 78
+# coding: utf-8
+# End:
