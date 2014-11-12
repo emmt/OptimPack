@@ -121,7 +121,7 @@ v_print(FILE* output, const char* title, int n, const double v[])
     for (i = 0; i < n; ++i) {
       fprintf(output, "  %10.8E", v[i]);
       if (i == n - 1 || (i + 1)%4 == 0) {
-	fprintf(output, "\n");
+        fprintf(output, "\n");
       }
     }
     fflush(output);
@@ -169,21 +169,21 @@ main(int argc, const char* argv[])
       mgh_umipt(n, x1, prob, factor);
       v_compare(n, x0, x1, &amax, &rmax);
       fprintf(output, "  problem: %s (n = %d) init: factor = %.0f, rmax = %g, amax = %g\n",
-	      descr, n, factor, rmax, amax);
+              descr, n, factor, rmax, amax);
 
       /* Compute the objective functions. */
       f0 = mgh_objfcn(n, x0, prob);
       f1 = mgh_umobj(n, x1, prob);
       v_compare(1, &f0, &f1, &amax, &rmax);
       fprintf(output, "  problem: %s (n = %d) objf: factor = %.0f, rmax = %g, amax = %g\n",
-	      descr, n, factor, rmax, amax);
+              descr, n, factor, rmax, amax);
 
       /* Compute the gradients. */
       mgh_grdfcn(n, x0, g0, prob);
       mgh_umgrd(n, x1, g1, prob);
       v_compare(n, g0, g1, &amax, &rmax);
       fprintf(output, "  problem: %s (n = %d) grad: factor = %.0f, rmax = %g, amax = %g\n",
-	      descr, n, factor, rmax, amax);
+              descr, n, factor, rmax, amax);
     }
   }
 

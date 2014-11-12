@@ -8,9 +8,9 @@ CONTENTS
 
    - mgh-port.c, mgh-port.h
              Routines for unconstrained optimization tests ported in
-	     C.  This was needed for people not having a FORTRAN
-	     compiler and as a preliminary step to make the tests
-	     available in Java.
+             C.  This was needed for people not having a FORTRAN
+             compiler and as a preliminary step to make the tests
+             available in Java.
 
    - mgh-tests.c
              This program checks whether the C version (in mgh-port.c)

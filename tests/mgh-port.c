@@ -488,7 +488,7 @@ mgh_umobj(int n, const double x[], int prob)
     f = 0.0;
     for (j = 0; j < n; ++j) {
       t = ((double)(n + 1 + j)) - sin(x[j]) - s1
-          - ((double)(1 + j))*cos(x[j]);
+        - ((double)(1 + j))*cos(x[j]);
       f += t*t;
     }
     break;
@@ -536,7 +536,7 @@ mgh_umobj(int n, const double x[], int prob)
     d1 = s3 + t3;
     d2 = s3 - t3;
     f = (100.0*(s1*s1) + (s2*s2) + 90.0*(t1*t1) + (t2*t2)
-        + 10.0*(d1*d1) + (d2*d2)/10.0);
+         + 10.0*(d1*d1) + (d2*d2)/10.0);
     break;
   case 18:
     /* Chebyquad function. */
@@ -695,21 +695,21 @@ mgh_umgrd(int n, const double x[], double g[], int prob)
       s1 = 0.0;
       d2 = 1.0;
       for (j = 1; j < n; ++j) {
-	s1 += ((double)j)*d2*x[j];
-	d2 *= d1;
+        s1 += ((double)j)*d2*x[j];
+        d2 *= d1;
       }
       s2 = 0.0;
       d2 = 1.0;
       for (j = 0; j < n; ++j) {
-	s2 += d2*x[j];
-	d2 *= d1;
+        s2 += d2*x[j];
+        d2 *= d1;
       }
       t = s1 - s2*s2 - 1.0;
       s3 = 2.0*d1*s2;
       d2 = 2.0/d1;
       for (j = 0; j < n; ++j) {
-	g[j] += d2*(((double)j) - s3)*t;
-	d2 *= d1;
+        g[j] += d2*(((double)j) - s3)*t;
+        d2 *= d1;
       }
     }
     t1 = x[1] - x[0]*x[0] - 1.0;
@@ -742,9 +742,9 @@ mgh_umgrd(int n, const double x[], double g[], int prob)
       g[j] = ((double)(n - j))*x[j]*th;
       s1 = exp(x[j]/10.0);
       if (j > 0) {
-	s3 = s1 + s2 - d2*(d1 + 1.0);
-	g[j] += AP*s1*(s3 + s1 - 1.0/d1)/5.0;
-	g[j-1] += AP*s2*s3/5.0;
+        s3 = s1 + s2 - d2*(d1 + 1.0);
+        g[j] += AP*s1*(s3 + s1 - 1.0/d1)/5.0;
+        g[j-1] += AP*s2*s3/5.0;
       }
       s2 = s1;
       d2 *= d1;
@@ -880,10 +880,10 @@ mgh_umgrd(int n, const double x[], double g[], int prob)
       t2 = 2.0*x[j] - 1.0;
       t = 2.0*t2;
       for (i = 0; i < n; ++i) {
-	fvec[i] += t2;
+        fvec[i] += t2;
         th = t*t2 - t1;
-	t1 = t2;
-	t2 = th;
+        t1 = t2;
+        t2 = th;
       }
     }
     d1 = 1.0/((double)n);
@@ -904,13 +904,13 @@ mgh_umgrd(int n, const double x[], double g[], int prob)
       s1 = 0.0;
       s2 = 2.0;
       for (i = 0; i < n; ++i) {
-	g[j] += fvec[i]*s2;
-	th = 4.0*t2 + t*s2 - s1;
-	s1 = s2;
-	s2 = th;
-	th = t*t2 - t1;
-	t1 = t2;
-	t2 = th;
+        g[j] += fvec[i]*s2;
+        th = 4.0*t2 + t*s2 - s1;
+        s1 = s2;
+        s2 = th;
+        th = t*t2 - t1;
+        t1 = t2;
+        t2 = th;
       }
     }
     d2 = 2.0*d1;
