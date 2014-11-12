@@ -589,6 +589,65 @@ opk_vaxpbypcz(opk_vector_t* dst,
               double gamma, const opk_vector_t* z);
 
 /*---------------------------------------------------------------------------*/
+/* OPERATORS */
+
+typedef struct _opk_operator opk_operator_t;
+
+extern opk_operator_t*
+opk_allocate_operator(opk_vspace_t* inpspace,
+                      opk_vspace_t* outspace,
+                      size_t size);
+
+extern void
+opk_delete_operator(opk_operator_t* op);
+
+extern int
+opk_apply_direct(opk_operator_t* op, opk_vector_t* dst,
+                 const opk_vector_t* src);
+
+extern int
+opk_apply_adjoint(opk_operator_t* op, opk_vector_t* dst,
+                  const opk_vector_t* src);
+
+extern int
+opk_apply_inverse(opk_operator_t* op, opk_vector_t* dst,
+                  const opk_vector_t* src);
+
+struct _opk_operator {
+  opk_vspace_t* inpspace; /* The input space of the operator. */
+  opk_vspace_t* outspace; /* The output space of the operator. */
+
+  /* If not NULL, the apply_direct() method is called by opk_apply_direct() to
+     apply the operator to the source vector `src` and store the result in the
+     destination vector `dst`.  It is guaranteed that the arguments are valid
+     (i.e., that they are non NULL and that they belong to the correct vector
+     space).  If NULL, such operation is considered as not allowed by the
+     operator. */
+  int (*apply_direct)(opk_operator_t* self, opk_vector_t* dst,
+                      const opk_vector_t* src);
+
+  /* If not NULL, the apply_adjoint() method is called by opk_apply_adjoint()
+     to apply the adjoint of the operator to the source vector `src` and store
+     the result in the destination vector `dst`.  The same assumptions as for
+     the apply_direct() method otherwise hold. */
+  int (*apply_adjoint)(opk_operator_t* self, opk_vector_t* dst,
+                       const opk_vector_t* src);
+
+  /* If not NULL, the apply_inverse() method is called by opk_apply_adjoint()
+     to apply the inverse of the operator to the source vector `src` and store
+     the result in the destination vector `dst`.  The same assumptions as for
+     the apply_direct() method otherwise hold. */
+  int (*apply_inverse)(opk_operator_t* self, opk_vector_t* dst,
+                       const opk_vector_t* src);
+
+  /* If not NULL, the delete() method is called by opk_delete_operator() to
+     release any specific ressources.  The memory occupied by instance itself,
+     which has been allocated by opk_allocate_operator(), is freed by
+     opk_delete_operator(). */
+  void (*delete)(opk_operator_t* self);
+};
+
+/*---------------------------------------------------------------------------*/
 /* ERROR MANAGEMENT */
 
 typedef void opk_error_handler(const char* message);

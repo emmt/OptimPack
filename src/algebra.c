@@ -238,6 +238,101 @@ opk_vaxpbypcz(opk_vector_t* dst,
   }
 }
 
+/*---------------------------------------------------------------------------*/
+/* OPERATORS */
+
+opk_operator_t*
+opk_allocate_operator(opk_vspace_t* inpspace,
+                      opk_vspace_t* outspace,
+                      size_t size)
+{
+  opk_operator_t* op;
+
+  /* Check arguments. */
+  if (inpspace == NULL || outspace == NULL) {
+    errno = EFAULT;
+    return NULL;
+  }
+  if (size < sizeof(opk_operator_t)) {
+    size = sizeof(opk_operator_t);
+  }
+  op = (opk_operator_t*)malloc(size);
+  if (op != NULL) {
+    memset(op, 0, size);
+    op->inpspace = inpspace;
+    op->outspace = outspace;
+  }
+  return op;
+}
+
+int
+opk_apply_direct(opk_operator_t* op, opk_vector_t* dst,
+                 const opk_vector_t* src)
+{
+  if (op == NULL || dst == NULL || src == NULL) {
+    errno = EFAULT;
+    return OPK_FAILURE;
+  }
+  if (dst->owner != op->outspace || src->owner != op->inpspace) {
+    errno = EINVAL;
+    return OPK_FAILURE;
+  }
+  if (op->apply_direct == NULL) {
+    errno = EPERM; /* Operation not permitted */
+    return OPK_FAILURE;
+  }
+  return op->apply_direct(op, dst, src);
+}
+
+int
+opk_apply_adjoint(opk_operator_t* op, opk_vector_t* dst,
+                 const opk_vector_t* src)
+{
+  if (op == NULL || dst == NULL || src == NULL) {
+    errno = EFAULT;
+    return OPK_FAILURE;
+  }
+  if (dst->owner != op->inpspace || src->owner != op->outspace) {
+    errno = EINVAL;
+    return OPK_FAILURE;
+  }
+  if (op->apply_adjoint == NULL) {
+    errno = EPERM; /* Operation not permitted */
+    return OPK_FAILURE;
+  }
+  return op->apply_adjoint(op, dst, src);
+}
+
+int
+opk_apply_inverse(opk_operator_t* op, opk_vector_t* dst,
+                 const opk_vector_t* src)
+{
+  if (op == NULL || dst == NULL || src == NULL) {
+    errno = EFAULT;
+    return OPK_FAILURE;
+  }
+  if (dst->owner != op->inpspace || src->owner != op->outspace) {
+    errno = EINVAL;
+    return OPK_FAILURE;
+  }
+  if (op->apply_inverse == NULL) {
+    errno = EPERM; /* Operation not permitted */
+    return OPK_FAILURE;
+  }
+  return op->apply_inverse(op, dst, src);
+}
+
+void
+opk_delete_operator(opk_operator_t* op)
+{
+  if (op != NULL) {
+    if (op->delete != NULL) {
+      op->delete(op);
+    }
+    free((void*)op);
+  }
+}
+
 /*
  * Local Variables:
  * mode: C
