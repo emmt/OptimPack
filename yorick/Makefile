@@ -20,7 +20,7 @@ TGT=$(DEFAULT_TGT)
 PKG_NAME=opky
 PKG_I=${srcdir}/opky.i
 
-OBJS=opky.o vector.o fltvector.o dblvector.o error.o nlcg.o lnsrch.o
+OBJS=opky.o algebra.o fltvector.o dblvector.o error.o nlcg.o lnsrch.o
 
 # change to give the executable a name other than yorick
 PKG_EXENAME=yorick
@@ -96,7 +96,7 @@ OPK_CFLAGS = $(CPPFLAGS) $(CFLAGS) -DNDEBUG -I$(OPK_SRC)
 opky.o: $(srcdir)/opky.c $(OPK_SRC)/optimpack.h
 	$(CC) $(OPK_CFLAGS) -o $@ -c $<
 
-vector.o: $(OPK_SRC)/vector.c $(OPK_SRC)/optimpack.h $(OPK_SRC)/optimpack-private.h
+algebra.o: $(OPK_SRC)/algebra.c $(OPK_SRC)/optimpack.h $(OPK_SRC)/optimpack-private.h
 	$(CC) $(OPK_CFLAGS) -o $@ -c $<
 fltvector.o: $(OPK_SRC)/simple_vector.c $(OPK_SRC)/optimpack.h $(OPK_SRC)/optimpack-private.h
 	$(CC) $(OPK_CFLAGS) -DSINGLE_PRECISION=1 -o $@ -c $<

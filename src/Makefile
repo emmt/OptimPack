@@ -11,7 +11,7 @@ CPPFLAGS = -I.
 MGH_DIR = ../tests
 
 HEADERS = optimpack.h optimpack-private.h
-OBJS = lnsrch.o nlcg.o fmin.o error.o vector.o fltvector.o dblvector.o
+OBJS = algebra.o fltvector.o dblvector.o error.o lnsrch.o nlcg.o fmin.o
 LIBNAME = libOptimPack2.a
 
 RM = rm -f
@@ -28,7 +28,7 @@ $(LIBNAME): $(OBJS)
 	$(AR) rv $@ $^
 
 error.o: error.c optimpack.h
-vector.o: vector.c $(HEADERS)
+algebra.o: algebra.c $(HEADERS)
 
 fltvector.o: simple_vector.c $(HEADERS)
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) -DSINGLE_PRECISION=1 $< -o $@

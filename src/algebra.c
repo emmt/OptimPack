@@ -1,5 +1,5 @@
 /*
- * vector.c --
+ * algebra.c --
  *
  * High level vector space implementation for OptimPack library.
  *
