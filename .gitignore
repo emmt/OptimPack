@@ -1,5 +1,6 @@
 # Specific files
-nlcg-test
+src/nlcg-test
+yorick/ywrap.c
 
 # Backup files
 *~
