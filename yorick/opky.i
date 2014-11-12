@@ -41,29 +41,40 @@ extern opk_nlcg;
          or opt = opk_nlcg(n, m);
 
      The function opk_nlcg() creates a new instance of OPKY reverse
-     communication optimizer implementing a non-linear conjugate
-     gradient method.  N is the size of the problem.
+     communication optimizer implementing a non-linear conjugate gradient
+     method.  N is the size of the problem.
 
-     Keyword METHOD may be set with the non-linear conjugate gradient
-     method to use.
+     Keyword METHOD may be set with the non-linear conjugate gradient method to
+     use.
 
-     Keyword SINGLE may be set true to use single precision floating
-     point variables.  The default is to use double precision floating
-     point variables.
+     Keyword SINGLE may be set true to use single precision floating point
+     variables.  The default is to use double precision floating point
+     variables.
 
+     The dot notation can be used to query some members of the optimizer
+     instance:
+         opt.method      - the name of the optimization method;
+         opt.size        - the size of the problem;
+         opt.single      - single precision?
+         opt.task        - current pending task;
+         opt.iterations  - number of iterations;
+         opt.evaluations - number of function (and gradient) evaluations;
+         opt.restarts    - number of restarts;
+
+   SEE ALSO: opk_iterate, opk_lbfgs, opk_task, opk_start.
  */
 
 extern opk_lbfgs;
 /* DOCUMENT opt = opk_lbfgs(n, m);
 
      The function opk_lbfgs() creates a new instance of OPKY reverse
-     communication optimizer implementing a limited memory variant of
-     the BFGS variable metric method.  N is the size of the problem
-     and M is the number of saved pairs to use.
+     communication optimizer implementing a limited memory variant of the BFGS
+     variable metric method.  N is the size of the problem and M is the number
+     of previous steps to memorize.
 
-     Keyword SINGLE may be set true to use single precision floating
-     point variables.  The default is to use double precision floating
-     point variables.
+     Keyword SINGLE may be set true to use single precision floating point
+     variables.  The default is to use double precision floating point
+     variables.
 
  */
 
@@ -122,8 +133,8 @@ func opk_minimize(fg, x0, m, lbfgs=, nlcg=, single=, verb=)
      Keyword SINGLE may be set true to use single precision floating point
      variables.  The default is to use double precision floating point
      variables.  Beware that this have an incidence on the allocated array to
-     store the gradient and may result in costly conversions if the function
-     FG is not designed to work at the assumed precision.
+     store the gradient and may result in costly conversions if the function FG
+     is not designed to work at the assumed precision.
 
    SEE ALSO: opk_nlcg, opk_lbfgs.
  */
@@ -158,7 +169,10 @@ func opk_minimize(fg, x0, m, lbfgs=, nlcg=, single=, verb=)
     if (task == OPK_TASK_COMPUTE_FG) {
       fx = fg(x, gx);
     } else if (task == OPK_TASK_NEW_X) {
-      write, format="%.16E\n", fx;
+      if (verb) {
+        write, format="%4d  %4d  %.16E\n",
+          opt.iterations, opt.evaluations, fx;
+      }
     } else {
       break;
     }
@@ -178,9 +192,9 @@ func opk_minimize(fg, x0, m, lbfgs=, nlcg=, single=, verb=)
 
 extern opk_init;
 /* DOCUMENT opk_init;
-     This procedure initializes internals of OPKY.  It can safely be
-     called to re-initialize and restore values of global variables.
-     It is automatically called when the plug-in is loaded.
+     This procedure initializes internals of OPKY.  It can safely be called to
+     re-initialize and restore values of global variables.  It is automatically
+     called when the plug-in is loaded.
  */
 opk_init;
 

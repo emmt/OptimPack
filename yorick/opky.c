@@ -54,48 +54,66 @@
 PLUG_API void y_error(const char *) __attribute__ ((noreturn));
 
 /*---------------------------------------------------------------------------*/
+/* PRIVATE DATA AND DEFINTIONS */
+
+/* Indices of keywords. */
+static long evaluations_index = -1L;
+static long iterations_index = -1L;
+static long method_index = -1L;
+static long restarts_index = -1L;
+static long single_index = -1L;
+static long size_index = -1L;
+static long task_index = -1L;
+
+static void push_string(const char *value);
+
+/*---------------------------------------------------------------------------*/
 /* OPTIMIZER OBJECT */
 
-enum {
-  TYPE_NONE = 0,
-  TYPE_NLCG,   /* non-linear conjugate gradient */
-  TYPE_LBFGS   /* limited memory BFGS */
+typedef struct _yopt_instance yopt_instance_t;
+typedef struct _yopt_operations yopt_operations_t;
+
+struct _yopt_operations {
+  const char* method;
+  void (*delete)(void* ws);
+  void (*start)(void* ws);
+  void (*iterate)(void* ws, opk_vector_t* x, double fx, opk_vector_t* gx);
+  void (*get_task)(void* ws);
+  void (*get_iterations)(void* ws);
+  void (*get_evaluations)(void* ws);
+  void (*get_restarts)(void* ws);
 };
 
-typedef struct _yopt_instance yopt_instance_t;
 struct _yopt_instance {
+  yopt_operations_t* ops;
   opk_vspace_t* vspace;
   void (*rewrap)(opk_vector_t* vect, int iarg);
   void* ws;
   opk_vector_t* x;
   opk_vector_t* gx;
-  int type;
   int single;
 };
 
 static void yopt_free(void *);
 static void yopt_print(void *);
 /*static void yopt_eval(void *, int);*/
-/*static void yopt_extract(void *, char *);*/
+static void yopt_extract(void *, char *);
 
 static y_userobj_t yopt_type = {
-  "line search",
+  "OPKY optimizer",
   yopt_free,
   yopt_print,
   /*yopt_eval*/NULL,
-  /*yopt_extract*/NULL,
+  yopt_extract,
   NULL
 };
 
-static void yopt_free(void *ptr)
+static void
+yopt_free(void* ptr)
 {
   yopt_instance_t* opt = (yopt_instance_t*)ptr;
   if (opt->ws != NULL) {
-    switch (opt->type) {
-    case TYPE_NLCG:
-      opk_nlcg_delete((opk_nlcg_workspace_t*)opt->ws);
-      break;
-    }
+    opt->ops->delete(opt->ws);
   }
   if (opt->x != NULL) {
     opk_vdelete(opt->x);
@@ -108,18 +126,172 @@ static void yopt_free(void *ptr)
   }
 }
 
-static void yopt_print(void *ptr)
+static void
+yopt_print(void* ptr)
 {
+  yopt_instance_t* opt = (yopt_instance_t*)ptr;
+  char buffer[100];
+  y_print(yopt_type.type_name, FALSE);
+  y_print(" implementing ", FALSE);
+  y_print(opt->ops->method, FALSE);
+  sprintf(buffer, " method (size=%ld, type=%s)",
+          (long)opt->vspace->size,
+          (opt->single ? "float" : "double"));
+  y_print(buffer, TRUE);
 }
+
 /*static void yopt_eval(void *, int);*/
-/*static void yopt_extract(void *, char *);*/
+
+static void
+yopt_extract(void* ptr, char* member)
+{
+  yopt_instance_t* opt = (yopt_instance_t*)ptr;
+  long index = yget_global(member, 0);
+  if (index == method_index) {
+    push_string(opt->ops->method);
+  } else if (index == task_index) {
+    opt->ops->get_task(opt->ws);
+  } else if (index == size_index) {
+    ypush_long(opt->vspace->size);
+  } else if (index == iterations_index) {
+    opt->ops->get_iterations(opt->ws);
+  } else if (index == evaluations_index) {
+    opt->ops->get_evaluations(opt->ws);
+  } else if (index == restarts_index) {
+    opt->ops->get_restarts(opt->ws);
+  } else if (index == single_index) {
+    ypush_int(opt->single);
+  } else {
+    ypush_nil();
+  }
+}
+
 
 /*---------------------------------------------------------------------------*/
+/* NON-LINEAR CONJUGATE GRADIENT (NLCG) METHOD */
 
-/* Indices of keywords. */
-static long method_index = -1L;
-static long single_index = -1L;
-static long task_index = -1L;
+#define NLCG_WORKSPACE(ptr) ((opk_nlcg_workspace_t*)(ptr))
+
+static void
+nlcg_delete(void* ws)
+{
+  opk_nlcg_delete(NLCG_WORKSPACE(ws));
+}
+
+static void
+nlcg_start(void* ws)
+{
+  ypush_int(opk_nlcg_start(NLCG_WORKSPACE(ws)));
+}
+
+static void
+nlcg_iterate(void* ws, opk_vector_t* x, double fx, opk_vector_t* gx)
+{
+  ypush_int(opk_nlcg_iterate(NLCG_WORKSPACE(ws), x, fx, gx));
+}
+
+static void
+nlcg_get_task(void* ws)
+{
+  ypush_int(opk_nlcg_get_task(NLCG_WORKSPACE(ws)));
+}
+
+static void
+nlcg_get_iterations(void* ws)
+{
+  ypush_long(opk_nlcg_get_iterations(NLCG_WORKSPACE(ws)));
+}
+
+static void
+nlcg_get_evaluations(void* ws)
+{
+  ypush_long(opk_nlcg_get_evaluations(NLCG_WORKSPACE(ws)));
+}
+
+static void
+nlcg_get_restarts(void* ws)
+{
+  ypush_long(opk_nlcg_get_restarts(NLCG_WORKSPACE(ws)));
+}
+
+static yopt_operations_t nlcg_ops = {
+  "non-linear conjugate gradient (NLCG)",
+  nlcg_delete,
+  nlcg_start,
+  nlcg_iterate,
+  nlcg_get_task,
+  nlcg_get_iterations,
+  nlcg_get_evaluations,
+  nlcg_get_restarts
+};
+
+/*---------------------------------------------------------------------------*/
+/* LIMITED MEMORY VARIABLE METRIC (LBFGS) METHOD */
+
+#if 0
+#define LBFGS_WORKSPACE(ptr) ((opk_lbfgs_workspace_t*)(ptr))
+
+static void
+lbfgs_delete(void* ws)
+{
+  opk_lbfgs_delete(LBFGS_WORKSPACE(ws));
+}
+
+static void
+lbfgs_start(void* ws)
+{
+  ypush_int(opk_lbfgs_start(LBFGS_WORKSPACE(ws)));
+}
+
+static void
+lbfgs_iterate(void* ws, opk_vector_t* x, double fx, opk_vector_t* gx)
+{
+  ypush_int(opk_lbfgs_iterate(LBFGS_WORKSPACE(ws), x, fx, gx));
+}
+
+static void
+lbfgs_get_task(void* ws)
+{
+  ypush_int(opk_lbfgs_get_task(LBFGS_WORKSPACE(ws)));
+}
+
+static void
+lbfgs_get_iterations(void* ws)
+{
+  ypush_long(opk_lbfgs_get_iterations(LBFGS_WORKSPACE(ws)));
+}
+
+static void
+lbfgs_get_evaluations(void* ws)
+{
+  ypush_long(opk_lbfgs_get_evaluations(LBFGS_WORKSPACE(ws)));
+}
+
+static void
+lbfgs_get_restarts(void* ws)
+{
+  ypush_long(opk_lbfgs_get_restarts(LBFGS_WORKSPACE(ws)));
+}
+
+static yopt_operations_t lbfgs_ops = {
+  "limited memory variable metric (LBFGS)",
+  lbfgs_delete,
+  lbfgs_start,
+  lbfgs_iterate,
+  lbfgs_get_task,
+  lbfgs_get_iterations,
+  lbfgs_get_evaluations,
+  lbfgs_get_restarts
+};
+#endif
+
+/*---------------------------------------------------------------------------*/
+/* PRIVATE FUNCTIONS */
+
+static void push_string(const char *value)
+{
+  ypush_q((long *)NULL)[0] = (value ? p_strcpy((char *)value) : NULL);
+}
 
 static void
 error_handler(const char* message)
@@ -160,13 +332,20 @@ static void set_global_int(const char* name, int value)
   yarg_drop(1);
 }
 
+/*---------------------------------------------------------------------------*/
+/* BUILTIN FUNCTIONS */
+
 void Y_opk_init(int argc)
 {
   opk_set_error_handler(error_handler);
 
 #define GET_GLOBAL(a) a##_index = yget_global(#a, 0)
+  GET_GLOBAL(evaluations);
+  GET_GLOBAL(iterations);
   GET_GLOBAL(method);
+  GET_GLOBAL(restarts);
   GET_GLOBAL(single);
+  GET_GLOBAL(size);
   GET_GLOBAL(task);
 #undef GET_GLOBAL
 
@@ -229,7 +408,7 @@ void Y_opk_nlcg(int argc)
     y_error("not enough arguments");
   }
   opt = (yopt_instance_t*)ypush_obj(&yopt_type, sizeof(yopt_instance_t));
-  opt->type = TYPE_NLCG;
+  opt->ops = &nlcg_ops;
   opt->single = single;
   if (single) {
     opt->vspace = opk_new_simple_float_vector_space(n);
@@ -272,13 +451,7 @@ void Y_opk_task(int argc)
     y_error("expecting exactly 1 argument");
   }
   opt = yget_obj(0, &yopt_type);
-  switch (opt->type) {
-  case TYPE_NLCG:
-    ypush_int(opk_nlcg_get_task((opk_nlcg_workspace_t*)opt->ws));
-    break;
-  default:
-    y_error("unexpected optimizer");
-  }
+  opt->ops->get_task(opt->ws);
 }
 
 void Y_opk_start(int argc)
@@ -289,13 +462,7 @@ void Y_opk_start(int argc)
     y_error("expecting exactly 1 argument");
   }
   opt = yget_obj(0, &yopt_type);
-  switch (opt->type) {
-  case TYPE_NLCG:
-    ypush_int(opk_nlcg_start((opk_nlcg_workspace_t*)opt->ws));
-    break;
-  default:
-    y_error("unexpected optimizer");
-  }
+  opt->ops->start(opt->ws);
 }
 
 void Y_opk_iterate(int argc)
@@ -306,17 +473,11 @@ void Y_opk_iterate(int argc)
   if (argc != 4) {
     y_error("expecting exactly 4 arguments");
   }
-  opt = yget_obj(0, &yopt_type);
-  opt->rewrap(opt->x, 1);
-  fx = ygets_d(2);
-  opt->rewrap(opt->gx, 3);
-  switch (opt->type) {
-  case TYPE_NLCG:
-    ypush_int(opk_nlcg_iterate((opk_nlcg_workspace_t*)opt->ws, opt->x, fx, opt->gx));
-    break;
-  default:
-    y_error("unexpected optimizer");
-  }
+  opt = yget_obj(3, &yopt_type);
+  opt->rewrap(opt->x, 2);
+  fx = ygets_d(1);
+  opt->rewrap(opt->gx, 0);
+  opt->ops->iterate(opt->ws, opt->x, fx, opt->gx);
 }
 
 /*
