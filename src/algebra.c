@@ -36,33 +36,66 @@
 
 #include "optimpack-private.h"
 
-opk_vector_t*
-opk_valloc(opk_vspace_t* vspace, size_t size)
-{
-  opk_vector_t* vect;
+/*---------------------------------------------------------------------------*/
+/* BASIC OBJECTS */
 
-  if (size < sizeof(opk_vector_t)) {
-    size = sizeof(opk_vector_t);
+opk_object_t*
+opk_allocate_object(void (*finalize)(opk_object_t* self),
+                    size_t nbytes)
+{
+  opk_object_t* object;
+  if (nbytes < sizeof(opk_object_t)) {
+    nbytes = sizeof(opk_object_t);
   }
-  vect = (opk_vector_t*)malloc(size);
-  if (vect != NULL) {
-    vect->owner = vspace;
+  object = (opk_object_t*)malloc(nbytes);
+  if (object != NULL) {
+    memset(object, 0, nbytes);
+    object->finalize = finalize;
+    object->references = 1;
   }
-  return vect;
+  return object;
+}
+
+opk_object_t*
+opk_hold_object(opk_object_t* obj)
+{
+  ++obj->references;
+  return obj;
 }
 
 void
-opk_vfree(opk_vector_t* vect)
+opk_drop_object(opk_object_t* obj)
 {
-  if (vect != NULL) {
-    free((void*)vect);
+  if (obj != NULL && --obj->references < 1) {
+    if (obj->finalize != NULL) {
+      obj->finalize(obj);
+    }
+    free((void*)obj);
+  }
+}
+
+opk_index_t
+opk_get_object_references(opk_object_t* obj)
+{
+  return (obj != NULL ? obj->references : 0);
+}
+
+/*---------------------------------------------------------------------------*/
+/* VECTOR SPACES */
+
+static void
+finalize_vector_space(opk_object_t* obj)
+{
+  opk_vspace_t* vspace = (opk_vspace_t*)obj;
+  if (vspace->ops->finalize_space != NULL) {
+    vspace->ops->finalize_space(vspace);
   }
 }
 
 opk_vspace_t*
-opk_allocate_vector_space(const void* ident,
+opk_allocate_vector_space(const opk_vspace_operations_t* ops,
                           opk_index_t nvariables,
-                          opk_index_t nbytes)
+                          size_t nbytes)
 {
   opk_vspace_t* vspace;
   if (nvariables < 1) {
@@ -72,21 +105,41 @@ opk_allocate_vector_space(const void* ident,
   if (nbytes < sizeof(opk_vspace_t)) {
     nbytes = sizeof(opk_vspace_t);
   }
-  vspace = (opk_vspace_t*)malloc(nbytes);
+  vspace = (opk_vspace_t*)opk_allocate_object(finalize_vector_space, nbytes);
   if (vspace != NULL) {
-    memset(vspace, 0, nbytes);
-    vspace->ident = ident;
+    vspace->ops = ops;
     vspace->size = nvariables;
   }
   return vspace;
 }
 
-void
-opk_delete_vector_space(opk_vspace_t* vspace)
+/*---------------------------------------------------------------------------*/
+/* VECTORS */
+
+/* Destroy a vector when no longer referenced. */
+static void
+finalize_vector(opk_object_t* obj)
 {
-  if (vspace != NULL && vspace->finalize != NULL) {
-    vspace->finalize(vspace);
+  opk_vector_t* vector = (opk_vector_t*)obj;
+  opk_vspace_t* vspace = vector->owner;
+  vspace->ops->finalize_vector(vspace, vector);
+  OPK_DROP(vspace);
+}
+
+/* Utility for allocating a new vector object. */
+opk_vector_t*
+opk_allocate_vector(opk_vspace_t* vspace, size_t nbytes)
+{
+  opk_vector_t* vect;
+
+  if (nbytes < sizeof(opk_vector_t)) {
+    nbytes = sizeof(opk_vector_t);
   }
+  vect = (opk_vector_t*)opk_allocate_object(finalize_vector, nbytes);
+  if (vect != NULL) {
+    vect->owner = OPK_HOLD_VSPACE(vspace);
+  }
+  return vect;
 }
 
 #define BAD_VECTOR(name)                                                \
@@ -96,35 +149,30 @@ opk_delete_vector_space(opk_vspace_t* vspace)
   opk_error("vectors do not belong to the same space in `opk_"          \
             name "`")
 
-void
-opk_vdelete(opk_vector_t* vect)
-{
-  if (vect != NULL) {
-    opk_vspace_t* vspace = vect->owner;
-    vspace->delete(vspace, vect);
-  }
-}
-
+/* Create a new vector. */
 opk_vector_t*
 opk_vcreate(opk_vspace_t* vspace)
 {
-  return vspace->create(vspace);
+  return vspace->ops->create(vspace);
 }
 
+/* Zero-fill a vector. */
 void
 opk_vzero(opk_vector_t* vect)
 {
   opk_vspace_t* vspace = vect->owner;
-  vspace->fill(vspace, vect, 0.0);
+  vspace->ops->fill(vspace, vect, 0.0);
 }
 
+/* Fill a vector with a scalar. */
 void
 opk_vfill(opk_vector_t* vect, double alpha)
 {
   opk_vspace_t* vspace = vect->owner;
-  vspace->fill(vspace, vect, alpha);
+  vspace->ops->fill(vspace, vect, alpha);
 }
 
+/* Copy vector contents. */
 void
 opk_vcopy(opk_vector_t* dst, const opk_vector_t* src)
 {
@@ -133,28 +181,32 @@ opk_vcopy(opk_vector_t* dst, const opk_vector_t* src)
     if (src->owner != vspace) {
       BAD_VECTORS("vcopy");
     } else {
-      vspace->copy(vspace, dst, src);
+      vspace->ops->copy(vspace, dst, src);
     }
   }
 }
 
+/* Scale vector contents. */
 void
 opk_vscale(opk_vector_t* dst, double alpha, const opk_vector_t* src)
 {
   opk_vspace_t* vspace = dst->owner;
   if (src->owner != vspace) {
     BAD_VECTORS("vscale");
-  } else if (alpha == 1.0) {
-    if (src != dst) {
-      vspace->copy(vspace, dst, src);
-    }
-  } else if (alpha == 0.0) {
-    vspace->fill(vspace, dst, 0.0);
   } else {
-    vspace->scale(vspace, dst, alpha, src);
+    if (alpha == 1.0) {
+      if (src != dst) {
+        vspace->ops->copy(vspace, dst, src);
+      }
+    } else if (alpha == 0.0) {
+      vspace->ops->fill(vspace, dst, 0.0);
+    } else {
+      vspace->ops->scale(vspace, dst, alpha, src);
+    }
   }
 }
 
+/* Exchange vector contents. */
 void
 opk_vswap(opk_vector_t* x, opk_vector_t* y)
 {
@@ -163,11 +215,12 @@ opk_vswap(opk_vector_t* x, opk_vector_t* y)
     if (y->owner != vspace) {
       BAD_VECTORS("vswap");
     } else {
-      vspace->swap(vspace, x, y);
+      vspace->ops->swap(vspace, x, y);
     }
   }
 }
 
+/* Compute inner product. */
 double
 opk_vdot(const opk_vector_t* x, const opk_vector_t* y)
 {
@@ -176,31 +229,35 @@ opk_vdot(const opk_vector_t* x, const opk_vector_t* y)
     BAD_VECTORS("vdot");
     return 0.0;
   } else {
-    return vspace->dot(vspace, x, y);
+    return vspace->ops->dot(vspace, x, y);
   }
 }
 
+/* Compute L2 norm. */
 double
 opk_vnorm2(const opk_vector_t* x)
 {
   opk_vspace_t* vspace = x->owner;
-  return vspace->norm2(vspace, x);
+  return vspace->ops->norm2(vspace, x);
 }
 
+/* Compute L1 norm. */
 double
 opk_vnorm1(const opk_vector_t* x)
 {
   opk_vspace_t* vspace = x->owner;
-  return vspace->norm1(vspace, x);
+  return vspace->ops->norm1(vspace, x);
 }
 
+/* Compute infinite norm. */
 double
 opk_vnorminf(const opk_vector_t* x)
 {
   opk_vspace_t* vspace = x->owner;
-  return vspace->norminf(vspace, x);
+  return vspace->ops->norminf(vspace, x);
 }
 
+/* Compute linear combination of two vectors. */
 void
 opk_vaxpby(opk_vector_t* dst,
            double alpha, const opk_vector_t* x,
@@ -209,15 +266,24 @@ opk_vaxpby(opk_vector_t* dst,
   opk_vspace_t* vspace = dst->owner;
   if (x->owner != vspace || y->owner != vspace) {
     BAD_VECTORS("vaxpby");
-  } else if (alpha == 0.0) {
-    opk_vscale(dst, beta, y);
-  } else if (beta == 0.0) {
-    opk_vscale(dst, alpha, x);
   } else {
-    vspace->axpby(vspace, dst, alpha, x, beta, y);
+    if (alpha == 0.0) {
+      if (beta == 0.0) {
+        vspace->ops->fill(vspace, dst, 0.0);
+      } else {
+        vspace->ops->scale(vspace, dst, beta, y);
+      }
+    } else {
+      if (beta == 0.0) {
+        vspace->ops->scale(vspace, dst, alpha, x);
+      } else {
+        vspace->ops->axpby(vspace, dst, alpha, x, beta, y);
+      }
+    }
   }
 }
 
+/* Compute linear combination of three vectors. */
 void
 opk_vaxpbypcz(opk_vector_t* dst,
               double alpha, const opk_vector_t* x,
@@ -227,22 +293,56 @@ opk_vaxpbypcz(opk_vector_t* dst,
   opk_vspace_t* vspace = dst->owner;
   if (x->owner != vspace || y->owner != vspace || z->owner != vspace) {
     BAD_VECTORS("vaxpbypcz");
-  } else if (alpha == 0.0) {
-    opk_vaxpby(dst, beta, y, gamma, z);
-  } else if (beta == 0.0) {
-    opk_vaxpby(dst, alpha, x, gamma, z);
-  } else if (gamma == 0.0) {
-    opk_vaxpby(dst, alpha, x, beta, y);
   } else {
-    vspace->axpbypcz(vspace, dst, alpha, x, beta, y, gamma, z);
+    if (alpha == 0.0) {
+      if (beta == 0.0) {
+        if (gamma == 0.0) {
+          vspace->ops->fill(vspace, dst, 0.0);
+        } else {
+          vspace->ops->scale(vspace, dst, gamma, z);
+        }
+      } else {
+        if (gamma == 0.0) {
+          vspace->ops->scale(vspace, dst, beta, y);
+        } else {
+          vspace->ops->axpby(vspace, dst, beta, y, gamma, z);
+        }
+      }
+    } else {
+      if (beta == 0.0) {
+        if (gamma == 0.0) {
+          vspace->ops->scale(vspace, dst, alpha, x);
+        } else {
+          vspace->ops->axpby(vspace, dst, alpha, x, gamma, z);
+        }
+      } else {
+        if (gamma == 0.0) {
+          vspace->ops->axpby(vspace, dst, alpha, x, beta, y);
+        } else {
+          vspace->ops->axpbypcz(vspace, dst, alpha, x, beta, y, gamma, z);
+        }
+      }
+    }
   }
 }
 
 /*---------------------------------------------------------------------------*/
 /* OPERATORS */
 
+static void
+finalize_operator(opk_object_t* obj)
+{
+  opk_operator_t* op = (opk_operator_t*)obj;
+  if (op->ops->finalize != NULL) {
+    op->ops->finalize(op);
+  }
+  OPK_DROP(op->inpspace);
+  OPK_DROP(op->outspace);
+}
+
 opk_operator_t*
-opk_allocate_operator(opk_vspace_t* inpspace,
+opk_allocate_operator(const opk_operator_operations_t* ops,
+                      opk_vspace_t* inpspace,
                       opk_vspace_t* outspace,
                       size_t size)
 {
@@ -256,11 +356,11 @@ opk_allocate_operator(opk_vspace_t* inpspace,
   if (size < sizeof(opk_operator_t)) {
     size = sizeof(opk_operator_t);
   }
-  op = (opk_operator_t*)malloc(size);
+  op = (opk_operator_t*)opk_allocate_object(finalize_operator, size);
   if (op != NULL) {
-    memset(op, 0, size);
-    op->inpspace = inpspace;
-    op->outspace = outspace;
+    op->ops = ops;
+    op->inpspace = OPK_HOLD_VSPACE(inpspace);
+    op->outspace = OPK_HOLD_VSPACE(outspace);
   }
   return op;
 }
@@ -277,11 +377,11 @@ opk_apply_direct(opk_operator_t* op, opk_vector_t* dst,
     errno = EINVAL;
     return OPK_FAILURE;
   }
-  if (op->apply_direct == NULL) {
+  if (op->ops->apply_direct == NULL) {
     errno = EPERM; /* Operation not permitted */
     return OPK_FAILURE;
   }
-  return op->apply_direct(op, dst, src);
+  return op->ops->apply_direct(op, dst, src);
 }
 
 int
@@ -296,11 +396,11 @@ opk_apply_adjoint(opk_operator_t* op, opk_vector_t* dst,
     errno = EINVAL;
     return OPK_FAILURE;
   }
-  if (op->apply_adjoint == NULL) {
+  if (op->ops->apply_adjoint == NULL) {
     errno = EPERM; /* Operation not permitted */
     return OPK_FAILURE;
   }
-  return op->apply_adjoint(op, dst, src);
+  return op->ops->apply_adjoint(op, dst, src);
 }
 
 int
@@ -315,22 +415,11 @@ opk_apply_inverse(opk_operator_t* op, opk_vector_t* dst,
     errno = EINVAL;
     return OPK_FAILURE;
   }
-  if (op->apply_inverse == NULL) {
+  if (op->ops->apply_inverse == NULL) {
     errno = EPERM; /* Operation not permitted */
     return OPK_FAILURE;
   }
-  return op->apply_inverse(op, dst, src);
-}
-
-void
-opk_delete_operator(opk_operator_t* op)
-{
-  if (op != NULL) {
-    if (op->delete != NULL) {
-      op->delete(op);
-    }
-    free((void*)op);
-  }
+  return op->ops->apply_inverse(op, dst, src);
 }
 
 /*

@@ -36,6 +36,9 @@
 
 #include "optimpack-private.h"
 
+#define ROUND_UP(a,b)   OPK_ROUND_UP(a,b)
+
+
 #ifndef SINGLE_PRECISION
 #  error expecting macro SINGLE_PRECISION to be defined
 #endif
@@ -62,7 +65,7 @@
 
 typedef struct _simple_vector simple_vector_t;
 struct _simple_vector {
-  opk_vector_t base;
+  opk_vector_t base;  /* base type (must be the first member) */
   REAL* data;
   void* client_data;
   void (*free_client_data)(void* client_data);
@@ -70,20 +73,12 @@ struct _simple_vector {
 
 #define DATA(v) ((simple_vector_t*)(v))->data
 
-static void
-finalize(opk_vspace_t* vspace)
-{
-  if (vspace != NULL) {
-    free((void*)vspace);
-  }
-}
-
 static opk_vector_t*
 create(opk_vspace_t* vspace)
 {
   const size_t offset = ROUND_UP(sizeof(simple_vector_t), sizeof(REAL));
   size_t size = offset + vspace->size*sizeof(REAL);
-  opk_vector_t* v = opk_valloc(vspace, size);
+  opk_vector_t* v = opk_allocate_vector(vspace, size);
   if (v != NULL) {
     simple_vector_t* sv = (simple_vector_t*)v;
     sv->data = (REAL*)(((char*)v) + offset);
@@ -94,14 +89,13 @@ create(opk_vspace_t* vspace)
 }
 
 static void
-delete(opk_vspace_t* vspace,
-       opk_vector_t* v)
+finalize(opk_vspace_t* vspace,
+         opk_vector_t* v)
 {
   simple_vector_t* sv = (simple_vector_t*)v;
   if (sv->free_client_data != NULL) {
     sv->free_client_data(sv->client_data);
   }
-  opk_vfree(v);
 }
 
 static void
@@ -324,30 +318,27 @@ axpbypcz(opk_vspace_t* vspace, opk_vector_t *vdst,
 #  define NOUN "double"
 #endif
 
-static const char* ident = "simple vector space for " NOUN " precision floating point values";
+static opk_vspace_operations_t operations = {
+  "simple vector space for " NOUN " precision floating point values",
+  NULL,
+  create,
+  finalize,
+  fill,
+  norm1,
+  norm2,
+  norminf,
+  dot,
+  copy,
+  swap,
+  scale,
+  axpby,
+  axpbypcz
+};
 
 opk_vspace_t*
 NEW_VECTOR_SPACE(opk_index_t size)
 {
-  opk_vspace_t* vspace;
-
-  vspace = opk_allocate_vector_space(ident, size, 0);
-  if (vspace != NULL) {
-    vspace->finalize = finalize;
-    vspace->create = create;
-    vspace->delete = delete;
-    vspace->fill = fill;
-    vspace->norm1 = norm1;
-    vspace->norm2 = norm2;
-    vspace->norminf = norminf;
-    vspace->dot = dot;
-    vspace->copy = copy;
-    vspace->swap = swap;
-    vspace->scale = scale;
-    vspace->axpby = axpby;
-    vspace->axpbypcz = axpbypcz;
-  }
-  return vspace;
+  return opk_allocate_vector_space(&operations, size, 0);
 }
 
 opk_vector_t*
@@ -355,7 +346,7 @@ WRAP_VECTOR(opk_vspace_t* vspace, REAL data[],
             void* client_data, void (*free_client_data)(void*))
 {
   opk_vector_t* v;
-  if (vspace->ident != ident) {
+  if (vspace->ops != &operations) {
     errno = EINVAL;
     return NULL;
   }
@@ -363,7 +354,7 @@ WRAP_VECTOR(opk_vspace_t* vspace, REAL data[],
     errno = EFAULT;
     return NULL;
   }
-  v = opk_valloc(vspace, sizeof(simple_vector_t));
+  v = opk_allocate_vector(vspace, sizeof(simple_vector_t));
   if (v != NULL) {
     simple_vector_t* sv = (simple_vector_t*)v;
     sv->data = data;
@@ -380,7 +371,7 @@ GET_DATA(opk_vector_t* v)
     errno = EFAULT;
     return NULL;
   }
-  if (v->owner->ident != ident) {
+  if (v->owner->ops != &operations) {
     errno = EINVAL;
     return NULL;
   }
@@ -394,7 +385,7 @@ GET_CLIENT_DATA(opk_vector_t* v)
     errno = EFAULT;
     return NULL;
   }
-  if (v->owner->ident != ident) {
+  if (v->owner->ops != &operations) {
     errno = EINVAL;
     return NULL;
   }
@@ -408,7 +399,7 @@ GET_FREE_CLIENT_DATA(opk_vector_t* v)
     errno = EFAULT;
     return NULL;
   }
-  if (v->owner->ident != ident) {
+  if (v->owner->ops != &operations) {
     errno = EINVAL;
     return NULL;
   }
@@ -429,7 +420,7 @@ REWRAP_VECTOR(opk_vector_t* v, REAL new_data[],
     errno = EFAULT;
     return OPK_FAILURE;
   }
-  if (v->owner->ident != ident) {
+  if (v->owner->ops != &operations) {
     errno = EINVAL;
     return OPK_FAILURE;
   }

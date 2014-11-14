@@ -19,7 +19,7 @@ RM = rm -f
 default: $(LIBNAME)
 
 clean:
-	rm -f *~ *.o core
+	rm -f *~ *.o core $(LIBNAME)
 
 %.o: %.c
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $<

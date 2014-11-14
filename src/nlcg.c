@@ -49,47 +49,54 @@
 
 #include "optimpack-private.h"
 
+#define TRUE   OPK_TRUE
+#define FALSE  OPK_FALSE
+
 /*---------------------------------------------------------------------------*/
 /* PRIVATE DEFINITIONS */
 
 static const double STPMIN = 1E-20;
 static const double STPMAX = 1E+20;
 
-struct _opk_nlcg_workspace {
-  double f0;     /* Function value at the start of the line search. */
-  double g0norm; /* Euclidean norm of G0, the gradient at the start of the
-                    line search. */
-  double g1norm; /* Euclidean norm of G1, the gradient of the end of the line
-                    search / last accepted point. */
-  double dg0;    /* Directional derivative at the start of the line search;
-                    given by the inner product: <d,g0> = - <p,g0> */
-  double dg1;    /* Directional derivative at the end or during the line
-                    search; given by the inner product: <d,g1> = - <p,g1> */
+struct _opk_nlcg {
+  opk_object_t base;     /* Base type (must be the first member). */
+  double f0;             /* Function value at the start of the line search. */
+  double g0norm;         /* Euclidean norm of G0, the gradient at the start of
+                            the line search. */
+  double g1norm;         /* Euclidean norm of G1, the gradient of the end of
+                            the line search / last accepted point. */
+  double dg0;            /* Directional derivative at the start of the line
+                            search; given by the inner product:
+                            <d,g0> = - <p,g0> */
+  double dg1;            /* Directional derivative at the end or during the
+                            line search; given by the inner product:
+                            <d,g1> = - <p,g1> */
 #if 0 /* not used */
-  double alpha0; /* Scale factor for the initial step step size. */
+  double alpha0;         /* Scale factor for the initial step step size. */
 #endif
-  double grtol;  /* Relative threshold for the norm or the gradient (relative
-                    to the initial gradient) for convergence. */
-  double gatol;  /* Absolute threshold for the norm or the gradient for
-                    convergence. */
-  double gtest;  /* Threshold for the norm or the gradient for
-                    convergence: GTEST = MAX(0, GATOL, GRTOL*NORM(GINIT)) */
-  double fmin;   /* Minimal function value if provided. */
-  double alpha;  /* Current step length. */
-  double beta;   /* Current parameter in conjugate gradient update rule (for
-                    information). */
-  double stpmin; /* Relative lower bound for the step length. */
-  double stpmax; /* Relative upper bound for the step length. */
-  opk_vspace_t* vspace;
-  int (*update)(opk_nlcg_workspace_t* ws,
+  double grtol;          /* Relative threshold for the norm or the gradient
+                            (relative to the initial gradient) for
+                            convergence. */
+  double gatol;          /* Absolute threshold for the norm or the gradient for
+                            convergence. */
+  double gtest;          /* Threshold for the norm or the gradient for
+                            convergence: GTEST = MAX(0, GATOL,
+                            GRTOL*NORM(GINIT)) */
+  double fmin;           /* Minimal function value if provided. */
+  double alpha;          /* Current step length. */
+  double beta;           /* Current parameter in conjugate gradient update rule
+                            (for information). */
+  double stpmin;         /* Relative lower bound for the step length. */
+  double stpmax;         /* Relative upper bound for the step length. */
+  int (*update)(opk_nlcg_t* ws,
                 const opk_vector_t* x1,
-                const opk_vector_t* g1); /* This "method" is called to update
-                                            the search direction.  The
-                                            returned value indicates whether
-                                            the updating rule has been
-                                            successful, otherwise a restart is
-                                            needed. */
-  opk_lnsrch_workspace_t* lnsrch;
+                const opk_vector_t* g1);
+                         /* The update "method" is called to update the search
+                            direction.  The returned value indicates whether
+                            the updating rule has been successful, otherwise a
+                            restart is needed. */
+  opk_vspace_t* vspace;  /* Vector space of the variables of the problem. */
+  opk_lnsrch_t* lnsrch;  /* Line search method. */
   opk_vector_t* x0;      /* Variables at start of line search. */
   opk_vector_t* g0;	 /* Gradient at start of line search. */
   opk_vector_t* p;	 /* (Anti-)search direction, new iterate is searched
@@ -139,7 +146,7 @@ max3(double a1, double a2, double a3)
 
 /* Helper function to compute search direction as: p' = g1 + beta*p. */
 static int
-update0(opk_nlcg_workspace_t* ws,
+update0(opk_nlcg_t* ws,
         const opk_vector_t* g1,
         double beta)
 {
@@ -154,7 +161,7 @@ update0(opk_nlcg_workspace_t* ws,
 /* Helper function to compute search direction as: p' = g1 + beta*p
    possibly with the constraint that beta > 0. */
 static int
-update1(opk_nlcg_workspace_t* ws,
+update1(opk_nlcg_t* ws,
         const opk_vector_t* g1,
         double beta)
 {
@@ -172,7 +179,7 @@ update1(opk_nlcg_workspace_t* ws,
 
 /* Form: Y = G1 - G0 */
 static void
-form_y(opk_nlcg_workspace_t* ws,
+form_y(opk_nlcg_t* ws,
        const opk_vector_t* g1)
 {
   opk_vaxpby(ws->y, 1.0, g1, -1.0, ws->g0);
@@ -186,7 +193,7 @@ form_y(opk_nlcg_workspace_t* ws,
  * with y = g1 - g0.
  */
 static int
-update_Hestenes_Stiefel(opk_nlcg_workspace_t* ws,
+update_Hestenes_Stiefel(opk_nlcg_t* ws,
                         const opk_vector_t* x1,
                         const opk_vector_t* g1)
 {
@@ -206,7 +213,7 @@ update_Hestenes_Stiefel(opk_nlcg_workspace_t* ws,
  * (this value is always >= 0 and can only be zero at a stationary point).
  */
 static int
-update_Fletcher_Reeves(opk_nlcg_workspace_t* ws,
+update_Fletcher_Reeves(opk_nlcg_t* ws,
                        const opk_vector_t* x1,
                        const opk_vector_t* g1)
 {
@@ -220,7 +227,7 @@ update_Fletcher_Reeves(opk_nlcg_workspace_t* ws,
  *     beta = <g1,y>/<g0,g0>
  */
 static int
-update_Polak_Ribiere_Polyak(opk_nlcg_workspace_t* ws,
+update_Polak_Ribiere_Polyak(opk_nlcg_t* ws,
                             const opk_vector_t* x1,
                             const opk_vector_t* g1)
 {
@@ -238,7 +245,7 @@ update_Polak_Ribiere_Polyak(opk_nlcg_workspace_t* ws,
  * (this value is always >= 0 and can only be zero at a stationnary point).
  */
 static int
-update_Fletcher(opk_nlcg_workspace_t* ws,
+update_Fletcher(opk_nlcg_t* ws,
                 const opk_vector_t* x1,
                 const opk_vector_t* g1)
 {
@@ -252,7 +259,7 @@ update_Fletcher(opk_nlcg_workspace_t* ws,
  *     beta = <g1,y>/(-<d,g0>)
  */
 static int
-update_Liu_Storey(opk_nlcg_workspace_t* ws,
+update_Liu_Storey(opk_nlcg_t* ws,
                   const opk_vector_t* x1,
                   const opk_vector_t* g1)
 {
@@ -269,7 +276,7 @@ update_Liu_Storey(opk_nlcg_workspace_t* ws,
  *     beta = <g1,g1>/<d,y>
  */
 static int
-update_Dai_Yuan(opk_nlcg_workspace_t* ws,
+update_Dai_Yuan(opk_nlcg_t* ws,
                 const opk_vector_t* x1,
                 const opk_vector_t* g1)
 {
@@ -287,7 +294,7 @@ update_Dai_Yuan(opk_nlcg_workspace_t* ws,
  *          = (<g1,y> - 2*<y,y>*<d,g1>/<d,y>)/<d,y>
  */
 static int
-update_Hager_Zhang(opk_nlcg_workspace_t* ws,
+update_Hager_Zhang(opk_nlcg_t* ws,
                    const opk_vector_t* x1,
                    const opk_vector_t* g1)
 {
@@ -340,7 +347,7 @@ update_Hager_Zhang(opk_nlcg_workspace_t* ws,
  * method, beta = c2/c1.
  */
 static int
-update_Perry_Shanno(opk_nlcg_workspace_t* ws,
+update_Perry_Shanno(opk_nlcg_t* ws,
                     const opk_vector_t* x1,
                     const opk_vector_t* g1)
 {
@@ -360,15 +367,27 @@ update_Perry_Shanno(opk_nlcg_workspace_t* ws,
   return OPK_SUCCESS;
 }
 
-/*---------------------------------------------------------------------------*/
-/* PUBLIC ROUTINES */
-
-opk_nlcg_workspace_t*
-opk_nlcg_new_with_line_search(opk_vspace_t* vspace, unsigned int method,
-                              opk_lnsrch_workspace_t* lnsrch)
+static void
+finalize_nlcg(opk_object_t* obj)
 {
-  opk_nlcg_workspace_t* ws;
-  int (*update)(opk_nlcg_workspace_t* ws,
+  opk_nlcg_t* opt = (opk_nlcg_t*)obj;
+  OPK_DROP(opt->vspace);
+  OPK_DROP(opt->lnsrch);
+  OPK_DROP(opt->x0);
+  OPK_DROP(opt->g0);
+  OPK_DROP(opt->p);
+  OPK_DROP(opt->y);
+}
+
+/*---------------------------------------------------------------------------*/
+/* PUBLIC INTERFACE */
+
+opk_nlcg_t*
+opk_nlcg_new_with_line_search(opk_vspace_t* vspace, unsigned int method,
+                              opk_lnsrch_t* lnsrch)
+{
+  opk_nlcg_t* opt;
+  int (*update)(opk_nlcg_t* opt,
                 const opk_vector_t* x1,
                 const opk_vector_t* g1);
   opk_bool_t g0_needed, y_needed;
@@ -428,54 +447,54 @@ opk_nlcg_new_with_line_search(opk_vspace_t* vspace, unsigned int method,
   }
 
   /* We allocate enough memory for the workspace and instanciate it. */
-  ws = NEW(opk_nlcg_workspace_t);
-  if (ws == NULL) {
+  opt = (opk_nlcg_t*)opk_allocate_object(finalize_nlcg, sizeof(opk_nlcg_t));
+  if (opt == NULL) {
     return NULL;
   }
-  ws->vspace = vspace; /* must be set early in case of errors */
-  ws->update = update;
-  ws->fmin_given = FALSE;
-  ws->method = method;
-  ws->lnsrch = lnsrch;
-  ws->grtol = 1e-6;
-  ws->gatol = 0.0;
-  ws->stpmin = STPMIN;
-  ws->stpmax = STPMAX;
-  ws->x0 = opk_vcreate(vspace);
-  if (ws->x0 == NULL) {
+  opt->update = update;
+  opt->vspace = OPK_HOLD_VSPACE(vspace);
+  opt->lnsrch = OPK_HOLD_LNSRCH(lnsrch);
+  opt->fmin_given = FALSE;
+  opt->method = method;
+  opt->grtol = 1e-6;
+  opt->gatol = 0.0;
+  opt->stpmin = STPMIN;
+  opt->stpmax = STPMAX;
+  opt->x0 = opk_vcreate(vspace);
+  if (opt->x0 == NULL) {
     goto error;
   }
   if (g0_needed) {
-    ws->g0 = opk_vcreate(vspace);
-    if (ws->g0 == NULL) {
+    opt->g0 = opk_vcreate(vspace);
+    if (opt->g0 == NULL) {
       goto error;
     }
   }
-  ws->p = opk_vcreate(vspace);
-  if (ws->p == NULL) {
+  opt->p = opk_vcreate(vspace);
+  if (opt->p == NULL) {
     goto error;
   }
   if (y_needed) {
-    ws->y = opk_vcreate(vspace);
-    if (ws->y == NULL) {
+    opt->y = opk_vcreate(vspace);
+    if (opt->y == NULL) {
       goto error;
     }
   }
-  ws->update_Hager_Zhang_orig = OPK_FALSE;
+  opt->update_Hager_Zhang_orig = FALSE;
+  opk_nlcg_start(opt);
+  return opt;
 
-  opk_nlcg_start(ws);
-  return ws;
-
-error:
-  opk_nlcg_delete(ws);
+ error:
+  OPK_DROP(opt);
   return NULL;
 }
 
-
-opk_nlcg_workspace_t*
+opk_nlcg_t*
 opk_nlcg_new(opk_vspace_t* vspace, unsigned int method)
 {
-  opk_lnsrch_workspace_t* lnsrch;
+  opk_lnsrch_t* lnsrch;
+  opk_nlcg_t* opt;
+
   /* FIXME: choose more suitable values (e.g., in CG+: FTOL=1E-4, GTOL=1E-1,
      not less than 1E-4, XTOL=1E-17, STPMIN=1E-20 STPMAX=1E+20 and MAXFEV=40) */
   lnsrch = opk_lnsrch_new_csrch(/* sftol  */  1e-4,
@@ -484,34 +503,14 @@ opk_nlcg_new(opk_vspace_t* vspace, unsigned int method)
   if (lnsrch == NULL) {
     return NULL;
   }
-  return opk_nlcg_new_with_line_search(vspace, method, lnsrch);
+  opt = opk_nlcg_new_with_line_search(vspace, method, lnsrch);
+  OPK_DROP(lnsrch); /* the line search is now owned by the optimizer */
+  return opt;
 }
 
-void
-opk_nlcg_delete(opk_nlcg_workspace_t* ws)
-{
-  if (ws != NULL) {
-    /* Delete the vectors of the workspace. */
-    opk_vspace_t* vspace = ws->vspace;
-    if (vspace != NULL && vspace->delete != NULL) {
-      opk_vdelete(ws->x0);
-      opk_vdelete(ws->g0);
-      opk_vdelete(ws->p);
-      opk_vdelete(ws->y);
-    }
-
-    /* Delete the line search workspace. */
-    if (ws->lnsrch != NULL) {
-      opk_lnsrch_delete(ws->lnsrch);
-    }
-
-    /* Delete the workspace. */
-    free(ws);
-  }
-}
 
 int
-opk_nlcg_get_fmin(opk_nlcg_workspace_t* ws, double* fmin)
+opk_nlcg_get_fmin(opk_nlcg_t* ws, double* fmin)
 {
   if (ws == NULL) {
     errno = EFAULT;
@@ -528,7 +527,7 @@ opk_nlcg_get_fmin(opk_nlcg_workspace_t* ws, double* fmin)
 }
 
 int
-opk_nlcg_set_fmin(opk_nlcg_workspace_t* ws, double fmin)
+opk_nlcg_set_fmin(opk_nlcg_t* ws, double fmin)
 {
   if (ws == NULL) {
     errno = EFAULT;
@@ -544,7 +543,7 @@ opk_nlcg_set_fmin(opk_nlcg_workspace_t* ws, double fmin)
 }
 
 int
-opk_nlcg_unset_fmin(opk_nlcg_workspace_t* ws)
+opk_nlcg_unset_fmin(opk_nlcg_t* ws)
 {
   if (ws == NULL) {
     errno = EFAULT;
@@ -555,55 +554,55 @@ opk_nlcg_unset_fmin(opk_nlcg_workspace_t* ws)
 }
 
 int
-opk_nlcg_get_iterations(opk_nlcg_workspace_t* ws)
+opk_nlcg_get_iterations(opk_nlcg_t* ws)
 {
   return ws->iter;
 }
 
 int
-opk_nlcg_get_restarts(opk_nlcg_workspace_t* ws)
+opk_nlcg_get_restarts(opk_nlcg_t* ws)
 {
   return ws->nrestarts;
 }
 
 int
-opk_nlcg_get_evaluations(opk_nlcg_workspace_t* ws)
+opk_nlcg_get_evaluations(opk_nlcg_t* ws)
 {
   return ws->nevals;
 }
 
 unsigned int
-opk_nlcg_get_method(opk_nlcg_workspace_t* ws)
+opk_nlcg_get_method(opk_nlcg_t* ws)
 {
   return ws->method;
 }
 
 opk_bool_t
-opk_nlcg_get_starting(opk_nlcg_workspace_t* ws)
+opk_nlcg_get_starting(opk_nlcg_t* ws)
 {
   return ws->start;
 }
 
 opk_task_t
-opk_nlcg_get_task(opk_nlcg_workspace_t* ws)
+opk_nlcg_get_task(opk_nlcg_t* ws)
 {
   return ws->task;
 }
 
 double
-opk_nlcg_get_alpha(opk_nlcg_workspace_t* ws)
+opk_nlcg_get_alpha(opk_nlcg_t* ws)
 {
   return ws->alpha;
 }
 
 double
-opk_nlcg_get_beta(opk_nlcg_workspace_t* ws)
+opk_nlcg_get_beta(opk_nlcg_t* ws)
 {
   return ws->beta;
 }
 
 opk_task_t
-opk_nlcg_start(opk_nlcg_workspace_t* ws)
+opk_nlcg_start(opk_nlcg_t* ws)
 {
   ws->iter = 0;
   ws->nevals = 0;
@@ -614,7 +613,7 @@ opk_nlcg_start(opk_nlcg_workspace_t* ws)
 }
 
 opk_task_t
-opk_nlcg_iterate(opk_nlcg_workspace_t* ws, opk_vector_t* x1,
+opk_nlcg_iterate(opk_nlcg_t* ws, opk_vector_t* x1,
                  double f1, opk_vector_t* g1)
 {
   /*

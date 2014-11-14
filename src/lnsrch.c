@@ -36,6 +36,14 @@
 
 #include "optimpack-private.h"
 
+#define TRUE   OPK_TRUE
+#define FALSE  OPK_FALSE
+
+#define MAX(a,b)  OPK_MAX(a,b)
+#define MIN(a,b)  OPK_MIN(a,b)
+
+#define ROUND_UP(a,b)   OPK_ROUND_UP(a,b)
+
 #if (OPK_LNSRCH_SEARCH != 0)
 # error OPK_LNSRCH_SEARCH != 0
 #endif
@@ -43,205 +51,302 @@
 /*---------------------------------------------------------------------------*/
 /* UNIFIED INTERFACE FOR LINE SEARCH */
 
-opk_lnsrch_workspace_t*
-_opk_lnsrch_new(size_t size,
-                int (*start)(opk_lnsrch_workspace_t* ws),
-                int (*iterate)(opk_lnsrch_workspace_t* ws,
-                               double* stp_ptr, double f1, double g1),
-                void (*delete)(opk_lnsrch_workspace_t* ws))
+void
+finalize_line_search(opk_object_t* obj)
 {
-  opk_lnsrch_workspace_t* ws;
+  opk_lnsrch_t* ws = (opk_lnsrch_t*)obj;
+  if (ws->ops->finalize != NULL) {
+    ws->ops->finalize(ws);
+  }
+}
 
-  if (start == NULL || iterate == NULL) {
+opk_lnsrch_t*
+opk_allocate_line_search(opk_lnsrch_operations_t *ops,
+                         size_t size)
+{
+  opk_lnsrch_t* ls;
+
+  if (ops == NULL || ops->start == NULL || ops->iterate == NULL) {
     errno = EFAULT;
     return NULL;
   }
-  size = MAX(size, sizeof(opk_lnsrch_workspace_t));
-  ws = (opk_lnsrch_workspace_t*)malloc(size);
-  if (ws != NULL) {
-    memset(ws, 0, size);
-    ws->start = start;
-    ws->iterate = iterate;
-    ws->delete = delete;
-    ws->status = OPK_LNSRCH_ERROR_NOT_STARTED;
+  if (ops->start == NULL || ops->iterate == NULL) {
+    errno = EINVAL;
+    return NULL;
   }
-  return ws;
+  size = OPK_MAX(size, sizeof(opk_lnsrch_t));
+  ls = (opk_lnsrch_t*)opk_allocate_object(finalize_line_search, size);
+  if (ls != NULL) {
+    ls->ops = ops;
+    ls->status = OPK_LNSRCH_ERROR_NOT_STARTED;
+  }
+  return ls;
 }
 
 /* after an error or convergence, you must call opk_lnsrch_start */
 
 int
-opk_lnsrch_start(opk_lnsrch_workspace_t* ws, double f0, double g0,
+opk_lnsrch_start(opk_lnsrch_t* ls, double f0, double g0,
                  double stp, double stpmin, double stpmax)
 {
-  if (ws == NULL) {
+  if (ls == NULL) {
     return OPK_LNSRCH_ERROR_ILLEGAL_ADDRESS;
   }
   if (stpmin < 0.0) {
-    ws->status = OPK_LNSRCH_ERROR_STPMIN_LT_ZERO;
+    ls->status = OPK_LNSRCH_ERROR_STPMIN_LT_ZERO;
   } else if (stpmin > stpmax) {
-    ws->status = OPK_LNSRCH_ERROR_STPMIN_GT_STPMAX;
+    ls->status = OPK_LNSRCH_ERROR_STPMIN_GT_STPMAX;
   } else if (stp < stpmin) {
-    ws->status = OPK_LNSRCH_ERROR_STP_LT_STPMIN;
+    ls->status = OPK_LNSRCH_ERROR_STP_LT_STPMIN;
   } else if (stp > stpmax) {
-    ws->status = OPK_LNSRCH_ERROR_STP_GT_STPMAX;
+    ls->status = OPK_LNSRCH_ERROR_STP_GT_STPMAX;
   } else if (g0 >= 0.0) {
-    ws->status = OPK_LNSRCH_ERROR_INITIAL_DERIVATIVE_GE_ZERO;
+    ls->status = OPK_LNSRCH_ERROR_INITIAL_DERIVATIVE_GE_ZERO;
   } else {
-    ws->stp = stp;
-    ws->stpmin = stpmin;
-    ws->stpmax = stpmax;
-    ws->finit = f0;
-    ws->ginit = g0;
-    ws->status = ws->start(ws);
+    ls->stp = stp;
+    ls->stpmin = stpmin;
+    ls->stpmax = stpmax;
+    ls->finit = f0;
+    ls->ginit = g0;
+    ls->status = ls->ops->start(ls);
   }
-  return ws->status;
+  return ls->status;
 }
 
 int
-opk_lnsrch_iterate(opk_lnsrch_workspace_t* ws, double* stp_ptr,
+opk_lnsrch_iterate(opk_lnsrch_t* ls, double* stp_ptr,
                    double f1, double g1)
 {
-  if (ws == NULL || stp_ptr == NULL) {
+  if (ls == NULL || stp_ptr == NULL) {
     return OPK_LNSRCH_ERROR_ILLEGAL_ADDRESS;
   }
-  if (ws->status == OPK_LNSRCH_SEARCH) {
-    if (*stp_ptr != ws->stp) {
-      ws->status = OPK_LNSRCH_ERROR_STP_CHANGED;
+  if (ls->status == OPK_LNSRCH_SEARCH) {
+    if (*stp_ptr != ls->stp) {
+      ls->status = OPK_LNSRCH_ERROR_STP_CHANGED;
     } else {
-      ws->status = ws->iterate(ws, stp_ptr, f1, g1);
-      if (*stp_ptr > ws->stpmax) {
-        if (ws->stp >= ws->stpmax) {
-          ws->status = OPK_LNSRCH_WARNING_STP_EQ_STPMAX;
+      ls->status = ls->ops->iterate(ls, stp_ptr, f1, g1);
+      if (*stp_ptr > ls->stpmax) {
+        if (ls->stp >= ls->stpmax) {
+          ls->status = OPK_LNSRCH_WARNING_STP_EQ_STPMAX;
         }
-        *stp_ptr = ws->stpmax;
-      } else if (*stp_ptr < ws->stpmin) {
-        if (ws->stp <= ws->stpmin) {
-          ws->status = OPK_LNSRCH_WARNING_STP_EQ_STPMIN;
+        *stp_ptr = ls->stpmax;
+      } else if (*stp_ptr < ls->stpmin) {
+        if (ls->stp <= ls->stpmin) {
+          ls->status = OPK_LNSRCH_WARNING_STP_EQ_STPMIN;
         }
-        *stp_ptr = ws->stpmin;
+        *stp_ptr = ls->stpmin;
       }
-      ws->stp = *stp_ptr;
+      ls->stp = *stp_ptr;
     }
   } else {
-    ws->status = OPK_LNSRCH_ERROR_NOT_STARTED;
+    ls->status = OPK_LNSRCH_ERROR_NOT_STARTED;
   }
-  return ws->status;
-}
-
-void
-opk_lnsrch_delete(opk_lnsrch_workspace_t* ws)
-{
-  if (ws != NULL) {
-    if (ws->delete != NULL) {
-      ws->delete(ws);
-    }
-    free(ws);
-  }
+  return ls->status;
 }
 
 double
-opk_lnsrch_get_step(const opk_lnsrch_workspace_t* ws)
+opk_lnsrch_get_step(const opk_lnsrch_t* ls)
 {
-  return (ws != NULL && ws->status == OPK_LNSRCH_SEARCH ? ws->stp : -1.0);
+  return (ls != NULL && ls->status == OPK_LNSRCH_SEARCH ? ls->stp : -1.0);
 }
 
 int
-opk_lnsrch_get_status(const opk_lnsrch_workspace_t* ws)
+opk_lnsrch_get_status(const opk_lnsrch_t* ls)
 {
-  return (ws != NULL ? ws->status : OPK_LNSRCH_ERROR_ILLEGAL_ADDRESS);
+  return (ls != NULL ? ls->status : OPK_LNSRCH_ERROR_ILLEGAL_ADDRESS);
 }
 
 int
-opk_lnsrch_has_errors(const opk_lnsrch_workspace_t* ws)
+opk_lnsrch_has_errors(const opk_lnsrch_t* ls)
 {
-  return (opk_lnsrch_get_status(ws) < 0);
+  return (opk_lnsrch_get_status(ls) < 0);
 }
 
 int
-opk_lnsrch_has_warnings(const opk_lnsrch_workspace_t* ws)
+opk_lnsrch_has_warnings(const opk_lnsrch_t* ls)
 {
-  return (opk_lnsrch_get_status(ws) > OPK_LNSRCH_CONVERGENCE);
+  return (opk_lnsrch_get_status(ls) > OPK_LNSRCH_CONVERGENCE);
 }
 
 int
-opk_lnsrch_converged(const opk_lnsrch_workspace_t* ws)
+opk_lnsrch_converged(const opk_lnsrch_t* ls)
 {
-  return (opk_lnsrch_get_status(ws) == OPK_LNSRCH_CONVERGENCE);
+  return (opk_lnsrch_get_status(ls) == OPK_LNSRCH_CONVERGENCE);
 }
 
 int
-opk_lnsrch_finished(const opk_lnsrch_workspace_t* ws)
+opk_lnsrch_finished(const opk_lnsrch_t* ls)
 {
-  return (opk_lnsrch_get_status(ws) != OPK_LNSRCH_SEARCH);
+  return (opk_lnsrch_get_status(ls) != OPK_LNSRCH_SEARCH);
 }
 
 /*---------------------------------------------------------------------------*/
 /* ARMIJO (BACKTRACKING) LINE SEARCH */
 
-/* Workspace for Armijo line search. */
-typedef struct _backtrack_workspace backtrack_workspace_t;
-struct _backtrack_workspace {
-  opk_lnsrch_workspace_t super;
+/* Sub-type for Armijo line search. */
+typedef struct _backtrack_lnsrch backtrack_lnsrch_t;
+struct _backtrack_lnsrch {
+  opk_lnsrch_t base; /* Base type (must be the first member). */
   double ftol;
 };
 
-/* Initialize workspace. */
 static int
-backtrack_start(opk_lnsrch_workspace_t* _ws)
+backtrack_start(opk_lnsrch_t* _ws)
 {
   return OPK_LNSRCH_SEARCH;
 }
 
 static int
-backtrack_iterate(opk_lnsrch_workspace_t* _ws,
+backtrack_iterate(opk_lnsrch_t* ls,
                   double* stp_ptr, double f1, double g1)
 {
-  backtrack_workspace_t* ws = (backtrack_workspace_t*)_ws;
+  backtrack_lnsrch_t* bls = (backtrack_lnsrch_t*)ls;
   int status;
 
-  if (f1 <= ws->super.finit + ws->ftol*(*stp_ptr)*ws->super.ginit) {
+  if (f1 <= ls->finit + bls->ftol*(*stp_ptr)*ls->ginit) {
     /* First Wolfe conditions satisfied. */
     status = OPK_LNSRCH_CONVERGENCE;
   } else {
     /* Take a bisection step unless already at the lower bound. */
-    if (*stp_ptr <= ws->super.stpmin) {
+    if (*stp_ptr <= ls->stpmin) {
       status = OPK_LNSRCH_WARNING_STP_EQ_STPMIN;
     } else {
-      *stp_ptr = (*stp_ptr + ws->super.stpmin)*0.5;
+      *stp_ptr = (*stp_ptr + ls->stpmin)*0.5;
     }
-    if (*stp_ptr < ws->super.stpmin) {
-      *stp_ptr = ws->super.stpmin;
+    if (*stp_ptr < ls->stpmin) {
+      *stp_ptr = ls->stpmin;
     }
   }
   return status;
 }
 
-opk_lnsrch_workspace_t*
+static opk_lnsrch_operations_t backtrack_operations = {
+  NULL,
+  backtrack_start,
+  backtrack_iterate
+};
+
+opk_lnsrch_t*
 opk_lnsrch_new_backtrack(double ftol)
 {
-  opk_lnsrch_workspace_t* _ws;
+  opk_lnsrch_t* ls;
 
-  if (ftol < 0.0) {
+  if (ftol <= 0.0) {
     errno = EINVAL;
     return NULL;
   }
-  _ws = _opk_lnsrch_new(sizeof(backtrack_workspace_t),
-                        backtrack_start, backtrack_iterate, NULL);
-  if (_ws != NULL) {
-    backtrack_workspace_t* ws = (backtrack_workspace_t*)_ws;
-    ws->ftol = ftol;
+  ls = opk_allocate_line_search(&backtrack_operations,
+                                sizeof(backtrack_lnsrch_t));
+  if (ls != NULL) {
+    backtrack_lnsrch_t* bls = (backtrack_lnsrch_t*)ls;
+    bls->ftol = ftol;
   }
-  return _ws;
+  return ls;
+}
+
+/*---------------------------------------------------------------------------*/
+/* NONMONOTONE LINE SEARCH */
+
+/* Sub-type for nonmonotone line search. */
+typedef struct _nonmonotone_lnsrch nonmonotone_lnsrch_t;
+struct _nonmonotone_lnsrch {
+  opk_lnsrch_t base; /* Base type (must be the first member). */
+  double ftol;
+  double* fsav;
+  opk_index_t m;
+  opk_index_t mp;
+};
+
+static int
+nonmonotone_start(opk_lnsrch_t* ls)
+{
+  nonmonotone_lnsrch_t* nmls = (nonmonotone_lnsrch_t*)ls;
+  nmls->fsav[nmls->mp%nmls->m] = ls->finit;
+  ++nmls->mp;
+  return OPK_LNSRCH_SEARCH;
+}
+
+#if 0
+static int
+nonmonotone_restart(opk_lnsrch_t* ls)
+{
+  nonmonotone_lnsrch_t* nmls = (nonmonotone_lnsrch_t*)ls;
+  nmls->mp = 0;
+  return nonmonotone_start(ls);
+}
+#endif
+
+static int
+nonmonotone_iterate(opk_lnsrch_t* ls,
+                    double* stp_ptr, double f1, double g1)
+{
+  nonmonotone_lnsrch_t* nmls = (nonmonotone_lnsrch_t*)ls;
+  double ftest;
+  opk_index_t j, n;
+  int status;
+
+  /* Get the worst function value among the N last steps. */
+  n = MIN(nmls->mp, nmls->m);
+  ftest = nmls->fsav[0];
+  for (j = 1; j < n; ++j) {
+    if (nmls->fsav[j] > ftest) {
+      ftest = nmls->fsav[j];
+    }
+  }
+
+  if (f1 <= ftest + nmls->ftol*(*stp_ptr)*ls->ginit) {
+    /* First Wolfe conditions satisfied. */
+    status = OPK_LNSRCH_CONVERGENCE;
+  } else {
+    /* Take a bisection step unless already at the lower bound. */
+    if (*stp_ptr <= ls->stpmin) {
+      status = OPK_LNSRCH_WARNING_STP_EQ_STPMIN;
+    } else {
+      *stp_ptr = (*stp_ptr + ls->stpmin)*0.5;
+    }
+    if (*stp_ptr < ls->stpmin) {
+      *stp_ptr = ls->stpmin;
+    }
+  }
+  return status;
+}
+
+static opk_lnsrch_operations_t nonmonotone_operations = {
+  NULL,
+  nonmonotone_start,
+  nonmonotone_iterate
+};
+
+opk_lnsrch_t*
+opk_lnsrch_new_nonmonotone(double ftol, opk_index_t m)
+{
+  opk_lnsrch_t* ls;
+  size_t size, offset;
+
+  if (ftol <= 0.0 || m < 1) {
+    errno = EINVAL;
+    return NULL;
+  }
+  offset = ROUND_UP(sizeof(nonmonotone_lnsrch_t), sizeof(double));
+  size = offset + m*sizeof(double);
+  ls = opk_allocate_line_search(&nonmonotone_operations, size);
+  if (ls != NULL) {
+    nonmonotone_lnsrch_t* nmls = (nonmonotone_lnsrch_t*)ls;
+    nmls->ftol = ftol;
+    nmls->fsav = (double*)(((char*)ls) + offset);
+    nmls->m = m;
+    nmls->mp = 0;
+  }
+  return ls;
 }
 
 /*---------------------------------------------------------------------------*/
 /* MORÉ AND THUENTE CUBIC LINE SEARCH */
 
-/* Workspace for Moré and Thuente cubic line search. */
-typedef struct _csrch_workspace csrch_workspace_t;
-struct _csrch_workspace {
-  opk_lnsrch_workspace_t super;
+/* Sub-type for Moré and Thuente cubic line search. */
+typedef struct _csrch_lnsrch csrch_lnsrch_t;
+struct _csrch_lnsrch {
+  opk_lnsrch_t base; /* Base type (must be the first member). */
 
   /* Convergence parameters. */
   double ftol;
@@ -270,168 +375,175 @@ struct _csrch_workspace {
   int stage;
 };
 
-static csrch_workspace_t*
-csrch_get_workspace(opk_lnsrch_workspace_t* ws);
+static csrch_lnsrch_t*
+csrch_get_workspace(opk_lnsrch_t* ls);
 
 static int
-csrch_start(opk_lnsrch_workspace_t* _ws)
+csrch_start(opk_lnsrch_t* ls)
 {
-  csrch_workspace_t* ws;
+  csrch_lnsrch_t* cls;
 
-  ws = csrch_get_workspace(_ws);
-  if (ws == NULL) {
+  cls = csrch_get_workspace(ls);
+  if (cls == NULL) {
     return OPK_LNSRCH_ERROR_CORRUPTED_WORKSPACE;
   }
 
   /* Convergence threshold for this step. */
-  ws->gtest = ws->ftol*ws->super.ginit;
+  cls->gtest = cls->ftol*cls->base.ginit;
 
   /* Initialize parameters for the interval of search. */
-  ws->stmin = ws->super.stpmin;
-  ws->stmax = ws->super.stpmax;
-  ws->width = ws->super.stpmax - ws->super.stpmin;
-  ws->width1 = ws->width/0.5;
-  ws->brackt = FALSE;
+  cls->stmin = cls->base.stpmin; /* FIXME: ??? */
+  cls->stmax = cls->base.stpmax;
+  cls->width = cls->base.stpmax - cls->base.stpmin;
+  cls->width1 = cls->width/0.5;
+  cls->brackt = FALSE;
 
   /* The variables STX, FX, GX contain the values of the step,
      function, and derivative at the best step. */
-  ws->stx = 0.0;
-  ws->fx = ws->super.finit;
-  ws->gx = ws->super.ginit;
+  cls->stx = 0.0;
+  cls->fx = cls->base.finit;
+  cls->gx = cls->base.ginit;
 
   /* The variables STY, FY, GY contain the value of the step,
      function, and derivative at STY. */
-  ws->sty = 0.0;
-  ws->fy = ws->super.finit;
-  ws->gy = ws->super.ginit;
+  cls->sty = 0.0;
+  cls->fy = cls->base.finit;
+  cls->gy = cls->base.ginit;
 
-  ws->stage = 1;
+  cls->stage = 1;
   return OPK_LNSRCH_SEARCH;
 }
 
 static int
-csrch_iterate(opk_lnsrch_workspace_t* _ws,
+csrch_iterate(opk_lnsrch_t* _ws,
               double* stp_ptr, double f1, double g1)
 {
   double ftest;
-  csrch_workspace_t* ws;
+  csrch_lnsrch_t* cls;
   int result;
 
-  ws = csrch_get_workspace(_ws);
-  if (ws == NULL) {
+  cls = csrch_get_workspace(_ws);
+  if (cls == NULL) {
     return OPK_LNSRCH_ERROR_CORRUPTED_WORKSPACE;
   }
 
   /* Test for convergence. */
-  ftest = ws->super.finit + (*stp_ptr)*ws->gtest;
-  if (f1 <= ftest && fabs(g1) <= -ws->gtol*ws->super.ginit) {
+  ftest = cls->base.finit + (*stp_ptr)*cls->gtest;
+  if (f1 <= ftest && fabs(g1) <= -cls->gtol*cls->base.ginit) {
     /* Strong Wolfe conditions satisfied. */
     return OPK_LNSRCH_CONVERGENCE;
   }
 
   /* Test for warnings. */
-  if (*stp_ptr == ws->super.stpmin && (f1 > ftest || g1 >= ws->gtest)) {
+  if (*stp_ptr == cls->base.stpmin && (f1 > ftest || g1 >= cls->gtest)) {
     return OPK_LNSRCH_WARNING_STP_EQ_STPMIN;
   }
-  if (*stp_ptr == ws->super.stpmax && f1 <= ftest && g1 <= ws->gtest) {
+  if (*stp_ptr == cls->base.stpmax && f1 <= ftest && g1 <= cls->gtest) {
     return OPK_LNSRCH_WARNING_STP_EQ_STPMAX;
   }
-  if (ws->brackt && ws->stmax - ws->stmin <= ws->xtol * ws->stmax) {
+  if (cls->brackt && cls->stmax - cls->stmin <= cls->xtol * cls->stmax) {
     return OPK_LNSRCH_WARNING_XTOL_TEST_SATISFIED;
   }
-  if (ws->brackt && (*stp_ptr <= ws->stmin || *stp_ptr >= ws->stmax)) {
+  if (cls->brackt && (*stp_ptr <= cls->stmin || *stp_ptr >= cls->stmax)) {
     return OPK_LNSRCH_WARNING_ROUNDING_ERRORS_PREVENT_PROGRESS;
   }
 
   /* If psi(stp) <= 0 and f'(stp) >= 0 for some step, then the
      algorithm enters the second stage. */
-  if (ws->stage == 1 && f1 <= ftest && g1 >= 0.0) {
-    ws->stage = 2;
+  if (cls->stage == 1 && f1 <= ftest && g1 >= 0.0) {
+    cls->stage = 2;
   }
 
   /* A modified function is used to predict the step during the first stage if
      a lower function value has been obtained but the decrease is not
      sufficient. */
-  if (ws->stage == 1 && f1 <= ws->fx && f1 > ftest) {
+  if (cls->stage == 1 && f1 <= cls->fx && f1 > ftest) {
     /* Define the modified function and derivative values and call CSTEP to
        update STX, STY, and to compute the new step.  Then restore the
        function and derivative values for F.*/
-    double fm = f1 - *stp_ptr * ws->gtest;
-    double fxm = ws->fx - ws->stx * ws->gtest;
-    double fym = ws->fy - ws->sty * ws->gtest;
-    double gm = g1 - ws->gtest;
-    double gxm = ws->gx - ws->gtest;
-    double gym = ws->gy - ws->gtest;
-    result = opk_cstep(&ws->stx, &fxm, &gxm,
-                       &ws->sty, &fym, &gym,
+    double fm = f1 - *stp_ptr * cls->gtest;
+    double fxm = cls->fx - cls->stx * cls->gtest;
+    double fym = cls->fy - cls->sty * cls->gtest;
+    double gm = g1 - cls->gtest;
+    double gxm = cls->gx - cls->gtest;
+    double gym = cls->gy - cls->gtest;
+    result = opk_cstep(&cls->stx, &fxm, &gxm,
+                       &cls->sty, &fym, &gym,
                        stp_ptr, fm, gm,
-                       &ws->brackt, ws->stmin, ws->stmax);
+                       &cls->brackt, cls->stmin, cls->stmax);
     if (result < 0) {
       return result;
     }
-    ws->fx = fxm + ws->stx * ws->gtest;
-    ws->fy = fym + ws->sty * ws->gtest;
-    ws->gx = gxm + ws->gtest;
-    ws->gy = gym + ws->gtest;
+    cls->fx = fxm + cls->stx * cls->gtest;
+    cls->fy = fym + cls->sty * cls->gtest;
+    cls->gx = gxm + cls->gtest;
+    cls->gy = gym + cls->gtest;
   } else {
     /* Call CSTEP to update STX, STY, and to compute the new step. */
-    result = opk_cstep(&ws->stx, &ws->fx, &ws->gx,
-                       &ws->sty, &ws->fy, &ws->gy,
+    result = opk_cstep(&cls->stx, &cls->fx, &cls->gx,
+                       &cls->sty, &cls->fy, &cls->gy,
                        stp_ptr, f1, g1,
-                       &ws->brackt, ws->stmin, ws->stmax);
+                       &cls->brackt, cls->stmin, cls->stmax);
     if (result < 0) {
       return result;
     }
   }
 
   /* Decide if a bisection step is needed. */
-  if (ws->brackt) {
-    double new_width = fabs(ws->sty - ws->stx);
-    if (new_width >= 0.66*ws->width1) {
-      *stp_ptr = ws->stx + 0.5*(ws->sty - ws->stx);
+  if (cls->brackt) {
+    double new_width = fabs(cls->sty - cls->stx);
+    if (new_width >= 0.66*cls->width1) {
+      *stp_ptr = cls->stx + 0.5*(cls->sty - cls->stx);
     }
-    ws->width1 = ws->width;
-    ws->width = new_width;
+    cls->width1 = cls->width;
+    cls->width = new_width;
   }
 
   /* Set the minimum and maximum steps allowed for stp. */
-  if (ws->brackt) {
-    ws->stmin = MIN(ws->stx, ws->sty);
-    ws->stmax = MAX(ws->stx, ws->sty);
+  if (cls->brackt) {
+    cls->stmin = MIN(cls->stx, cls->sty);
+    cls->stmax = MAX(cls->stx, cls->sty);
   } else {
-    ws->stmin = *stp_ptr + (*stp_ptr - ws->stx)*1.1;
-    ws->stmax = *stp_ptr + (*stp_ptr - ws->stx)*4.0;
+    cls->stmin = *stp_ptr + (*stp_ptr - cls->stx)*1.1;
+    cls->stmax = *stp_ptr + (*stp_ptr - cls->stx)*4.0;
   }
 
   /* Force the step to be within the bounds stpmax and stpmin. */
-  *stp_ptr = MAX(*stp_ptr, ws->super.stpmin);
-  *stp_ptr = MIN(*stp_ptr, ws->super.stpmax);
+  *stp_ptr = MAX(*stp_ptr, cls->base.stpmin);
+  *stp_ptr = MIN(*stp_ptr, cls->base.stpmax);
 
   /* If further progress is not possible, let stp be the best
      point obtained during the search. */
-  if (ws->brackt && (*stp_ptr <= ws->stmin || *stp_ptr >= ws->stmax
-                     || ws->stmax - ws->stmin <= ws->xtol * ws->stmax)) {
-    *stp_ptr = ws->stx;
+  if (cls->brackt && (*stp_ptr <= cls->stmin || *stp_ptr >= cls->stmax
+                     || cls->stmax - cls->stmin <= cls->xtol * cls->stmax)) {
+    *stp_ptr = cls->stx;
   }
 
   /* Obtain another function and derivative. */
   return OPK_LNSRCH_SEARCH;
 }
 
-static csrch_workspace_t*
-csrch_get_workspace(opk_lnsrch_workspace_t* ws)
+static opk_lnsrch_operations_t csrch_operations = {
+  NULL,
+  csrch_start,
+  csrch_iterate
+};
+
+
+static csrch_lnsrch_t*
+csrch_get_workspace(opk_lnsrch_t* ls)
 {
-  if (ws->start == csrch_start && ws->iterate == csrch_iterate) {
-    return (csrch_workspace_t*)ws;
+  if (ls->ops == &csrch_operations) {
+    return (csrch_lnsrch_t*)ls;
   } else {
     return NULL;
   }
 }
 
-opk_lnsrch_workspace_t*
+opk_lnsrch_t*
 opk_lnsrch_new_csrch(double ftol, double gtol, double xtol)
 {
-  opk_lnsrch_workspace_t* _ws;
+  opk_lnsrch_t* _ws;
 
   if (ftol < 0.0) {
     /* ERROR: FTOL .LT. ZERO */
@@ -448,10 +560,10 @@ opk_lnsrch_new_csrch(double ftol, double gtol, double xtol)
     errno = EINVAL;
     return NULL;
   }
-  _ws = _opk_lnsrch_new(sizeof(csrch_workspace_t),
-                        csrch_start, csrch_iterate, NULL);
+  _ws = opk_allocate_line_search(&csrch_operations,
+                                 sizeof(csrch_lnsrch_t));
   if (_ws != NULL) {
-    csrch_workspace_t* ws = (csrch_workspace_t*)_ws;
+    csrch_lnsrch_t* ws = (csrch_lnsrch_t*)_ws;
     ws->ftol = ftol;
     ws->gtol = gtol;
     ws->xtol = xtol;

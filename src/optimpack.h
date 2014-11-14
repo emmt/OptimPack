@@ -56,10 +56,8 @@
 
 
 /*
- * Macro: OPK_JOIN
- *
- * OPK_JOIN(_a_,_b_) joins its two arguments, possibly after performing macro
- *  expansion of _a_ and _b_.
+ * `OPK_JOIN(a,b)` joins its two arguments, possibly after performing macro
+ * expansion of `a` and `b`.
  */
 #define OPK_JOIN(a,b)                _OPK_JOIN2(a,b)
 
@@ -73,11 +71,8 @@
 #define OPK_JOIN9(a,b,c,d,e,f,g,h,i) _OPK_JOIN8(a,b,c,d,e,f,g,h,i)
 
 /*
- * Macro: OPK_STRINGIFY
- *
- * OPK_STRINGIFY(x) takes its argument _x_ and wraps it in "" (double
- * quotation marks), possibly after performing macro expansion of the
- * argument.
+ * `OPK_STRINGIFY(x)` wraps its argument in "" (double quotation marks),
+ * possibly after performing macro expansion of the argument.
  */
 #define OPK_STRINGIFY(x)  _OPK_STRINGIFY(x)
 
@@ -104,53 +99,40 @@
 # define _OPK_JOIN9(a,b,c,d,e,f,g,h,i) a/**/b/**/c/**/d/**/e/**/f/**/g/**/h/**/i
 #endif
 
-
 /*---------------------------------------------------------------------------*/
 
 /*
- * Macro: OPK_ABS
- *
- * OPK_ABS(_a_) gives the absolute value of _a_.
+ * Macro `OPK_ABS(a)` gives the absolute value of `a`.
  */
 #define OPK_ABS(a)   ((a) >= 0 ? (a) : -(a))
 
 /*
- * Macro: OPK_MIN
- *
- * OPK_MIN(_a_, _b_) yields the minimum value between _a_ and _b_.
+ * Macro `OPK_MIN(a,b)` yields the minimum value between `a` and `b`.
  */
 #define OPK_MIN(a,b) ((a) <= (b) ? (a) : (b))
 
 /*
- * Macro: OPK_MAX
- *
- * OPK_MAX(_a_, _b_) yields the maximum value between _a_ and _b_.
+ * Macro `OPK_MAX(a,b)` yields the maximum value between `a` and `b`.
  */
-#define OPK_MAX(a,b) ((a) >= (b) ? (a) : (b))
+#define OPK_MAX(a,b)  ((a) >= (b) ? (a) : (b))
 
 /*
- * Macro: OPK_HOW_MANY
- *
- * OPK_HOW_MANY(_a_, _b_) yields the minimal number of chunks with _b_
- * elements needed to store _a_ elements.
+ * Macro `OPK_HOW_MANY(a,b)` yields the minimal number of chunks with `b`
+ * elements needed to store `a` elements.  Both `a` and `b` must be integers.
  */
-#define OPK_HOW_MANY(a, b) ((((b) - 1) + (a))/(b))
+#define OPK_HOW_MANY(a,b)  ((((b) - 1) + (a))/(b))
 
 /*
- * Macro: OPK_ROUND_UP
- *
- * OPK_ROUND_UP(_a_, _b_) yields the integer _a_ rounded up to a multiple of
- * integer _b_.
+ * Macro `OPK_ROUND_UP(a,b)` yields the integer `a` rounded up to a multiple of
+ * integer `b`.
  */
-#define OPK_ROUND_UP(a, b) (OPK_HOW_MANY(a, b)*(b))
+#define OPK_ROUND_UP(a,b)  (OPK_HOW_MANY(a,b)*(b))
 
 /*
- * Macro: OPK_LOOP
- *
- * OPK_LOOP(_var_, _cnt_) yields a simple loop over variable _var_ from 0 to
- * _cnt_-1.
+ * Macro `OPK_LOOP(var,cnt)` yields a simple loop over variable `var` from 0 to
+ * `cnt` - 1.
  */
-#define OPK_LOOP(var, cnt) for (var = 0; var < cnt; ++var)
+#define OPK_LOOP(var, cnt)  for (var = 0; var < cnt; ++var)
 
 
 /* Yields |a|*sign(b). */
@@ -170,41 +152,24 @@
 /*---------------------------------------------------------------------------*/
 
 /*
- * Macro: OPK_NEW
- *
- * OPK_NEW(_type_) allocates an object of structure/class _type_.
- *
- * See Also:
- *   <OPK_ALLOC>, <OPK_FREE>, malloc(3), free(3).
+ * Macro `OPK_NEW(type)` allocates an object of structure/class `type`.
  */
 #define OPK_NEW(type)             ((type *)malloc(sizeof(type)))
 
 /*
- * Macro: OPK_ALLOC
- *
- * OPK_ALLOC(_type_, _number_) allocates an array of _number_ items of
- * structure/class _type_.
- *
- * See Also:
- *   <OPK_NEW>, <OPK_FREE>, malloc(3), free(3).
+ * Macro `OPK_ALLOC(type,number)` allocates an array of `number` items of
+ * structure/class `type`.
  */
 #define OPK_ALLOC(type, number)   ((type *)malloc((number)*sizeof(type)))
 
 /*
- * Macro: OPK_FREE
- *
- * OPK_FREE(_ptr_) frees pointer _ptr_ if non-null.
- *
- * See Also:
- *   <OPK_ALLOC>, <OPK_NEW>, malloc(3), free(3).
+ * Macro `OPK_FREE(ptr)` frees pointer `ptr` if non-null.
  */
 #define OPK_FREE(ptr)   if (! (ptr)) ; else free(ptr)
 
 /*
- * Macro: OPK_OFFSET
- *
- * OPK_OFFSET(_type_, _member_) yields offset (in bytes) of _member_ in
- * structure/class _type_.
+ * Macro `OPK_OFFSET(type,member)` yields offset (in bytes) of `member` in
+ * structure/class `type`.
  */
 #define OPK_OFFSET(type, member)  ((char*)&((type*)0)->member - (char*)0)
 
@@ -246,132 +211,72 @@ typedef int opk_bool_t;
 #define OPK_FALSE 0
 
 /*---------------------------------------------------------------------------*/
-/* VECTOR SPACES */
+/* BASIC OBJECTS */
 
-typedef struct _opk_vector opk_vector_t; /* a vector */
-typedef struct _opk_vspace opk_vspace_t; /* a vector space */
+/* Definitions of object types. */
+typedef struct _opk_object   opk_object_t;   /* an object */
+typedef struct _opk_vector   opk_vector_t;   /* a vector */
+typedef struct _opk_vspace   opk_vspace_t;   /* a vector space */
+typedef struct _opk_operator opk_operator_t; /* an operator */
+typedef struct _opk_lnsrch   opk_lnsrch_t;   /* a line search method */
+typedef struct _opk_nlcg     opk_nlcg_t;     /* a non-linear conjugate gradient
+                                                optimizer */
 
-/* The _opk_vector structure is intentionally exposed to let different
- * implementations coexist (although in separate codes).   If one want
- * to implement a sub-type of the vector type, it is sufficient to define
- * a new structure whose first member is an `opk_vector_t`.  The function
- * `opk_valloc()` can be used to allocate the whole structure.
- * <pre>
- * struct _my_vector {
- *   opk_vector_t base;
- *   double* data;
- * };
- * </pre>
+/**
+ * Hold a reference on an object.
  *
- * OptimPack routines
- * only require the address of such vectors and treat them as opaque
- * structures. */
-struct _opk_vector {
-  opk_vspace_t* owner;  /* the vector space to which the vector belongs */
-};
+ * This function increments the reference count of its argument and returns it.
+ * If the argument is `NULL`, nothing is done.  Every call to this function must
+ * be balanced by a call to `opk_drop_object()`.
+ *
+ * It is a good practice to hold a reference whenever a persistent structure
+ * (e.g., another object) remembers the object.  To limit the number of casts,
+ * the macro `OPK_HOLD()` can be used instead.
+ *
+ * @param obj - The object to lock (can be NULL).
+ *
+ * @return Its argument (with one more reference if not NULL).
+ */
+extern opk_object_t*
+opk_hold_object(opk_object_t* obj);
 
-struct _opk_vspace {
-  /* Any unique (for instance the address of a static variable) address
-     which can be used to check the type of the vector space. */
-  const void* ident;
-
-  /* Number of elements of vectors of this vector space (real problems are in
-     finite dimension!). */
-  opk_index_t size;
-
-  /* Method called to effectively destroy the vector space.  For now, the user
-     is responsible of not destroying the vector space until all its elements
-     have been deleted (this could be handled by reference counting, but this
-     is not yet implemented). */
-  void (*finalize)(opk_vspace_t* vspace);
-
-  /* Create an element of this vector space (the contents of the vector is
-     undefined). */
-  opk_vector_t* (*create)(opk_vspace_t* vspace);
-
-  /* Delete an element of this vector space. */
-  void (*delete)(opk_vspace_t* vspace, opk_vector_t* v);
-
-  /* Fill a vector with a scalar ALPHA.  When this method is called, it is
-     guaranteed that X belong to VSPACE.  The implementation of this method
-     may be optimized when ALPHA is equal to zero. */
-  void (*fill)(opk_vspace_t* vspace, opk_vector_t* v, double alpha);
-
-  /* Compute the L1 norm (sum of absolute values) of an element of this vector
-     space.  When this method is called, it is guaranteed that X belongs to
-     VSPACE. */
-  double (*norm1)(opk_vspace_t* vspace, const opk_vector_t* x);
-
-  /* Compute the L2 norm (square root of the sum of squared values, also known
-     as the Euclidean norm) of an element of this vector space.  When this
-     method is called, it is guaranteed that X belongs to VSPACE. */
-  double (*norm2)(opk_vspace_t* vspace, const opk_vector_t* x);
-
-  /* Compute the infinite norm (maximum absolute value) of an element of this
-     vector space.  When this method is called, it is guaranteed that X
-     belongs to VSPACE. */
-  double (*norminf)(opk_vspace_t* vspace, const opk_vector_t* x);
-
-  /* Compute the inner product between two elements of this vector space.
-     When this method is called, it is guaranteed that X and Y belong to
-     VSPACE. */
-  double (*dot)(opk_vspace_t* vspace,
-                const opk_vector_t* x,
-                const opk_vector_t* y);
-
-  /* Copy vector SRC to vector DST.  When this method is called, it is
-     guaranteed that DST and SRC are different and both belong to VSPACE. */
-  void (*copy)(opk_vspace_t* vspace,
-               opk_vector_t* dst, const opk_vector_t* src);
-
-  /* Exchange contents of vector SRC and vector DST.  When this method is
-     called, it is guaranteed that DST and SRC are different and both belong
-     to VSPACE. */
-  void (*swap)(opk_vspace_t* vspace,
-               opk_vector_t* x, opk_vector_t* y);
-
-  /* Scale vector by a scalar.  This methods performs the operation:
-     DST = ALPHA*SRC.   When this method is called, it is guaranteed that
-     DST and SRC belong to VSPACE and that ALPHA is neither 0 nor 1. */
-  void (*scale)(opk_vspace_t* vspace,opk_vector_t* dst,
-                double alpha, const opk_vector_t* src);
-
-  /* Compute the linear combination of two elements of this vector space
-     (DST = ALPHA*X + BETA*Y).   When this method is called, it is
-     guaranteed that all vectors (DST, X and Y) belong to VSPACE and that
-     neither ALPHA, nor BETA are equal to zero. */
-  void (*axpby)(opk_vspace_t* vspace, opk_vector_t* dst,
-                double alpha, const opk_vector_t* x,
-                double beta,  const opk_vector_t* y);
-
-  /* Compute the linear combination of three elements of this vector space
-     (DST = ALPHA*X + BETA*Y + GAMMA*Z).  When this method is called, it is
-     guaranteed that all vectors (DST, X, Y and Z) belong to VSPACE and that
-     none of ALPHA, BETA nor GAMMA are equal to zero. */
-  void (*axpbypcz)(opk_vspace_t* vspace, opk_vector_t* dst,
-                   double alpha, const opk_vector_t* x,
-                   double beta,  const opk_vector_t* y,
-                   double gamma, const opk_vector_t* z);
-
-};
-
-/*---------------------------------------------------------------------------*/
-/* LOW-LEVEL ROUTINES FOR VECTOR SPACES */
-
-/* `opk_valloc()` allocates `size` bytes of memory to store a vector type and
-   initializes it as a basic `opk_vector_t` type.  The value `size` is adjusted
-   to be at least `sizeof(opk_vector_t)`.  `NULL` is returned in case of error.
-   The allocated memory must be freed with `opk_vfree()`. */
-extern opk_vector_t*
-opk_valloc(opk_vspace_t* vspace, size_t size);
-
-/* `opk_vfree()` must be used to free the memory allocated by `opk_valloc()`.
-   It does not free other ressources. */
+/**
+ * Drop a reference on an object.
+ *
+ * This function decrements the reference count of its argument and delete it
+ * if there are no other references.  If the argument is `NULL`, nothing is
+ * done.  To effectively delete an object, there must be a call to this
+ * function for every call to `opk_hold_object()` on this object plus one (to
+ * release the reference by the creator of the object).
+ *
+ * @param obj - The object to release (can be `NULL`).
+ */
 extern void
-opk_vfree(opk_vector_t* vect);
+opk_drop_object(opk_object_t* obj);
+
+/**
+ * Get the number of references on an object.
+ *
+ * @param obj - The object (can be `NULL`).
+ *
+ * @return The number of references set on the object.  If the object address
+ *         is `NULL`, the result is zero; otherwise, the result is greater of
+ *         equal one.
+ */
+extern opk_index_t
+opk_get_object_references(opk_object_t* obj);
+
+#define OPK_HOLD(obj)       opk_hold_object((opk_object_t*)(obj))
+#define OPK_DROP(obj)       opk_drop_object((opk_object_t*)(obj))
+#define OPK_REFS(obj)       opk_get_object_references((opk_object_t*)(obj))
+
+#define OPK_HOLD_VSPACE(vsp)  ((opk_vspace_t*)OPK_HOLD(vsp))
+#define OPK_HOLD_VECTOR(vec)  ((opk_vector_t*)OPK_HOLD(vec))
+#define OPK_HOLD_LNSRCH(vec)  ((opk_lnsrch_t*)OPK_HOLD(vec))
+#define OPK_HOLD_OPERATOR(op) ((opk_operator_t*)OPK_HOLD(op))
 
 /*---------------------------------------------------------------------------*/
-/* HIGH-LEVEL ROUTINES FOR VECTOR SPACES */
+/* VECTORS AND VECTOR SPACES */
 
 typedef void opk_free_proc(void*);
 
@@ -529,59 +434,172 @@ opk_rewrap_simple_float_vector(opk_vector_t* v, float new_data[],
                                void* new_client_data,
                                void (*new_free_client_data)(void*));
 
-
-extern opk_vspace_t*
-opk_allocate_vector_space(const void* ident,
-                          opk_index_t nvariables,
-                          opk_index_t nbytes);
-
-extern void
-opk_delete_vector_space(opk_vspace_t* vspace);
-
 /**
- * Delete a vector.
+ * Create a vector instance.
  *
- * @param vect - The vector to delete (can be NULL).
+ * This functions creates a new vector of a given vector space.  The contents
+ * of the vector is undefined.  The caller holds a reference on the returned
+ * vector which has to be released with the function `opk_drop_object()` or
+ * with the macro `OPK_DROP()`.
+ *
+ * @param vspace - The vector space which owns the vector to create.
+ *
+ * @return A new vector of the vector space; `NULL` in case of error.
  */
-extern void
-opk_vdelete(opk_vector_t* vect);
-
 extern opk_vector_t*
 opk_vcreate(opk_vspace_t* vspace);
 
+/**
+ * Fill a vector with zeros.
+ *
+ * This functions set all elements of a vector to zero.
+ *
+ * @param vect - The vector to fill.
+ */
 extern void
 opk_vzero(opk_vector_t* vect);
 
+/**
+ * Fill a vector with a given value.
+ *
+ * This functions set all elements of a vector to the given value.
+ *
+ * @param vect  - The vector to fill.
+ * @param alpha - The value.
+ */
 extern void
 opk_vfill(opk_vector_t* vect, double alpha);
 
+/**
+ * Copy vector contents.
+ *
+ * This functions copies the contents of the source vector into the destination
+ * vector.  Both vectors must belong to the same vector space.
+ *
+ * @param dst - The destination vector.
+ * @param src - The source vector.
+ */
 extern void
 opk_vcopy(opk_vector_t* dst, const opk_vector_t* src);
 
+/**
+ * Scale a vector by a scalar.
+ *
+ * This functions multiplies the elements of the source vector by the given
+ * value and stores the result into the destination vector.  Both vectors must
+ * belong to the same vector space.  The operation is optimized for specfific
+ * values of `alpha`: with `alpha = 1`, the operation is the same as
+ * `opk_vcopy()`; with `alpha = 0`, the operation is the same as `opk_vzero()`.
+ *
+ * @param dst   - The destination vector.
+ * @param alpha - The scale factor.
+ * @param src   - The source vector.
+ */
 extern void
 opk_vscale(opk_vector_t* dst,
            double alpha, const opk_vector_t* src);
 
+/**
+ * Exchange vector contents.
+ *
+ * This functions exchanges the contents of two vectors.  Both vectors must
+ * belong to the same vector space.
+ *
+ * @param x - A vector.
+ * @param y - Another vector.
+ */
 extern void
 opk_vswap(opk_vector_t* x, opk_vector_t* y);
 
+/**
+ * Compute the inner product of two vectors.
+ *
+ * This functions computes the inner product, also known as scalar product, of
+ * two vectors.  Both vectors must belong to the same vector space.
+ *
+ * @param x - A vector.
+ * @param y - Another vector.
+ *
+ * @return The inner product of the two vectors, that is the sum of the product
+ *         of their elements.
+ */
 extern double
 opk_vdot(const opk_vector_t* x, const opk_vector_t* y);
 
+/**
+ * Compute the L2 norm of a vector.
+ *
+ * This functions computes the L2 norm, also known as the Euclidean norm, of a
+ * vector.
+ *
+ * @param v - A vector.
+ *
+ * @return The Euclidean norm of the vector, that is the square root of the sum
+ *         of its squared elements.
+ */
 extern double
 opk_vnorm2(const opk_vector_t* v);
 
+/**
+ * Compute the L1 norm of a vector.
+ *
+ * This functions computes the L1 norm of a vector.
+ *
+ * @param v - A vector.
+ *
+ * @return The L1 norm of the vector, that is the sum of the absolute values of
+ *         its elements.
+ */
 extern double
 opk_vnorm1(const opk_vector_t* v);
 
+/**
+ * Compute the infinite norm of a vector.
+ *
+ * This functions computes the infinite norm of a vector.
+ *
+ * @param v - A vector.
+ *
+ * @return The infinite norm of the vector, that is the maximum absolute value
+ *         of its elements.
+ */
 extern double
 opk_vnorminf(const opk_vector_t* v);
 
+/**
+ * Compute the linear combination of two vectors.
+ *
+ * This functions stores in the destination vector `dst` the linear combination
+ * `alpha*x + beta*y` where `alpha` and `beta` are two scalars while `x` and
+ * `y` are two vectors.  All vectors must belong to the same vector space.
+ *
+ * @param dst   - The destination vector.
+ * @param alpha - The factor for the vector `x`.
+ * @param x     - A vector.
+ * @param beta  - The factor for the vector `y`.
+ * @param y     - Another vector.
+ */
 extern void
 opk_vaxpby(opk_vector_t* dst,
            double alpha, const opk_vector_t* x,
            double beta,  const opk_vector_t* y);
 
+/**
+ * Compute the linear combination of three vectors.
+ *
+ * This functions stores in the destination vector `dst` the linear combination
+ * `alpha*x + beta*y + gamma*z` where `alpha`, `beta` and `gamma` are three
+ * scalars whiule `x`, `y` and `z` are three vectors.  All vectors must belong
+ * to the same vector space.
+ *
+ * @param dst   - The destination vector.
+ * @param alpha - The factor for the vector `x`.
+ * @param x     - A vector.
+ * @param beta  - The factor for the vector `y`.
+ * @param y     - Another vector.
+ * @param gamma - The factor for the vector `z`.
+ * @param y     - Yet another vector.
+ */
 extern void
 opk_vaxpbypcz(opk_vector_t* dst,
               double alpha, const opk_vector_t* x,
@@ -590,16 +608,6 @@ opk_vaxpbypcz(opk_vector_t* dst,
 
 /*---------------------------------------------------------------------------*/
 /* OPERATORS */
-
-typedef struct _opk_operator opk_operator_t;
-
-extern opk_operator_t*
-opk_allocate_operator(opk_vspace_t* inpspace,
-                      opk_vspace_t* outspace,
-                      size_t size);
-
-extern void
-opk_delete_operator(opk_operator_t* op);
 
 extern int
 opk_apply_direct(opk_operator_t* op, opk_vector_t* dst,
@@ -612,40 +620,6 @@ opk_apply_adjoint(opk_operator_t* op, opk_vector_t* dst,
 extern int
 opk_apply_inverse(opk_operator_t* op, opk_vector_t* dst,
                   const opk_vector_t* src);
-
-struct _opk_operator {
-  opk_vspace_t* inpspace; /* The input space of the operator. */
-  opk_vspace_t* outspace; /* The output space of the operator. */
-
-  /* If not NULL, the apply_direct() method is called by opk_apply_direct() to
-     apply the operator to the source vector `src` and store the result in the
-     destination vector `dst`.  It is guaranteed that the arguments are valid
-     (i.e., that they are non NULL and that they belong to the correct vector
-     space).  If NULL, such operation is considered as not allowed by the
-     operator. */
-  int (*apply_direct)(opk_operator_t* self, opk_vector_t* dst,
-                      const opk_vector_t* src);
-
-  /* If not NULL, the apply_adjoint() method is called by opk_apply_adjoint()
-     to apply the adjoint of the operator to the source vector `src` and store
-     the result in the destination vector `dst`.  The same assumptions as for
-     the apply_direct() method otherwise hold. */
-  int (*apply_adjoint)(opk_operator_t* self, opk_vector_t* dst,
-                       const opk_vector_t* src);
-
-  /* If not NULL, the apply_inverse() method is called by opk_apply_adjoint()
-     to apply the inverse of the operator to the source vector `src` and store
-     the result in the destination vector `dst`.  The same assumptions as for
-     the apply_direct() method otherwise hold. */
-  int (*apply_inverse)(opk_operator_t* self, opk_vector_t* dst,
-                       const opk_vector_t* src);
-
-  /* If not NULL, the delete() method is called by opk_delete_operator() to
-     release any specific ressources.  The memory occupied by instance itself,
-     which has been allocated by opk_allocate_operator(), is freed by
-     opk_delete_operator(). */
-  void (*delete)(opk_operator_t* self);
-};
 
 /*---------------------------------------------------------------------------*/
 /* ERROR MANAGEMENT */
@@ -710,16 +684,17 @@ typedef enum {
 /*---------------------------------------------------------------------------*/
 /* LINE SEARCH METHODS */
 
-/* Workspace for line search methods. */
-typedef struct _opk_lnsrch_workspace opk_lnsrch_workspace_t;
-
-/* Create a workspace for Moré and Thuente cubic line search. */
-extern opk_lnsrch_workspace_t*
+/* Create a Moré and Thuente cubic line search. */
+extern opk_lnsrch_t*
 opk_lnsrch_new_csrch(double ftol, double gtol, double xtol);
 
-/* Create a workspace for Armijo (backtracking) line search. */
-extern opk_lnsrch_workspace_t*
+/* Create a backtracking (Armijo) line search. */
+extern opk_lnsrch_t*
 opk_lnsrch_new_backtrack(double ftol);
+
+/* Create a nonmonotone line search. */
+extern opk_lnsrch_t*
+opk_lnsrch_new_nonmonotone(double ftol, opk_index_t m);
 
 /* Possible values returned by opk_lnsrch_start and opk_lnsrch_iterate. */
 #define OPK_LNSRCH_ERROR_ILLEGAL_ADDRESS                    -12
@@ -744,7 +719,7 @@ opk_lnsrch_new_backtrack(double ftol);
 /* Start a new line search.  The returned value is strictly negative to
    indicate an error; it is equal to zero otherwise. */
 extern int
-opk_lnsrch_start(opk_lnsrch_workspace_t* ws, double f0, double g0,
+opk_lnsrch_start(opk_lnsrch_t* ls, double f0, double g0,
                  double stp, double stpmin, double stpmax);
 
 /* Check whether line search has converged or update the step size.  The
@@ -752,33 +727,28 @@ opk_lnsrch_start(opk_lnsrch_workspace_t* ws, double f0, double g0,
    zero when searching is in progress; it is strictly positive when line search
    has converged or cannot make any more progresses.*/
 extern int
-opk_lnsrch_iterate(opk_lnsrch_workspace_t* ws, double* stp_ptr,
+opk_lnsrch_iterate(opk_lnsrch_t* ls, double* stp_ptr,
                    double f1, double g1);
-
-/* Destroy a line search workspace. */
-extern void
-opk_lnsrch_delete(opk_lnsrch_workspace_t* ws);
 
 /* Get current step lenght. Returned value should be >= 0; -1 is returned in
    case of error. */
 extern double
-opk_lnsrch_get_step(const opk_lnsrch_workspace_t* ws);
+opk_lnsrch_get_step(const opk_lnsrch_t* ls);
 
 extern int
-opk_lnsrch_get_status(const opk_lnsrch_workspace_t* ws);
+opk_lnsrch_get_status(const opk_lnsrch_t* ls);
 
 extern int
-opk_lnsrch_has_errors(const opk_lnsrch_workspace_t* ws);
+opk_lnsrch_has_errors(const opk_lnsrch_t* ls);
 
 extern int
-opk_lnsrch_has_warnings(const opk_lnsrch_workspace_t* ws);
+opk_lnsrch_has_warnings(const opk_lnsrch_t* ls);
 
 extern int
-opk_lnsrch_converged(const opk_lnsrch_workspace_t* ws);
+opk_lnsrch_converged(const opk_lnsrch_t* ls);
 
 extern int
-opk_lnsrch_finished(const opk_lnsrch_workspace_t* ws);
-
+opk_lnsrch_finished(const opk_lnsrch_t* ls);
 
 /* Moré & Thuente method to perform a cubic safeguarded step. */
 extern int
@@ -790,15 +760,13 @@ opk_cstep(double *stx_ptr, double *fx_ptr, double *dx_ptr,
 /*---------------------------------------------------------------------------*/
 /* NON-LINEAR CONJUGATE GRADIENT METHODS */
 
-typedef struct _opk_nlcg_workspace opk_nlcg_workspace_t;
-
 /**
  * Create a new optimizer instance for non-linear conjugate gradient method.
  *
- * This function creates an optimizer instance for minimization by a
- * non-linear conjugate gradient method over a given vector space.  The
- * returned instance must be destroyed by calling opk_nlcg_delete when no
- * longer needed.
+ * This function creates an optimizer instance for minimization by a non-linear
+ * conjugate gradient method over a given vector space.  The returned instance
+ * must be unreferenced by calling the function `opk_drop_object()`, or th
+ * macro `OPK_DROP()` when no longer needed.
  *
  * @param vspace   The vector space of the unknowns.
  * @param method   A bitwise combination of the non-linear conjugate gradient
@@ -809,62 +777,62 @@ typedef struct _opk_nlcg_workspace opk_nlcg_workspace_t;
  *         or EINVAL if one of the arguments is invalid or EFAULT if vspace is
  *         NULL.
  */
-extern opk_nlcg_workspace_t*
+extern opk_nlcg_t*
 opk_nlcg_new(opk_vspace_t* vspace, unsigned int method);
 
-extern opk_nlcg_workspace_t*
+/*
+ * Note that the optimizer will hold a reference to the line search object.
+ */
+extern opk_nlcg_t*
 opk_nlcg_new_with_line_search(opk_vspace_t* vspace, unsigned int method,
-                              opk_lnsrch_workspace_t* lnsrch);
-extern void
-opk_nlcg_delete(opk_nlcg_workspace_t* ws);
+                              opk_lnsrch_t* lnsrch);
+extern opk_task_t
+opk_nlcg_start(opk_nlcg_t* ws);
 
 extern opk_task_t
-opk_nlcg_start(opk_nlcg_workspace_t* ws);
-
-extern opk_task_t
-opk_nlcg_iterate(opk_nlcg_workspace_t* ws, opk_vector_t* x1,
+opk_nlcg_iterate(opk_nlcg_t* ws, opk_vector_t* x1,
                  double f1, opk_vector_t* g1);
 
 extern int
-opk_nlcg_get_ftol(opk_nlcg_workspace_t* ws, double* frtol,
+opk_nlcg_get_ftol(opk_nlcg_t* ws, double* frtol,
                   double* fatol);
 
 extern int
-opk_nlcg_get_gtol(opk_nlcg_workspace_t* ws, double* grtol,
+opk_nlcg_get_gtol(opk_nlcg_t* ws, double* grtol,
                   double* gatol);
 
 extern int
-opk_nlcg_get_fmin(opk_nlcg_workspace_t* ws, double* fmin);
+opk_nlcg_get_fmin(opk_nlcg_t* ws, double* fmin);
 
 extern int
-opk_nlcg_set_fmin(opk_nlcg_workspace_t* ws, double fmin);
+opk_nlcg_set_fmin(opk_nlcg_t* ws, double fmin);
 
 extern int
-opk_nlcg_unset_fmin(opk_nlcg_workspace_t* ws);
+opk_nlcg_unset_fmin(opk_nlcg_t* ws);
 
 extern int
-opk_nlcg_get_iterations(opk_nlcg_workspace_t* ws);
+opk_nlcg_get_iterations(opk_nlcg_t* ws);
 
 extern int
-opk_nlcg_get_restarts(opk_nlcg_workspace_t* ws);
+opk_nlcg_get_restarts(opk_nlcg_t* ws);
 
 extern int
-opk_nlcg_get_evaluations(opk_nlcg_workspace_t* ws);
+opk_nlcg_get_evaluations(opk_nlcg_t* ws);
 
 extern unsigned int
-opk_nlcg_get_method(opk_nlcg_workspace_t* ws);
+opk_nlcg_get_method(opk_nlcg_t* ws);
 
 extern opk_bool_t
-opk_nlcg_get_starting(opk_nlcg_workspace_t* ws);
+opk_nlcg_get_starting(opk_nlcg_t* ws);
 
 extern opk_task_t
-opk_nlcg_get_task(opk_nlcg_workspace_t* ws);
+opk_nlcg_get_task(opk_nlcg_t* ws);
 
 extern double
-opk_nlcg_get_alpha(opk_nlcg_workspace_t* ws);
+opk_nlcg_get_alpha(opk_nlcg_t* ws);
 
 extern double
-opk_nlcg_get_beta(opk_nlcg_workspace_t* ws);
+opk_nlcg_get_beta(opk_nlcg_t* ws);
 
 
 #define OPK_NLCG_FLETCHER_REEVES        1
