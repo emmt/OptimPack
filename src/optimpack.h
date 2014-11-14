@@ -1079,6 +1079,18 @@ extern opk_task_t
 opk_vmlm_iterate(opk_vmlm_t* opt, opk_vector_t* x1,
                  double f1, opk_vector_t* g1);
 
+extern opk_task_t
+opk_get_vmlm_task(opk_vmlm_t* opt);
+
+extern opk_index_t
+opk_get_vmlm_iterations(opk_vmlm_t* opt);
+
+extern opk_index_t
+opk_get_vmlm_evaluations(opk_vmlm_t* opt);
+
+extern opk_index_t
+opk_get_vmlm_restarts(opk_vmlm_t* opt);
+
 /** @} */
 
 /*---------------------------------------------------------------------------*/

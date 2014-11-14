@@ -400,6 +400,7 @@ opk_new_vmlm_optimizer_with_line_search(opk_vspace_t* vspace,
     errno = EINVAL;
     return NULL;
   }
+#if 0
   if (frtol <= 0.0) {
     errno = EINVAL;
     return NULL;
@@ -408,6 +409,7 @@ opk_new_vmlm_optimizer_with_line_search(opk_vspace_t* vspace,
     errno = EINVAL;
     return NULL;
   }
+#endif
 
   /* Allocate enough memory for the workspave and its arrays. */
   s_offset = ROUND_UP(sizeof(opk_vmlm_t),
@@ -635,6 +637,30 @@ opk_vmlm_iterate(opk_vmlm_t* opt, opk_vector_t* x1,
     return line_search_failure(opt);
   }
   return next_step(opt, x1);
+}
+
+opk_task_t
+opk_get_vmlm_task(opk_vmlm_t* opt)
+{
+  return opt->task;
+}
+
+opk_index_t
+opk_get_vmlm_iterations(opk_vmlm_t* opt)
+{
+  return opt->iterations;
+}
+
+opk_index_t
+opk_get_vmlm_evaluations(opk_vmlm_t* opt)
+{
+  return opt->evaluations;
+}
+
+opk_index_t
+opk_get_vmlm_restarts(opk_vmlm_t* opt)
+{
+  return opt->restarts;
 }
 
 /*
