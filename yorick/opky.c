@@ -37,10 +37,10 @@
 #include <pstdlib.h>
 #include <yapi.h>
 
-#include "optimpack.h"
+#include "optimpack-private.h"
 
-#define TRUE  1
-#define FALSE 0
+#define TRUE    OPK_TRUE
+#define FALSE   OPK_FALSE
 
 /* Define some macros to get rid of some GNU extensions when not compiling
    with GCC. */
@@ -75,22 +75,22 @@ typedef struct _yopt_operations yopt_operations_t;
 
 struct _yopt_operations {
   const char* method;
-  void (*delete)(void* ws);
-  void (*start)(void* ws);
-  void (*iterate)(void* ws, opk_vector_t* x, double fx, opk_vector_t* gx);
-  void (*get_task)(void* ws);
-  void (*get_iterations)(void* ws);
-  void (*get_evaluations)(void* ws);
-  void (*get_restarts)(void* ws);
+  void (*start)(opk_object_t* optimizer);
+  void (*iterate)(opk_object_t* optimizer, opk_vector_t* x,
+                  double fx, opk_vector_t* gx);
+  void (*get_task)(opk_object_t* optimizer);
+  void (*get_iterations)(opk_object_t* optimizer);
+  void (*get_evaluations)(opk_object_t* optimizer);
+  void (*get_restarts)(opk_object_t* optimizer);
 };
 
 struct _yopt_instance {
   yopt_operations_t* ops;
+  opk_object_t* optimizer;
   opk_vspace_t* vspace;
-  void (*rewrap)(opk_vector_t* vect, int iarg);
-  void* ws;
   opk_vector_t* x;
   opk_vector_t* gx;
+  void (*rewrap)(opk_vector_t* vect, int iarg);
   int single;
 };
 
@@ -112,18 +112,10 @@ static void
 yopt_free(void* ptr)
 {
   yopt_instance_t* opt = (yopt_instance_t*)ptr;
-  if (opt->ws != NULL) {
-    opt->ops->delete(opt->ws);
-  }
-  if (opt->x != NULL) {
-    opk_vdelete(opt->x);
-  }
-  if (opt->gx != NULL) {
-    opk_vdelete(opt->gx);
-  }
-  if (opt->vspace != NULL) {
-    opk_delete_vector_space(opt->vspace);
-  }
+  OPK_DROP(opt->optimizer);
+  OPK_DROP(opt->vspace);
+  OPK_DROP(opt->x);
+  OPK_DROP(opt->gx);
 }
 
 static void
@@ -150,15 +142,15 @@ yopt_extract(void* ptr, char* member)
   if (index == method_index) {
     push_string(opt->ops->method);
   } else if (index == task_index) {
-    opt->ops->get_task(opt->ws);
+    opt->ops->get_task(opt->optimizer);
   } else if (index == size_index) {
     ypush_long(opt->vspace->size);
   } else if (index == iterations_index) {
-    opt->ops->get_iterations(opt->ws);
+    opt->ops->get_iterations(opt->optimizer);
   } else if (index == evaluations_index) {
-    opt->ops->get_evaluations(opt->ws);
+    opt->ops->get_evaluations(opt->optimizer);
   } else if (index == restarts_index) {
-    opt->ops->get_restarts(opt->ws);
+    opt->ops->get_restarts(opt->optimizer);
   } else if (index == single_index) {
     ypush_int(opt->single);
   } else {
@@ -170,53 +162,47 @@ yopt_extract(void* ptr, char* member)
 /*---------------------------------------------------------------------------*/
 /* NON-LINEAR CONJUGATE GRADIENT (NLCG) METHOD */
 
-#define NLCG_WORKSPACE(ptr) ((opk_nlcg_workspace_t*)(ptr))
+#define NLCG(obj) ((opk_nlcg_t*)(obj))
 
 static void
-nlcg_delete(void* ws)
+nlcg_start(opk_object_t* optimizer)
 {
-  opk_nlcg_delete(NLCG_WORKSPACE(ws));
+  ypush_int(opk_nlcg_start(NLCG(optimizer)));
 }
 
 static void
-nlcg_start(void* ws)
+nlcg_iterate(opk_object_t* optimizer,
+             opk_vector_t* x, double fx, opk_vector_t* gx)
 {
-  ypush_int(opk_nlcg_start(NLCG_WORKSPACE(ws)));
+  ypush_int(opk_nlcg_iterate(NLCG(optimizer), x, fx, gx));
 }
 
 static void
-nlcg_iterate(void* ws, opk_vector_t* x, double fx, opk_vector_t* gx)
+nlcg_get_task(opk_object_t* optimizer)
 {
-  ypush_int(opk_nlcg_iterate(NLCG_WORKSPACE(ws), x, fx, gx));
+  ypush_int(opk_nlcg_get_task(NLCG(optimizer)));
 }
 
 static void
-nlcg_get_task(void* ws)
+nlcg_get_iterations(opk_object_t* optimizer)
 {
-  ypush_int(opk_nlcg_get_task(NLCG_WORKSPACE(ws)));
+  ypush_long(opk_nlcg_get_iterations(NLCG(optimizer)));
 }
 
 static void
-nlcg_get_iterations(void* ws)
+nlcg_get_evaluations(opk_object_t* optimizer)
 {
-  ypush_long(opk_nlcg_get_iterations(NLCG_WORKSPACE(ws)));
+  ypush_long(opk_nlcg_get_evaluations(NLCG(optimizer)));
 }
 
 static void
-nlcg_get_evaluations(void* ws)
+nlcg_get_restarts(opk_object_t* optimizer)
 {
-  ypush_long(opk_nlcg_get_evaluations(NLCG_WORKSPACE(ws)));
-}
-
-static void
-nlcg_get_restarts(void* ws)
-{
-  ypush_long(opk_nlcg_get_restarts(NLCG_WORKSPACE(ws)));
+  ypush_long(opk_nlcg_get_restarts(NLCG(optimizer)));
 }
 
 static yopt_operations_t nlcg_ops = {
   "non-linear conjugate gradient (NLCG)",
-  nlcg_delete,
   nlcg_start,
   nlcg_iterate,
   nlcg_get_task,
@@ -226,63 +212,9 @@ static yopt_operations_t nlcg_ops = {
 };
 
 /*---------------------------------------------------------------------------*/
-/* LIMITED MEMORY VARIABLE METRIC (LBFGS) METHOD */
+/* LIMITED MEMORY VARIABLE METRIC (VMLM/LBFGS) METHOD */
 
 #if 0
-#define LBFGS_WORKSPACE(ptr) ((opk_lbfgs_workspace_t*)(ptr))
-
-static void
-lbfgs_delete(void* ws)
-{
-  opk_lbfgs_delete(LBFGS_WORKSPACE(ws));
-}
-
-static void
-lbfgs_start(void* ws)
-{
-  ypush_int(opk_lbfgs_start(LBFGS_WORKSPACE(ws)));
-}
-
-static void
-lbfgs_iterate(void* ws, opk_vector_t* x, double fx, opk_vector_t* gx)
-{
-  ypush_int(opk_lbfgs_iterate(LBFGS_WORKSPACE(ws), x, fx, gx));
-}
-
-static void
-lbfgs_get_task(void* ws)
-{
-  ypush_int(opk_lbfgs_get_task(LBFGS_WORKSPACE(ws)));
-}
-
-static void
-lbfgs_get_iterations(void* ws)
-{
-  ypush_long(opk_lbfgs_get_iterations(LBFGS_WORKSPACE(ws)));
-}
-
-static void
-lbfgs_get_evaluations(void* ws)
-{
-  ypush_long(opk_lbfgs_get_evaluations(LBFGS_WORKSPACE(ws)));
-}
-
-static void
-lbfgs_get_restarts(void* ws)
-{
-  ypush_long(opk_lbfgs_get_restarts(LBFGS_WORKSPACE(ws)));
-}
-
-static yopt_operations_t lbfgs_ops = {
-  "limited memory variable metric (LBFGS)",
-  lbfgs_delete,
-  lbfgs_start,
-  lbfgs_iterate,
-  lbfgs_get_task,
-  lbfgs_get_iterations,
-  lbfgs_get_evaluations,
-  lbfgs_get_restarts
-};
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -432,8 +364,8 @@ void Y_opk_nlcg(int argc)
   if (opt->x == NULL || opt->gx == NULL) {
     y_error("failed to create working vectors");
   }
-  opt->ws = opk_nlcg_new(opt->vspace, method);
-  if (opt->ws == NULL) {
+  opt->optimizer = (opk_object_t*)opk_nlcg_new(opt->vspace, method);
+  if (opt->optimizer == NULL) {
     y_error("failed to create NLCG optimizer");
   }
 }
@@ -451,7 +383,7 @@ void Y_opk_task(int argc)
     y_error("expecting exactly 1 argument");
   }
   opt = yget_obj(0, &yopt_type);
-  opt->ops->get_task(opt->ws);
+  opt->ops->get_task(opt->optimizer);
 }
 
 void Y_opk_start(int argc)
@@ -462,7 +394,7 @@ void Y_opk_start(int argc)
     y_error("expecting exactly 1 argument");
   }
   opt = yget_obj(0, &yopt_type);
-  opt->ops->start(opt->ws);
+  opt->ops->start(opt->optimizer);
 }
 
 void Y_opk_iterate(int argc)
@@ -477,7 +409,7 @@ void Y_opk_iterate(int argc)
   opt->rewrap(opt->x, 2);
   fx = ygets_d(1);
   opt->rewrap(opt->gx, 0);
-  opt->ops->iterate(opt->ws, opt->x, fx, opt->gx);
+  opt->ops->iterate(opt->optimizer, opt->x, fx, opt->gx);
 }
 
 /*
