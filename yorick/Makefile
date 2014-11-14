@@ -20,7 +20,7 @@ TGT=$(DEFAULT_TGT)
 PKG_NAME=opky
 PKG_I=${srcdir}/opky.i
 
-OBJS=opky.o algebra.o fltvector.o dblvector.o error.o nlcg.o lnsrch.o
+OBJS=opky.o algebra.o fltvector.o dblvector.o error.o nlcg.o lnsrch.o vmlm.o
 
 # change to give the executable a name other than yorick
 PKG_EXENAME=yorick
@@ -98,15 +98,23 @@ opky.o: $(srcdir)/opky.c $(OPK_SRC)/optimpack.h
 
 algebra.o: $(OPK_SRC)/algebra.c $(OPK_SRC)/optimpack.h $(OPK_SRC)/optimpack-private.h
 	$(CC) $(OPK_CFLAGS) -o $@ -c $<
+
 fltvector.o: $(OPK_SRC)/simple_vector.c $(OPK_SRC)/optimpack.h $(OPK_SRC)/optimpack-private.h
 	$(CC) $(OPK_CFLAGS) -DSINGLE_PRECISION=1 -o $@ -c $<
+
 dblvector.o: $(OPK_SRC)/simple_vector.c $(OPK_SRC)/optimpack.h $(OPK_SRC)/optimpack-private.h
 	$(CC) $(OPK_CFLAGS) -DSINGLE_PRECISION=0 -o $@ -c $<
+
 error.o: $(OPK_SRC)/error.c $(OPK_SRC)/optimpack.h $(OPK_SRC)/optimpack-private.h
 	$(CC) $(OPK_CFLAGS) -o $@ -c $<
+
 nlcg.o: $(OPK_SRC)/nlcg.c $(OPK_SRC)/optimpack.h $(OPK_SRC)/optimpack-private.h
 	$(CC) $(OPK_CFLAGS) -o $@ -c $<
+
 lnsrch.o: $(OPK_SRC)/lnsrch.c $(OPK_SRC)/optimpack.h $(OPK_SRC)/optimpack-private.h
+	$(CC) $(OPK_CFLAGS) -o $@ -c $<
+
+vmlm.o: $(OPK_SRC)/vmlm.c $(OPK_SRC)/optimpack.h $(OPK_SRC)/optimpack-private.h
 	$(CC) $(OPK_CFLAGS) -o $@ -c $<
 
 release: $(RELEASE_NAME)

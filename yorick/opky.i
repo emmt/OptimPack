@@ -61,13 +61,13 @@ extern opk_nlcg;
          opt.evaluations - number of function (and gradient) evaluations;
          opt.restarts    - number of restarts;
 
-   SEE ALSO: opk_iterate, opk_lbfgs, opk_task, opk_start.
+   SEE ALSO: opk_iterate, opk_vmlm, opk_task, opk_start.
  */
 
-extern opk_lbfgs;
-/* DOCUMENT opt = opk_lbfgs(n, m);
+extern opk_vmlm;
+/* DOCUMENT opt = opk_vmlm(n, m);
 
-     The function opk_lbfgs() creates a new instance of OPKY reverse
+     The function opk_vmlm() creates a new instance of OPKY reverse
      communication optimizer implementing a limited memory variant of the BFGS
      variable metric method.  N is the size of the problem and M is the number
      of previous steps to memorize.
@@ -85,7 +85,7 @@ extern opk_iterate;
      function at X.  See opk_task() for the interpretaion of the returned
      value.
 
-   SEE ALSO: opk_nlcg, opk_lbfgs, opk_task, opk_start.
+   SEE ALSO: opk_nlcg, opk_vmlm, opk_task, opk_start.
  */
 
 extern opk_start;
@@ -93,7 +93,7 @@ extern opk_start;
      Start or re-start the reverse communication optimizer OPT.  See
      opk_task() for the interpretaion of the returned value.
 
-   SEE ALSO: opk_nlcg, opk_lbfgs, opk_task, opk_iterate.
+   SEE ALSO: opk_nlcg, opk_vmlm, opk_task, opk_iterate.
 */
 
 local OPK_TASK_ERROR;
@@ -115,10 +115,10 @@ extern opk_task;
         OPK_TASK_FINAL_X    - the method has converged;
         OPK_TASK_WARNING    - the method has terminated with a warning;
 
-   SEE ALSO: opk_nlcg, opk_lbfgs, opk_iterate, opk_start.
+   SEE ALSO: opk_nlcg, opk_vmlm, opk_iterate, opk_start.
 */
 
-func opk_minimize(fg, x0, m, lbfgs=, nlcg=, single=, verb=)
+func opk_minimize(fg, x0, m, vmlm=, nlcg=, single=, verb=)
 /* DOCUMENT x = opk_minimize(fg, x0);
 
      This driver minimizes a smooth multi-variate function.  FG is a function
@@ -136,7 +136,7 @@ func opk_minimize(fg, x0, m, lbfgs=, nlcg=, single=, verb=)
      store the gradient and may result in costly conversions if the function FG
      is not designed to work at the assumed precision.
 
-   SEE ALSO: opk_nlcg, opk_lbfgs.
+   SEE ALSO: opk_nlcg, opk_vmlm.
  */
 {
   TRUE = 1n;
@@ -144,8 +144,8 @@ func opk_minimize(fg, x0, m, lbfgs=, nlcg=, single=, verb=)
   if (identof(x0) > Y_DOUBLE) {
     error, "bad data type for X0";
   }
-  if (lbfgs && nlcg) {
-    error, "only one of the keywords LBFG or NLCG can be set";
+  if (vmlm && nlcg) {
+    error, "only one of the keywords VMLM or NLCG can be set";
   }
   if (single) {
     type = float;
@@ -157,9 +157,9 @@ func opk_minimize(fg, x0, m, lbfgs=, nlcg=, single=, verb=)
   x = type(unref(x0));
   gx = array(type, dimsof(x));
   n = numberof(x);
-  if (lbfgs) {
+  if (vmlm) {
     if (is_void(m)) m = 5;
-    opt = opk_lbfgs(n, m, single=single);
+    opt = opk_vmlm(n, m, single=single);
   } else {
     if (is_void(m)) m = OPK_NLCG_DEFAULT;
     opt = opk_nlcg(n, m, single=single);

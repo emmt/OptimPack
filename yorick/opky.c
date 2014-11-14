@@ -214,8 +214,54 @@ static yopt_operations_t nlcg_ops = {
 /*---------------------------------------------------------------------------*/
 /* LIMITED MEMORY VARIABLE METRIC (VMLM/LBFGS) METHOD */
 
-#if 0
-#endif
+#define VMLM(obj) ((opk_vmlm_t*)(obj))
+
+static void
+vmlm_start(opk_object_t* optimizer)
+{
+  ypush_int(opk_vmlm_start(VMLM(optimizer)));
+}
+
+static void
+vmlm_iterate(opk_object_t* optimizer,
+             opk_vector_t* x, double fx, opk_vector_t* gx)
+{
+  ypush_int(opk_vmlm_iterate(VMLM(optimizer), x, fx, gx));
+}
+
+static void
+vmlm_get_task(opk_object_t* optimizer)
+{
+  ypush_int(opk_get_vmlm_task(VMLM(optimizer)));
+}
+
+static void
+vmlm_get_iterations(opk_object_t* optimizer)
+{
+  ypush_long(opk_get_vmlm_iterations(VMLM(optimizer)));
+}
+
+static void
+vmlm_get_evaluations(opk_object_t* optimizer)
+{
+  ypush_long(opk_get_vmlm_evaluations(VMLM(optimizer)));
+}
+
+static void
+vmlm_get_restarts(opk_object_t* optimizer)
+{
+  ypush_long(opk_get_vmlm_restarts(VMLM(optimizer)));
+}
+
+static yopt_operations_t vmlm_ops = {
+  "non-linear conjugate gradient (VMLM)",
+  vmlm_start,
+  vmlm_iterate,
+  vmlm_get_task,
+  vmlm_get_iterations,
+  vmlm_get_evaluations,
+  vmlm_get_restarts
+};
 
 /*---------------------------------------------------------------------------*/
 /* PRIVATE FUNCTIONS */
@@ -370,9 +416,79 @@ void Y_opk_nlcg(int argc)
   }
 }
 
-void Y_opk_lbfgs(int argc)
+void Y_opk_vmlm(int argc)
 {
-  y_error("not yet implemented");
+  double fatol = 0.0;
+  double frtol = 0.0;
+  double fmin = 0.0;
+  yopt_instance_t* opt;
+  long n = 0, m = 5;
+  int iarg, position = 0, single = FALSE;
+  /*unsigned int rule = OPK_BARZILAI_BORWEIN_2;*/
+
+  for (iarg = argc - 1; iarg >= 0; --iarg) {
+    long index = yarg_key(iarg);
+    if (index < 0L) {
+      /* Non-keyword argument. */
+      switch (++position) {
+      case 1:
+        n = ygets_l(iarg);
+        if (n < 1L) {
+          y_error("illegal number of variables");
+        }
+        break;
+      case 2:
+        m = ygets_l(iarg);
+        if (m < 1L) {
+          y_error("illegal number of memorized steps");
+        }
+        break;
+      default:
+        y_error("too many arguments");
+      }
+    } else {
+      /* Keyword argument. */
+      --iarg;
+      if (index == single_index) {
+        single = yarg_true(iarg);
+      } else {
+        y_error("unknown keyword");
+      }
+    }
+  }
+  if (position < 1) {
+    y_error("not enough arguments");
+  }
+  opt = (yopt_instance_t*)ypush_obj(&yopt_type, sizeof(yopt_instance_t));
+  opt->ops = &vmlm_ops;
+  opt->single = single;
+  if (single) {
+    opt->vspace = opk_new_simple_float_vector_space(n);
+    opt->rewrap = rewrap_float;
+  } else {
+    opt->vspace = opk_new_simple_double_vector_space(n);
+    opt->rewrap = rewrap_double;
+  }
+  if (opt->vspace == NULL) {
+    y_error("failed to create vector space");
+  }
+  if (single) {
+    float dummy = 0.0f;
+    opt->x = opk_wrap_simple_float_vector(opt->vspace, &dummy, NULL, NULL);
+    opt->gx = opk_wrap_simple_float_vector(opt->vspace, &dummy, NULL, NULL);
+  } else {
+    double dummy = 0.0;
+    opt->x = opk_wrap_simple_double_vector(opt->vspace, &dummy, NULL, NULL);
+    opt->gx = opk_wrap_simple_double_vector(opt->vspace, &dummy, NULL, NULL);
+  }
+  if (opt->x == NULL || opt->gx == NULL) {
+    y_error("failed to create working vectors");
+  }
+  opt->optimizer = (opk_object_t*)opk_new_vmlm_optimizer(opt->vspace, m,
+                                                         frtol, fatol, fmin);
+  if (opt->optimizer == NULL) {
+    y_error("failed to create VMLM optimizer");
+  }
 }
 
 void Y_opk_task(int argc)

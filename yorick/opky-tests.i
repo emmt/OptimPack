@@ -55,11 +55,11 @@ func opkt_rosenbrock_fg(x, gx)
   return sum(t1*t1) + sum(t2*t2);
 }
 
-func opkt_rosenbrock(n, single=) {
+func opkt_rosenbrock(n, single=, vmlm=) {
   type = (single ? float : double);
   x0 = array(type, n);
   opkt_rosenbrock_xinit, x0;
-  x = opk_minimize(opkt_rosenbrock_fg, x0, verb=1n);
+  x = opk_minimize(opkt_rosenbrock_fg, x0, vmlm=vmlm, verb=1n);
 }
 
 /*
