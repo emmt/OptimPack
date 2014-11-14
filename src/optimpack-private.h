@@ -132,24 +132,27 @@ opk_allocate_object(void (*finalize)(opk_object_t* self),
 /** Table of methods for vector spaces. */
 typedef struct _opk_vspace_operations opk_vspace_operations_t;
 
-/* The _opk_vector structure is intentionally exposed to let different
- * implementations coexist (although in separate codes).   If one want
- * to implement a sub-type of the vector type, it is sufficient to define
- * a new structure whose first member is an `opk_vector_t`.  The function
- * `opk_valloc()` can be used to allocate the whole structure.
- * <pre>
+/**
+ * Structure implementing a basic vector type.
+ *
+ * The `_opk_vector` structure is intentionally exposed to let different
+ * implementations coexist (although in separate codes).  If one want to
+ * implement a sub-type of the vector type, it is sufficient to define a new
+ * structure whose first member is an `opk_vector_t`.  The function
+ * `opk_allocate_vector()` **must** be used to allocate the whole structure.
+ * ~~~~~~~~~~{.c}
  * struct _my_vector {
  *   opk_vector_t base;
  *   double* data;
  * };
- * </pre>
+ * ~~~~~~~~~~
  *
- * OptimPack routines
- * only require the address of such vectors and treat them as opaque
- * structures. */
+ * OptimPack routines only require the address of such vectors and treat them
+ * as opaque structures.
+ */
 struct _opk_vector {
-  opk_object_t  base;   /* base type (must be the first member) */
-  opk_vspace_t* owner;  /* vector space to which the vector belongs */
+  opk_object_t  base;   /**< Base type (must be the first member). */
+  opk_vspace_t* owner;  /**< Vector space to which the vector belongs. */
 };
 
 struct _opk_vspace {
