@@ -1,6 +1,7 @@
 # Specific files
 src/nlcg-test
 yorick/ywrap.c
+doc/doxygen-doc/
 
 # Backup files
 *~

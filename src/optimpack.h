@@ -33,6 +33,28 @@
 
 #include <stddef.h>
 
+/**
+ * @defgroup Objects     Management of objects and derived types.
+ * @defgroup Vectors     Vectors and vector spaces.
+ * @defgroup Operators   Operators acting on vectors.
+ * @defgroup LineSearch  Line search methods.
+ * @defgroup NLCG        Non-linear conjugate gradient methods.
+ * @defgroup Error       Reporting of errors.
+ * @defgroup Utilities   Miscellaneous utility functions and macros.
+ * @defgroup LowLevel    Low-level API to implement objects.
+ *
+ * @mainpage Optimization of large scale problems
+ *
+ * OptimPack is a library for large scale optimization problems.  Its primary
+ * focus is solving large inverse problems as image reconstruction.
+ *
+ * @section ManagementOfObjects Management of objects and derived types.
+ * @subsection BasicObjects Basic objects.
+ * @ref Objects
+ * @subsection VectorSpaces Vectors and vector spaces.
+ * @ref Vectors
+ */
+
 /*---------------------------------------------------------------------------*/
 
 /*
@@ -213,14 +235,23 @@ typedef int opk_bool_t;
 /*---------------------------------------------------------------------------*/
 /* BASIC OBJECTS */
 
-/* Definitions of object types. */
-typedef struct _opk_object   opk_object_t;   /* an object */
-typedef struct _opk_vector   opk_vector_t;   /* a vector */
-typedef struct _opk_vspace   opk_vspace_t;   /* a vector space */
-typedef struct _opk_operator opk_operator_t; /* an operator */
-typedef struct _opk_lnsrch   opk_lnsrch_t;   /* a line search method */
-typedef struct _opk_nlcg     opk_nlcg_t;     /* a non-linear conjugate gradient
-                                                optimizer */
+/**
+ * @addtogroup Objects
+ * @{
+ */
+
+/**
+ * Opaque basic object type.
+ *
+ * Users of OptimPack library normally do not need to known exactly the
+ * contents of an object.  They simply use the functions of the library to
+ * manipulate object pointers.
+ *
+ * Developpers who need to implement derived types or specific variants of
+ * existing types must include the header `optimpack-private.h` to unveil
+ * the definitions of the structures representing the OptimPack objects.
+ */
+typedef struct _opk_object opk_object_t;
 
 /**
  * Hold a reference on an object.
@@ -266,8 +297,26 @@ opk_drop_object(opk_object_t* obj);
 extern opk_index_t
 opk_get_object_references(opk_object_t* obj);
 
+/**
+ * Macro to set a reference on an object whatever its type.  Compared to the
+ * function `opk_hold_object()`, this macro casts its argument to be an
+ * `opk_object_t` pointer.  The result is the argument cast as a basic object
+ * pointer.
+ */
 #define OPK_HOLD(obj)       opk_hold_object((opk_object_t*)(obj))
+
+/**
+ * Macro to drop an object whatever its type.  Compared to the function
+ * `opk_drop_object()`, this macro casts its argument to be an `opk_object_t`
+ * pointer.
+ */
 #define OPK_DROP(obj)       opk_drop_object((opk_object_t*)(obj))
+
+/**
+ * Macro to query the number of references on an object whatever its type.
+ * Compared to the function `opk_get_object_references()`, this macro casts its
+ * argument to be a `opk_object_t` pointer.
+ */
 #define OPK_REFS(obj)       opk_get_object_references((opk_object_t*)(obj))
 
 #define OPK_HOLD_VSPACE(vsp)  ((opk_vspace_t*)OPK_HOLD(vsp))
@@ -275,9 +324,23 @@ opk_get_object_references(opk_object_t* obj);
 #define OPK_HOLD_LNSRCH(vec)  ((opk_lnsrch_t*)OPK_HOLD(vec))
 #define OPK_HOLD_OPERATOR(op) ((opk_operator_t*)OPK_HOLD(op))
 
+/** @} */
+
 /*---------------------------------------------------------------------------*/
 /* VECTORS AND VECTOR SPACES */
 
+/**
+ * @addtogroup Vectors
+ * @{
+ */
+
+/** Opaque vector type.  This sub-type inherits from `opk_object_t`. */
+typedef struct _opk_vector opk_vector_t;
+
+/** Opaque vector space type.  This sub-type inherits from `opk_object_t`. */
+typedef struct _opk_vspace opk_vspace_t;
+
+/** Prototype of function to release client data. */
 typedef void opk_free_proc(void*);
 
 /**
@@ -315,32 +378,34 @@ opk_new_simple_double_vector_space(opk_index_t size);
  * needed.
  *
  * A typical usage is:
- * <pre>
- *     #define N 1000
- *     opk_vspace_t* vspace = opk_new_simple_double_vector_space(N);
- *     double heap_array[N];
- *     opk_vector_t* v1 = opk_wrap_simple_double_vector(vspace, heap_array,
- *                                                      NULL, NULL);
- *     double* dynamic_array = (double*)malloc(N*sizeof(double));
- *     opk_vector_t* v2 = opk_wrap_simple_double_vector(vspace, dynamic_array,
- *                                                      dynamic_array, free);
- * </pre>
+ * ~~~~~~~~~~{.c}
+ * #define N 1000
+ * opk_vspace_t* vspace = opk_new_simple_double_vector_space(N);
  *
- * which creates two vectors `v1` and `v2` which are respectively wrapped
+ * double heap_array[N];
+ * opk_vector_t* v1 = opk_wrap_simple_double_vector(vspace, heap_array,
+ *                                                  NULL, NULL);
+ *
+ * double* dynamic_array = (double*)malloc(N*sizeof(double));
+ * opk_vector_t* v2 = opk_wrap_simple_double_vector(vspace, dynamic_array,
+ *                                                  dynamic_array, free);
+ * ~~~~~~~~~~
+ *
+ * which creates two vectors, `v1` and `v2`, which are respectively wrapped
  * around an array allocated on the heap and around a dynamically allocated
  * array.
  *
  * In the above example, the `client_data` and the `data` are the same but the
  * possible distinction is needed to allow for using of various kind of
- * objects which contains an array of values that can be wrapped into a
- * vector.  For objects of type `object_t`, we can do somthing like:
- * <pre>
- *     object_t* obj = ...;
- *     opk_vspace_t* vspace = opk_new_simple_double_vector_space(get_number(obj));
- *     opk_vector_t* v = opk_wrap_simple_double_vector(vspace, get_data(obj),
- *                                                     (void*)obj,
- *                                                     delete_object);
- * </pre>
+ * objects which contain an array of values that can be wrapped into a
+ * vector.  For objects of type `object_t`, we can do something like:
+ * ~~~~~~~~~~{.c}
+ * object_t* obj = ...;
+ * opk_vspace_t* vspace = opk_new_simple_double_vector_space(get_number(obj));
+ * opk_vector_t* v = opk_wrap_simple_double_vector(vspace, get_data(obj),
+ *                                                 (void*)obj,
+ *                                                 delete_object);
+ * ~~~~~~~~~~
  * where `get_number()` returns the number of elements stored in the data part
  * of the object, `get_data()` returns the address of these elements, and
  * `delete_object()` delete the object.  Of course, if one prefers to keep the
@@ -375,36 +440,36 @@ opk_get_simple_double_vector_free_client_data(opk_vector_t* v);
  * Re-wrap an array into an existing simple vector.
  *
  * This functions replaces the contents of a simple wrapped vector.  It is
- * assumed that the vector `v` is a wrapped vector, that the new data
+ * assumed that the vector `vect` is a wrapped vector, that the new data
  * `new_data` is correctly aligned and large enough.  If the former
- * `free_client_data()` method of the wrapped vector `v` is not `NULL` and if
- * either the new `free_client_data()` method or the new `client_data` differ
- * from the former ones, then the former `free_client_data()` method is
+ * `free_client_data()` method of the wrapped vector `vect` is not `NULL` and
+ * if either the new `free_client_data()` method or the new `client_data`
+ * differ from the former ones, then the former `free_client_data()` method is
  * applied to the former `client_data`.
  *
  * Re-wrapping is considered as a hack which merely saves the time needed to
  * allocate a container for a wrapped vector.  It is the caller responsibility
- * to ensure that all the assumptions hold.  In many cases deleting the old
+ * to ensure that all the assumptions hold.  In many cases dropping the old
  * vector and wrapping the arguments into a new vector is safer.
  *
- * @param v - The vector to re-wrap.
+ * @param vect - The vector to re-wrap.
  * @param new_data - The new array of values.
  * @param new_client_data - The new client data.
  * @param new_free_client_data - The new method to free client data.
  *
- * @return `OPK_SUCCESS` or `OPK_FAILURE`.  In case of failure, global
- *         variable `errno` is set to: `EFAULT` if `v` or `new_data` are
- *         `NULL`, `EINVAL` if `v` is not a vector of the correct kind.
+ * @return `OPK_SUCCESS` or `OPK_FAILURE`.  In case of failure, global variable
+ *         `errno` is set to: `EFAULT` if `vect` or `new_data` are `NULL`,
+ *         `EINVAL` if `vect` is not a vector of the correct kind.
  */
 extern int
-opk_rewrap_simple_double_vector(opk_vector_t* v, double new_data[],
+opk_rewrap_simple_double_vector(opk_vector_t* vect, double new_data[],
                                 void* new_client_data,
                                 void (*new_free_client_data)(void*));
 
 /**
  * Create a vector space for array of float's in conventional memory.
  *
- * See `opk_new_simple_double_vector()` for a description.
+ * See `opk_new_simple_double_vector_space()` for a description.
  */
 extern opk_vspace_t*
 opk_new_simple_float_vector_space(opk_index_t size);
@@ -589,7 +654,7 @@ opk_vaxpby(opk_vector_t* dst,
  *
  * This functions stores in the destination vector `dst` the linear combination
  * `alpha*x + beta*y + gamma*z` where `alpha`, `beta` and `gamma` are three
- * scalars whiule `x`, `y` and `z` are three vectors.  All vectors must belong
+ * scalars while `x`, `y` and `z` are three vectors.  All vectors must belong
  * to the same vector space.
  *
  * @param dst   - The destination vector.
@@ -606,8 +671,18 @@ opk_vaxpbypcz(opk_vector_t* dst,
               double beta,  const opk_vector_t* y,
               double gamma, const opk_vector_t* z);
 
+/** @} */
+
 /*---------------------------------------------------------------------------*/
 /* OPERATORS */
+
+/**
+ * @addtogroup Operators
+ * @{
+ */
+
+/** Opaque operator type.  This sub-type inherits from `opk_object_t`. */
+typedef struct _opk_operator opk_operator_t;
 
 extern int
 opk_apply_direct(opk_operator_t* op, opk_vector_t* dst,
@@ -621,8 +696,15 @@ extern int
 opk_apply_inverse(opk_operator_t* op, opk_vector_t* dst,
                   const opk_vector_t* src);
 
+/** @} */
+
 /*---------------------------------------------------------------------------*/
 /* ERROR MANAGEMENT */
+
+/**
+ * @addtogroup Error
+ * @{
+ */
 
 typedef void opk_error_handler(const char* message);
 
@@ -650,6 +732,8 @@ opk_set_error_handler(opk_error_handler* handler);
  */
 extern void
 opk_error(const char* reason);
+
+/** @} */
 
 /*---------------------------------------------------------------------------*/
 /* LIMITED MEMORY VARIABLE METRIC METHODS */
@@ -684,15 +768,23 @@ typedef enum {
 /*---------------------------------------------------------------------------*/
 /* LINE SEARCH METHODS */
 
-/* Create a Moré and Thuente cubic line search. */
+/**
+ * @addtogroup LineSearch
+ * @{
+ */
+
+/** Opaque linesearch type.  This sub-type inherits from `opk_object_t`. */
+typedef struct _opk_lnsrch opk_lnsrch_t;
+
+/** Create a Moré and Thuente cubic line search. */
 extern opk_lnsrch_t*
 opk_lnsrch_new_csrch(double ftol, double gtol, double xtol);
 
-/* Create a backtracking (Armijo) line search. */
+/** Create a backtracking (Armijo) line search. */
 extern opk_lnsrch_t*
 opk_lnsrch_new_backtrack(double ftol);
 
-/* Create a nonmonotone line search. */
+/** Create a nonmonotone line search. */
 extern opk_lnsrch_t*
 opk_lnsrch_new_nonmonotone(double ftol, opk_index_t m);
 
@@ -716,13 +808,13 @@ opk_lnsrch_new_nonmonotone(double ftol, opk_index_t m);
 #define OPK_LNSRCH_WARNING_STP_EQ_STPMAX                      4
 #define OPK_LNSRCH_WARNING_STP_EQ_STPMIN                      5
 
-/* Start a new line search.  The returned value is strictly negative to
+/** Start a new line search.  The returned value is strictly negative to
    indicate an error; it is equal to zero otherwise. */
 extern int
 opk_lnsrch_start(opk_lnsrch_t* ls, double f0, double g0,
                  double stp, double stpmin, double stpmax);
 
-/* Check whether line search has converged or update the step size.  The
+/** Check whether line search has converged or update the step size.  The
    returned value is strictly negative to indicate an error; it is equal to
    zero when searching is in progress; it is strictly positive when line search
    has converged or cannot make any more progresses.*/
@@ -730,7 +822,7 @@ extern int
 opk_lnsrch_iterate(opk_lnsrch_t* ls, double* stp_ptr,
                    double f1, double g1);
 
-/* Get current step lenght. Returned value should be >= 0; -1 is returned in
+/** Get current step lenght. Returned value should be >= 0; -1 is returned in
    case of error. */
 extern double
 opk_lnsrch_get_step(const opk_lnsrch_t* ls);
@@ -750,15 +842,25 @@ opk_lnsrch_converged(const opk_lnsrch_t* ls);
 extern int
 opk_lnsrch_finished(const opk_lnsrch_t* ls);
 
-/* Moré & Thuente method to perform a cubic safeguarded step. */
+/** Moré & Thuente method to perform a cubic safeguarded step. */
 extern int
 opk_cstep(double *stx_ptr, double *fx_ptr, double *dx_ptr,
           double *sty_ptr, double *fy_ptr, double *dy_ptr,
           double *stp_ptr, double  fp,     double  dp,
           int *brackt, double stpmin, double stpmax);
 
+/** @} */
+
 /*---------------------------------------------------------------------------*/
 /* NON-LINEAR CONJUGATE GRADIENT METHODS */
+
+/**
+ * @addtogroup NLCG
+ * @{
+ */
+
+/** Opaque type for non-linear conjugate gradient optimizers. */
+typedef struct _opk_nlcg opk_nlcg_t;
 
 /**
  * Create a new optimizer instance for non-linear conjugate gradient method.
@@ -855,6 +957,8 @@ opk_nlcg_get_beta(opk_nlcg_t* ws);
 /* Default settings for non linear conjugate gradient (should correspond to
    the method which is, in general, the most successful). */
 #define OPK_NLCG_DEFAULT (OPK_NLCG_HAGER_ZHANG | OPK_NLCG_SHANNO_PHUA)
+
+/** @} */
 
 /*---------------------------------------------------------------------------*/
 /* MINIMIZATION OF AN UNIVARIATE FUNCTION */

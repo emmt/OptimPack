@@ -38,6 +38,12 @@
 /* LOW LEVEL API FOR BASIC OBJECTS AND DERIVED TYPES */
 
 /**
+ * @defgroup LowObjects  Allocation of basic objects.
+ * @ingroup LowLevel
+ * @{
+ */
+
+/**
  * Basic object structure.
  *
  * The definition of this structure must be exposed so that others types
@@ -58,35 +64,40 @@ struct _opk_object {
  *
  * The caller of this function holds a reference on the returned object.  When
  * the object is no longer needed by the caller, he/she has to call
- * opk_drop_object() to release this reference.
+ * `opk_drop_object()` to release this reference.
  *
  * When the object is no longer in use (its last reference has been dropped),
- * it is effectively destroyed by first applying the finalize() method on it
+ * it is effectively destroyed by first applying the `finalize()` method on it
  * (unless it is NULL) and then freeing the dynamic memory where the object
  * was stored.
  *
  * The typical usage consists in building a derived type as follows:
- * <pre>
+ * ~~~~~~~~~~{.c}
  * typedef struct _sub_type {
  *     opk_object_t base; // base type (must be the first member)
  *     ...;               // other members
  * } sub_type_t;
- * </pre>
- * and provide a constructor like:
- * <pre>
+ * ~~~~~~~~~~
+ * and provide a destructor and a constructor like:
+ * ~~~~~~~~~~{.c}
+ * static void finalize_sub_type(opk_object_t* self)
+ * {
+ *     ...; // do whatever cleanup is needed
+ * }
+ *
  * sub_type_t* create_sub_type(args...) {
  *    sub_type_t* obj = (sub_type_t*)opk_allocate_object(finalize_sub_type,
  *                                                       sizeof(sub_type_t));
  *    ...; // any other initialization
  *    return obj;
  * }
- * </pre>
- * where finalize_sub_type() is in charge of releasing any specific ressources
- * of the object.  Note that this function must be able to deal with a
- * partially initialized object, although this is simplified by the fact that
+ * ~~~~~~~~~~
+ * where `finalize_sub_type()` is in charge of releasing any specific
+ * ressources of the object.  Note that this function must be able to deal with
+ * a partially initialized object, although this is simplified by the fact that
  * the non-basic parts of the object are intially zero-filled.  The memory
- * allocated by opk_allocate_object() is automatically freed and must not be
- * freed by the finalize() method.
+ * allocated by `opk_allocate_object()` is automatically freed and must not be
+ * freed by the `finalize()` method.
  *
  * The object model of OptimPack is very simple but has some drawbacks (C is
  * not C++): casts are needed to force the proper type of an object pointer,
@@ -107,9 +118,18 @@ extern opk_object_t*
 opk_allocate_object(void (*finalize)(opk_object_t* self),
                     size_t nbytes);
 
+/** @} */
+
 /*---------------------------------------------------------------------------*/
 /* LOW LEVEL API FOR VECTOR SPACES AND DERIVED TYPES */
 
+/**
+ * @defgroup LowVectors     Implementing vectors based on specific memory model.
+ * @ingroup LowLevel
+ * @{
+ */
+
+/** Table of methods for vector spaces. */
 typedef struct _opk_vspace_operations opk_vspace_operations_t;
 
 /* The _opk_vector structure is intentionally exposed to let different
@@ -260,9 +280,16 @@ opk_allocate_vector_space(const opk_vspace_operations_t* vops,
 extern opk_vector_t*
 opk_allocate_vector(opk_vspace_t* vspace, size_t nbytes);
 
+/** @} */
 
 /*---------------------------------------------------------------------------*/
 /* LOW LEVEL API FOR LINE SEARCH AND DERIVED TYPES */
+
+/**
+ * @defgroup LowLineSearch  Implementing line search methods.
+ * @ingroup LowLevel
+ * @{
+ */
 
 typedef struct _opk_lnsrch_operations opk_lnsrch_operations_t;
 
@@ -310,8 +337,16 @@ extern opk_lnsrch_t*
 opk_allocate_line_search(opk_lnsrch_operations_t *ops,
                          size_t size);
 
+/** @} */
+
 /*---------------------------------------------------------------------------*/
 /* LOW LEVEL API FOR OPERATORS AND DERIVED TYPES */
+
+/**
+ * @defgroup LowOperators  Implementing operators acting on vectors.
+ * @ingroup LowLevel
+ * @{
+ */
 
 typedef struct _opk_operator_operations opk_operator_operations_t;
 
@@ -358,6 +393,8 @@ struct _opk_operator_operations {
   int (*apply_inverse)(opk_operator_t* self, opk_vector_t* dst,
                        const opk_vector_t* src);
 };
+
+/** @} */
 
 #endif /* _OPTIMPACK_PRIVATE_H */
 
