@@ -34,14 +34,15 @@
 #include <stddef.h>
 
 /**
- * @defgroup Objects     Management of objects and derived types.
- * @defgroup Vectors     Vectors and vector spaces.
- * @defgroup Operators   Operators acting on vectors.
- * @defgroup LineSearch  Line search methods.
- * @defgroup NLCG        Non-linear conjugate gradient methods.
- * @defgroup Error       Reporting of errors.
- * @defgroup Utilities   Miscellaneous utility functions and macros.
- * @defgroup LowLevel    Low-level API to implement objects.
+ * @defgroup Objects         Management of objects and derived types.
+ * @defgroup Vectors         Vectors and vector spaces.
+ * @defgroup Operators       Operators acting on vectors.
+ * @defgroup LineSearch      Line search methods.
+ * @defgroup NLCG            Non-linear conjugate gradient methods.
+ * @defgroup VariableMetric  Variable metric methods.
+ * @defgroup Error           Reporting of errors.
+ * @defgroup Utilities       Miscellaneous utility functions and macros.
+ * @defgroup LowLevel        Low-level API to implement objects.
  *
  * @mainpage Optimization of large scale problems
  *
@@ -957,6 +958,126 @@ opk_nlcg_get_beta(opk_nlcg_t* ws);
 /* Default settings for non linear conjugate gradient (should correspond to
    the method which is, in general, the most successful). */
 #define OPK_NLCG_DEFAULT (OPK_NLCG_HAGER_ZHANG | OPK_NLCG_SHANNO_PHUA)
+
+/** @} */
+
+/*---------------------------------------------------------------------------*/
+/* LIMITED MEMORY BFGS OPERATOR */
+
+/**
+ * @defgroup LBGFS      Limited memory BFGS operator
+ * @ingroup VariableMetric
+ * @{
+ */
+
+/** Opaque type to store a limited memory BFGS operator.  This type inherits
+    from the `opk_operator_t` object.  */
+typedef struct _opk_lbfgs_operator opk_lbfgs_operator_t;
+
+/** Rule to estimate the initial inverse Hessian approximation. */
+typedef enum {
+  OPK_CUSTOM_APPROX = 0,
+  OPK_BARZILAI_BORWEIN_1, /**< gamma = <s,y>/<y,y> */
+  OPK_BARZILAI_BORWEIN_2, /**< gamma = <s,s>/<s,y> */
+} opk_inverse_hessian_rule_t;
+
+/**
+ * Create a new limited memory BFGS operator.
+ *
+ * @param vspace - The input and output vector space of the operator.
+ * @param m - The maximum number of previous steps to memorize.
+ * @param rule - The rule for updating the scale of the approximation of the
+ *               inverse Hessian.
+ */
+extern opk_lbfgs_operator_t*
+opk_new_lbfgs_operator(opk_vspace_t* vspace, opk_index_t m,
+                       opk_inverse_hessian_rule_t rule);
+
+/** Forget all memorized steps in limited memory BFGS operator. */
+extern void
+opk_reset_lbfgs_operator(opk_lbfgs_operator_t* op);
+
+/**
+ * Query a memorized variable difference from a limited memory BFGS operator.
+ *
+ * It is the caller responsibility to use proper arguments.
+ *
+ * @param op - A limited memory BFGS operator.
+ * @param k - The index of the memorized step to consider.
+ *
+ * @return s_k
+ */
+extern opk_vector_t*
+opk_get_lbfgs_s(opk_lbfgs_operator_t* op, opk_index_t k);
+
+/**
+ * Query a memorized gradient difference from a limited memory BFGS operator.
+ *
+ * It is the caller responsibility to use proper arguments.
+ *
+ * @param op - A limited memory BFGS operator.
+ * @param k - The index of the memorized step to consider.
+ *
+ * @return y_k
+ */
+extern opk_vector_t*
+opk_get_lbfgs_y(opk_lbfgs_operator_t* op, opk_index_t k);
+
+extern void
+opk_set_lbfgs_operator_preconditioner(opk_lbfgs_operator_t* op,
+                                      opk_operator_t* B0);
+
+/**
+ * Update LBFGS operator with a new pair of variables and gradient
+ * differences.
+ * @param x1 - The new variables.
+ * @param x0 - The previous variables.
+ * @param g1 - The gradient at {@code x1}.
+ * @param g0 - The gradient at {@code x0}.
+ * @throws IncorrectSpaceException
+ */
+extern void
+opk_update_lbfgs_operator(opk_lbfgs_operator_t* op,
+                          const opk_vector_t* x1,
+                          const opk_vector_t* x0,
+                          const opk_vector_t* g1,
+                          const opk_vector_t* g0);
+
+extern void
+opk_set_lbfgs_operator_preconditioner(opk_lbfgs_operator_t* op,
+                                      opk_operator_t* B0);
+
+/** @} */
+
+/*---------------------------------------------------------------------------*/
+/* VARIABLE METRIC OPTIMIZER */
+
+/**
+ * @addtogroup VariableMetric
+ * @{
+ */
+
+/** Opaque type for a variable metric optimizer. */
+typedef struct _opk_vmlm opk_vmlm_t;
+
+extern opk_vmlm_t*
+opk_new_vmlm_optimizer(opk_vspace_t* vspace, opk_index_t m,
+                       double frtol, double fatol, double fmin);
+
+extern opk_vmlm_t*
+opk_new_vmlm_optimizer_with_line_search(opk_vspace_t* vspace,
+                                        opk_index_t m,
+                                        opk_lnsrch_t* lnsrch,
+                                        double frtol,
+                                        double fatol,
+                                        double fmin);
+
+extern opk_task_t
+opk_vmlm_start(opk_vmlm_t* opt);
+
+extern opk_task_t
+opk_vmlm_iterate(opk_vmlm_t* opt, opk_vector_t* x1,
+                 double f1, opk_vector_t* g1);
 
 /** @} */
 
