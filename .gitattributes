@@ -8,3 +8,6 @@ AUTHORS    filter=text-filter
 NEWS       filter=text-filter
 configure  filter=text-filter
 Makefile   filter=yorick-makefile-filter
+*.png      binary
+*.jpg      binary
+*.pdf      binary
