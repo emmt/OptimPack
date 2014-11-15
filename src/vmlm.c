@@ -49,17 +49,18 @@
 
 struct _opk_lbfgs_operator {
   opk_operator_t base; /**< Base type (must be the first member). */
+  double epsilon;      /**< Threshold to skip update. */
   double gamma;        /**< Scale factor to approximate inverse Hessian. */
-  opk_vector_t** s;
-  opk_vector_t** y;
-  opk_vector_t* tmp;   /**< Scratch vector needed if there is a
-                          preconditioner. */
-  opk_operator_t* B0;  /**< Preconditioner or NULL. */
-  double* alpha;
-  double* rho;
-  opk_index_t m;      /* maximum number of memorized (s,y) pairs */
-  opk_index_t mp;     /* actual number of saved (s,y) pairs (0 <= mp <= m) */
-  opk_index_t mark;   /* index of oldest saved pair */
+  opk_vector_t** s;    /**< Storage for variable differences. */
+  opk_vector_t** y;    /**< Storage for gradient differences. */
+  opk_vector_t* tmp;   /**< Scratch vector, needed if there is a
+                            preconditioner. */
+  opk_operator_t* H0;  /**< Preconditioner or NULL. */
+  double* beta;        /**< Workspace to save 1/<s[j],y[j]> */
+  double* rho;         /**< Workspace to save 1/<s[j],y[j]> */
+  opk_index_t m;       /**< Maximum number of memorized steps. */
+  opk_index_t mp;      /**< Actual number of memorized steps (0 <= mp <= m). */
+  opk_index_t mark;    /**< Index of oldest saved step. */
   opk_inverse_hessian_rule_t rule;
 };
 
@@ -80,7 +81,7 @@ finalize_lbfgs_operator(opk_operator_t* self)
     OPK_DROP(op->y[k]);
   }
   OPK_DROP(op->tmp);
-  OPK_DROP(op->B0);
+  OPK_DROP(op->H0);
 }
 
 static int
@@ -94,7 +95,7 @@ apply_lbfgs_operator(opk_operator_t* self, opk_vector_t* dst,
   opk_index_t j, k;
 
   /* Initialize work vectors. */
-  if (op->B0 == NULL) {
+  if (op->H0 == NULL) {
     /* No preconditioner, no needs for a scratch vector. */
     tmp = dst;
   } else {
@@ -114,16 +115,16 @@ apply_lbfgs_operator(opk_operator_t* self, opk_vector_t* dst,
   for (k = newest; k >= oldest; --k) {
     j = slot(op, k);
     if (op->rho[j] > 0.0) {
-      op->alpha[j] = op->rho[j]*opk_vdot(tmp, op->s[j]);
-      opk_vaxpby(tmp, 1.0, tmp, -op->alpha[j], op->y[j]);
+      op->beta[j] = op->rho[j]*opk_vdot(tmp, op->s[j]);
+      opk_vaxpby(tmp, 1.0, tmp, -op->beta[j], op->y[j]);
     } else {
-      op->alpha[j] = 0.0;
+      op->beta[j] = 0.0;
     }
   }
 
   /* Apply approximation of inverse Hessian. */
-  if (op->B0 != NULL) {
-    if (opk_apply_direct(op->B0, tmp, dst) != OPK_SUCCESS) {
+  if (op->H0 != NULL) {
+    if (opk_apply_direct(op->H0, tmp, dst) != OPK_SUCCESS) {
       return OPK_FAILURE;
     }
   }
@@ -136,8 +137,8 @@ apply_lbfgs_operator(opk_operator_t* self, opk_vector_t* dst,
   for (k = oldest; k <= newest; ++k) {
     j = slot(op, k);
     if (op->rho[j] > 0.0) {
-      double beta = op->rho[j]*opk_vdot(dst, op->y[j]);
-      opk_vaxpby(dst, 1.0, dst, op->alpha[j] - beta, op->s[j]);
+      double phi = op->rho[j]*opk_vdot(dst, op->y[j]);
+      opk_vaxpby(dst, 1.0, dst, op->beta[j] - phi, op->s[j]);
     }
   }
   return OPK_SUCCESS;
@@ -155,7 +156,7 @@ opk_new_lbfgs_operator(opk_vspace_t* vspace, opk_index_t m,
                        opk_inverse_hessian_rule_t rule)
 {
   opk_lbfgs_operator_t* op;
-  size_t s_offset, y_offset, alpha_offset, rho_offset, size;
+  size_t s_offset, y_offset, beta_offset, rho_offset, size;
   opk_index_t k;
 
   /* Check arguments. */
@@ -176,9 +177,9 @@ opk_new_lbfgs_operator(opk_vspace_t* vspace, opk_index_t m,
                       sizeof(opk_vector_t*));
   y_offset = ROUND_UP(s_offset + m*sizeof(opk_vector_t*),
                       sizeof(opk_vector_t*));
-  alpha_offset = ROUND_UP(y_offset + m*sizeof(opk_vector_t*),
-                          sizeof(double));
-  rho_offset = ROUND_UP(alpha_offset + m*sizeof(double),
+  beta_offset = ROUND_UP(y_offset + m*sizeof(opk_vector_t*),
+                         sizeof(double));
+  rho_offset = ROUND_UP(beta_offset + m*sizeof(double),
                         sizeof(double));
   size = rho_offset + m*sizeof(double);
   op = (opk_lbfgs_operator_t*)opk_allocate_operator(&lbfgs_operations,
@@ -188,10 +189,12 @@ opk_new_lbfgs_operator(opk_vspace_t* vspace, opk_index_t m,
   }
   op->s = (opk_vector_t**)(((char*)op) + s_offset);
   op->y = (opk_vector_t**)(((char*)op) + y_offset);
-  op->alpha = (double*)(((char*)op) + alpha_offset);
+  op->beta = (double*)(((char*)op) + beta_offset);
   op->rho = (double*)(((char*)op) + rho_offset);
+  op->epsilon = 1e-6;
+  op->gamma = 1.0;
   op->m = m;
-  opk_reset_lbfgs_operator(op);
+  op->rule = rule;
   for (k = 0; k < m; ++k) {
     op->s[k] = opk_vcreate(vspace);
     if (op->s[k] == NULL) {
@@ -202,7 +205,7 @@ opk_new_lbfgs_operator(opk_vspace_t* vspace, opk_index_t m,
       goto error;
     }
   }
-  op->rule = rule;
+  opk_reset_lbfgs_operator(op);
   return op;
  error:
   OPK_DROP(op);
@@ -231,11 +234,11 @@ opk_get_lbfgs_y(opk_lbfgs_operator_t* op, opk_index_t k)
 
 void
 opk_set_lbfgs_operator_preconditioner(opk_lbfgs_operator_t* op,
-                                      opk_operator_t* B0)
+                                      opk_operator_t* H0)
 {
-  if (op->B0 != B0) {
-    opk_operator_t* old = op->B0;
-    op->B0 = OPK_HOLD_OPERATOR(B0);
+  if (op->H0 != H0) {
+    opk_operator_t* old = op->H0;
+    op->H0 = OPK_HOLD_OPERATOR(H0);
     OPK_DROP(old);
   }
 }
@@ -247,40 +250,54 @@ opk_update_lbfgs_operator(opk_lbfgs_operator_t* op,
                           const opk_vector_t* g1,
                           const opk_vector_t* g0)
 {
-  double sty;
+  double sty, ynorm, snorm;
 
   /* Store the variables and gradient differences in the slot just after the
      mark (which is the index of the last saved pair or -1 if none). */
   opk_index_t j = slot(op, 1);
   opk_vaxpby(op->s[j], 1.0, x1, -1.0, x0);
+  snorm = opk_vnorm2(op->s[j]);
   opk_vaxpby(op->y[j], 1.0, g1, -1.0, g0);
+  ynorm = opk_vnorm2(op->y[j]);
 
   /* Compute RHO[j] and GAMMA.  If the update formula for GAMMA does not yield
      a strictly positive value, the strategy is to keep the previous value. */
   sty = opk_vdot(op->s[j], op->y[j]);
-  if (sty > 0.0) {
-    op->rho[j] = 1.0/sty;
-    if (op->rule == OPK_BARZILAI_BORWEIN_1) {
-      double yty = opk_vdot(op->y[j], op->y[j]);
-      if (yty > 0.0) {
-        op->gamma = sty/yty;
-      }
-    } else if (op->rule == OPK_BARZILAI_BORWEIN_2) {
-      double sts = opk_vdot(op->s[j], op->s[j]);
-      if (sts > 0.0) {
-        op->gamma = sts/sty;
-      }
-    }
-  } else {
+  if (sty <= op->epsilon*snorm*ynorm) {
     /* This pair will be skipped. */
     op->rho[j] = 0.0;
+  } else {
+    /* Compute RHO[j] and GAMMA. */
+    op->rho[j] = 1.0/sty;
+    if (op->rule == OPK_BARZILAI_BORWEIN_1) {
+      op->gamma = (sty/ynorm)/ynorm;
+    } else if (op->rule == OPK_BARZILAI_BORWEIN_2) {
+      op->gamma = (snorm/sty)*snorm;
+    }
+    /* Update the mark and the number of saved pairs. */
+    op->mark = j;
+    if (op->mp < op->m) {
+      ++op->mp;
+    }
   }
+}
 
-  /* Update the mark and the number of saved pairs. */
-  op->mark = j;
-  if (op->mp < op->m) {
-    ++op->mp;
+double
+opk_get_lbfgs_operator_update_threshold(opk_lbfgs_operator_t* op)
+{
+  return op->epsilon;
+}
+
+opk_status_t
+opk_set_lbfgs_operator_update_threshold(opk_lbfgs_operator_t* op,
+                                        double epsilon)
+{
+  if (epsilon < 0.0 || epsilon >= 1.0) {
+    errno = EINVAL;
+    return OPK_FAILURE;
   }
+  op->epsilon = epsilon;
+  return OPK_SUCCESS;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -291,8 +308,8 @@ opk_update_lbfgs_operator(opk_lbfgs_operator_t* op,
 struct _opk_vmlm {
   opk_object_t base; /**< Base type (must be the first member). */
   double alpha;      /**< Current step size. */
-  double epsilon;    /**< Threshold to accept descent direction. */
-  double tiny;       /**< Relative size for a small step. */
+  double delta;      /**< Threshold to accept descent direction. */
+  double epsilon;    /**< Relative size for a small step. */
   double grtol;      /**< Relative threshold for the norm or the gradient
                           (relative to GINIT the norm of the initial gradient)
                           for convergence. */
@@ -311,7 +328,7 @@ struct _opk_vmlm {
 
   opk_vspace_t* vspace;
   opk_lnsrch_t* lnsrch;
-  opk_lbfgs_operator_t* B;
+  opk_lbfgs_operator_t* H;
   opk_vector_t*  x0; /**< Variables at the start of the line search. */
   opk_vector_t*  g0; /**< Gradient at x0. */
   opk_vector_t*  p;  /**< Anti-search direction; a iterate is computed
@@ -344,7 +361,7 @@ finalize_vmlm(opk_object_t* obj)
   opk_vmlm_t* opt = (opk_vmlm_t*)obj;
   OPK_DROP(opt->vspace);
   OPK_DROP(opt->lnsrch);
-  OPK_DROP(opt->B);
+  OPK_DROP(opt->H);
   if (! opt->save_memory) {
     OPK_DROP(opt->x0);
     OPK_DROP(opt->g0);
@@ -388,7 +405,6 @@ opk_new_vmlm_optimizer_with_line_search(opk_vspace_t* vspace,
                                         double fatol,
                                         double fmin)
 {
-  size_t s_offset, y_offset, alpha_offset, size;
   opk_vmlm_t* opt;
 
   /* Check the input arguments for errors. */
@@ -411,25 +427,16 @@ opk_new_vmlm_optimizer_with_line_search(opk_vspace_t* vspace,
   }
 #endif
 
-  /* Allocate enough memory for the workspave and its arrays. */
-  s_offset = ROUND_UP(sizeof(opk_vmlm_t),
-                      sizeof(opk_vector_t*));
-  y_offset = ROUND_UP(s_offset + m*sizeof(opk_vector_t*),
-                      sizeof(opk_vector_t*));
-  alpha_offset = ROUND_UP(y_offset + m*sizeof(opk_vector_t*),
-                          sizeof(double));
-  size = alpha_offset + m*sizeof(double);
-  opt = (opk_vmlm_t*)opk_allocate_object(finalize_vmlm, size);
+  /* Allocate and instanciate the workspace (not the part which is done by
+     opk_vmlm_start). */
+  opt = (opk_vmlm_t*)opk_allocate_object(finalize_vmlm, sizeof(opk_vmlm_t));
   if (opt == NULL) {
     return NULL;
   }
-
-  /* Instanciate the workspace (not the part which is done by
-     opk_vmlm_start). */
   opt->vspace = OPK_HOLD_VSPACE(vspace);
   opt->lnsrch = OPK_HOLD_LNSRCH(lnsrch);
-  opt->B = opk_new_lbfgs_operator(vspace, m, OPK_BARZILAI_BORWEIN_2);
-  if (opt->B == NULL) {
+  opt->H = opk_new_lbfgs_operator(vspace, m, OPK_BARZILAI_BORWEIN_2);
+  if (opt->H == NULL) {
     goto error;
   }
   opt->save_memory = TRUE;
@@ -438,6 +445,10 @@ opk_new_vmlm_optimizer_with_line_search(opk_vspace_t* vspace,
   opt->fatol = fatol;
   opt->fmin = fmin;
 #endif
+  opt->stpmin = 1e-20;
+  opt->stpmax = 1e+20;
+  opt->delta = 0.01;
+  opt->epsilon = 1e-3;
 
   /* Allocate work vectors.  If saving memory, x0 and g0 will be weak references
      to one of the saved vectors in the LBFGS operator. */
@@ -489,7 +500,7 @@ opk_vmlm_start(opk_vmlm_t* opt)
 {
   opt->iterations = 0;
   opt->starting = TRUE;
-  opk_reset_lbfgs_operator(opt->B);
+  opk_reset_lbfgs_operator(opt->H);
   return optimizer_success(opt, OPK_TASK_COMPUTE_FG);
 }
 
@@ -568,7 +579,7 @@ opk_vmlm_iterate(opk_vmlm_t* opt, opk_vector_t* x1,
 
   if (opt->task == OPK_TASK_NEW_X && opt->evaluations > 1) {
     /* Update the LBFGS matrix. */
-    opk_update_lbfgs_operator(opt->B,
+    opk_update_lbfgs_operator(opt->H,
                               x1, opt->x0,
                               g1, opt->g0);
   }
@@ -578,24 +589,24 @@ opk_vmlm_iterate(opk_vmlm_t* opt, opk_vector_t* x1,
      if: cos(theta) = -(D/|D|)'.(G/|G|) >= EPSILON > 0 where G is the
      gradient and D the descent direction. */
   while (TRUE) {
-    opk_apply_direct((opk_operator_t*)opt->B, opt->p, g1);
+    opk_apply_direct((opk_operator_t*)opt->H, opt->p, g1);
     opt->pnorm = opk_vnorm2(opt->p);
     pg1 = opk_vdot(opt->p, g1);
-    if (pg1 >= opt->epsilon*opt->pnorm*opt->g1norm) {
+    if (pg1 >= opt->delta*opt->pnorm*opt->g1norm) {
       /* Accept P (respectively D = -P) as a sufficient ascent (respectively
          descent) direction and set the directional derivative. */
       opt->dg0 = -pg1;
       break;
     }
-    if (opt->B->mp < 1) {
+    if (opt->H->mp < 1) {
       /* Initial iteration or recursion has just been restarted.  This means
          that the initial inverse Hessian approximation is not positive
          definite. */
       return optimizer_failure(opt, OPK_BAD_PRECONDITIONER);
     }
-    /* Reset the LBFGS recursion and loop to use B0 to compute an initial
+    /* Reset the LBFGS recursion and loop to use H0 to compute an initial
        search direction. */
-    opk_reset_lbfgs_operator(opt->B);
+    opk_reset_lbfgs_operator(opt->H);
     ++opt->restarts;
   }
 
@@ -605,10 +616,10 @@ opk_vmlm_iterate(opk_vmlm_t* opt, opk_vector_t* x1,
   if (opt->save_memory) {
     /* Use the slot just after the mark to store X0 and G0.  Note that this
        is a weak reference: we do not "hold" the vectors. */
-    opt->x0 = opk_get_lbfgs_s(opt->B, 1);
-    opt->g0 = opk_get_lbfgs_y(opt->B, 1);
-    if (opt->B->mp > opt->B->m - 1) {
-      opt->B->mp = opt->B->m - 1;
+    opt->x0 = opk_get_lbfgs_s(opt->H, 1);
+    opt->g0 = opk_get_lbfgs_y(opt->H, 1);
+    if (opt->H->mp > opt->H->m - 1) {
+      opt->H->mp = opt->H->m - 1;
     }
   }
   opk_vcopy(opt->x0, x1);
@@ -618,12 +629,12 @@ opk_vmlm_iterate(opk_vmlm_t* opt, opk_vector_t* x1,
 
   /* Estimate the length of the first step, start the line search and take
      the first step along the search direction. */
-  if (opt->B->mp >= 1 || opt->B->rule == OPK_CUSTOM_APPROX) {
+  if (opt->H->mp >= 1 || opt->H->rule == OPK_CUSTOM_APPROX) {
     opt->alpha = 1.0;
-  } else if (0.0 < opt->tiny && opt->tiny < 1.0) {
+  } else if (0.0 < opt->epsilon && opt->epsilon < 1.0) {
     double x1norm = opk_vnorm2(x1);
     if (x1norm > 0.0) {
-      opt->alpha = (x1norm/opt->g1norm)*opt->tiny;
+      opt->alpha = (x1norm/opt->g1norm)*opt->epsilon;
     } else {
       opt->alpha = 1.0/opt->g1norm;
     }

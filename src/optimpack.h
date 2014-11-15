@@ -737,20 +737,6 @@ opk_error(const char* reason);
 /** @} */
 
 /*---------------------------------------------------------------------------*/
-/* LIMITED MEMORY VARIABLE METRIC METHODS */
-
-extern void
-opk_apply_lbfgs(opk_vspace_t* vspace,
-                int m,
-                const opk_vector_t* s[],
-                const opk_vector_t* y[],
-                const double rho[],
-                double gamma,
-                int mark,
-                opk_vector_t* v,
-                double alpha[]);
-
-/*---------------------------------------------------------------------------*/
 /* REVERSE COMMUNICATION */
 
 /**
@@ -968,6 +954,14 @@ opk_nlcg_get_beta(opk_nlcg_t* ws);
  * @defgroup LBGFS      Limited memory BFGS operator
  * @ingroup VariableMetric
  * @{
+ *
+ * Implement limited memory quasi-Newton approximation of the inverse Hessian.
+ *
+ * The approximation of the inverse of Hessian is based on BFGS (Broyden,
+ * Fletcher, Goldfarb & Shanno) updates using the 2-loop recursive algorithm of
+ * Strang (described in Nocedal, 1980) combined with a preconditioner (initial
+ * approximation of the inverse Hessian) or automatic scalings (along the ideas
+ * of Gilbert & Lemaréchal (1989); and Shanno).
  */
 
 /** Opaque type to store a limited memory BFGS operator.  This type inherits
@@ -1027,6 +1021,13 @@ extern void
 opk_set_lbfgs_operator_preconditioner(opk_lbfgs_operator_t* op,
                                       opk_operator_t* B0);
 
+extern double
+opk_get_lbfgs_operator_update_threshold(opk_lbfgs_operator_t* op);
+
+extern opk_status_t
+opk_set_lbfgs_operator_update_threshold(opk_lbfgs_operator_t* op,
+                                        double epsilon);
+
 /**
  * Update LBFGS operator with a new pair of variables and gradient
  * differences.
@@ -1050,7 +1051,7 @@ opk_set_lbfgs_operator_preconditioner(opk_lbfgs_operator_t* op,
 /** @} */
 
 /*---------------------------------------------------------------------------*/
-/* VARIABLE METRIC OPTIMIZER */
+/* VARIABLE METRIC OPTIMIZATION METHOD */
 
 /**
  * @addtogroup VariableMetric
