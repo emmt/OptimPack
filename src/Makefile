@@ -23,6 +23,12 @@ OBJS = algebra.o fltvector.o dblvector.o error.o lnsrch.o nlcg.o fmin.o vmlm.o
 STATIC_LIBRARY = $(LIBNAME).a
 SHARED_LIBRARY = $(LIBNAME).so.$(VERSION)
 
+UNAME := $(shell uname)
+ifeq ($(UNAME), Darwin) 
+WL_SONAME := install_name
+else
+WL_SONAME := soname
+endif
 
 RM = rm -f
 
@@ -35,7 +41,7 @@ clean:
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $<
 
 $(SHARED_LIBRARY): $(OBJS)
-	$(CC) -shared -Wl,-soname,$(LIBNAME).so.$(VERSION_MAJOR) -o $@ $^ -lm
+	$(CC) -shared -Wl,-$(WL_SONAME),$(LIBNAME).so.$(VERSION_MAJOR) -o $@ $^ -lm
 
 $(STATIC_LIBRARY): $(OBJS)
 	$(AR) rv $@ $^
