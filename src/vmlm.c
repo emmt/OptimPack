@@ -124,7 +124,7 @@ apply_lbfgs_operator(opk_operator_t* self, opk_vector_t* dst,
 
   /* Apply approximation of inverse Hessian. */
   if (op->H0 != NULL) {
-    if (opk_apply_direct(op->H0, tmp, dst) != OPK_SUCCESS) {
+    if (opk_apply_direct(op->H0, dst, tmp) != OPK_SUCCESS) {
       return OPK_FAILURE;
     }
   }
@@ -455,7 +455,7 @@ opk_new_vmlm_optimizer_with_line_search(opk_vspace_t* vspace,
   if (! opt->save_memory) {
     opt->x0 = opk_vcreate(opt->vspace);
     if (opt->x0 == NULL) {
-       goto error;
+      goto error;
     }
     opt->g0 = opk_vcreate(vspace);
     if (opt->g0 == NULL) {
@@ -469,7 +469,7 @@ opk_new_vmlm_optimizer_with_line_search(opk_vspace_t* vspace,
   opk_vmlm_start(opt);
   return opt;
 
-error:
+ error:
   OPK_DROP(opt);
   return NULL;
 }
@@ -542,6 +542,7 @@ opk_vmlm_iterate(opk_vmlm_t* opt, opk_vector_t* x1,
   int status;
 
   if (opt->task == OPK_TASK_COMPUTE_FG) {
+
     /* Caller has computed the function value and the gradient at the current
        point. */
     ++opt->evaluations;
@@ -570,84 +571,88 @@ opk_vmlm_iterate(opk_vmlm_t* opt, opk_vector_t* x1,
     return optimizer_success(opt, ((opt->g1norm <= gtest)
                                    ? OPK_TASK_FINAL_X
                                    : OPK_TASK_NEW_X));
-  }
 
-  if (opt->task != OPK_TASK_NEW_X && opt->task != OPK_TASK_FINAL_X) {
-    /* There must be something wrong. */
-    return opt->task;
-  }
+  } else if (opt->task == OPK_TASK_NEW_X || opt->task != OPK_TASK_FINAL_X) {
 
-  if (opt->task == OPK_TASK_NEW_X && opt->evaluations > 1) {
-    /* Update the LBFGS matrix. */
-    opk_update_lbfgs_operator(opt->H,
-                              x1, opt->x0,
-                              g1, opt->g0);
-  }
-
-  /* Compute a search direction.  We take care of checking whether D = -P is
-     a sufficient descent direction.  As shown by Zoutendijk, this is true
-     if: cos(theta) = -(D/|D|)'.(G/|G|) >= EPSILON > 0 where G is the
-     gradient and D the descent direction. */
-  while (TRUE) {
-    opk_apply_direct((opk_operator_t*)opt->H, opt->p, g1);
-    opt->pnorm = opk_vnorm2(opt->p);
-    pg1 = opk_vdot(opt->p, g1);
-    if (pg1 >= opt->delta*opt->pnorm*opt->g1norm) {
-      /* Accept P (respectively D = -P) as a sufficient ascent (respectively
-         descent) direction and set the directional derivative. */
-      opt->dg0 = -pg1;
-      break;
+    if (opt->task == OPK_TASK_NEW_X && opt->evaluations > 1) {
+      /* Update the LBFGS matrix. */
+      opk_update_lbfgs_operator(opt->H,
+                                x1, opt->x0,
+                                g1, opt->g0);
     }
-    if (opt->H->mp < 1) {
-      /* Initial iteration or recursion has just been restarted.  This means
-         that the initial inverse Hessian approximation is not positive
-         definite. */
-      return optimizer_failure(opt, OPK_BAD_PRECONDITIONER);
-    }
-    /* Reset the LBFGS recursion and loop to use H0 to compute an initial
-       search direction. */
-    opk_reset_lbfgs_operator(opt->H);
-    ++opt->restarts;
-  }
 
-  /* Save current variables X0, gradient G0 and function value F0.  The
-     directional derivative DG0 = <D,G0> has already been set in the above
-     loop.  */
-  if (opt->save_memory) {
-    /* Use the slot just after the mark to store X0 and G0.  Note that this
-       is a weak reference: we do not "hold" the vectors. */
-    opt->x0 = opk_get_lbfgs_s(opt->H, 1);
-    opt->g0 = opk_get_lbfgs_y(opt->H, 1);
-    if (opt->H->mp > opt->H->m - 1) {
-      opt->H->mp = opt->H->m - 1;
+    /* Compute a search direction.  We take care of checking whether D = -P is
+       a sufficient descent direction.  As shown by Zoutendijk, this is true
+       if: cos(theta) = -(D/|D|)'.(G/|G|) >= EPSILON > 0 where G is the
+       gradient and D the descent direction. */
+    while (TRUE) {
+      opk_apply_direct((opk_operator_t*)opt->H, opt->p, g1);
+      opt->pnorm = opk_vnorm2(opt->p);
+      pg1 = opk_vdot(opt->p, g1);
+      if (pg1 >= opt->delta*opt->pnorm*opt->g1norm) {
+        /* Accept P (respectively D = -P) as a sufficient ascent (respectively
+           descent) direction and set the directional derivative. */
+        opt->dg0 = -pg1;
+        break;
+      }
+      if (opt->H->mp < 1) {
+        /* Initial iteration or recursion has just been restarted.  This means
+           that the initial inverse Hessian approximation is not positive
+           definite. */
+        return optimizer_failure(opt, OPK_BAD_PRECONDITIONER);
+      }
+      /* Reset the LBFGS recursion and loop to use H0 to compute an initial
+         search direction. */
+      opk_reset_lbfgs_operator(opt->H);
+      ++opt->restarts;
     }
-  }
-  opk_vcopy(opt->x0, x1);
-  opk_vcopy(opt->g0, g1);
-  opt->g0norm = opt->g1norm;
-  opt->f0 = f1;
 
-  /* Estimate the length of the first step, start the line search and take
-     the first step along the search direction. */
-  if (opt->H->mp >= 1 || opt->H->rule == OPK_CUSTOM_APPROX) {
-    opt->alpha = 1.0;
-  } else if (0.0 < opt->epsilon && opt->epsilon < 1.0) {
-    double x1norm = opk_vnorm2(x1);
-    if (x1norm > 0.0) {
-      opt->alpha = (x1norm/opt->g1norm)*opt->epsilon;
+    /* Save current variables X0, gradient G0 and function value F0.  The
+       directional derivative DG0 = <D,G0> has already been set in the above
+       loop.  */
+    if (opt->save_memory) {
+      /* Use the slot just after the mark to store X0 and G0.  Note that this
+         is a weak reference: we do not "hold" the vectors. */
+      opt->x0 = opk_get_lbfgs_s(opt->H, 1);
+      opt->g0 = opk_get_lbfgs_y(opt->H, 1);
+      if (opt->H->mp > opt->H->m - 1) {
+        opt->H->mp = opt->H->m - 1;
+      }
+    }
+    opk_vcopy(opt->x0, x1);
+    opk_vcopy(opt->g0, g1);
+    opt->g0norm = opt->g1norm;
+    opt->f0 = f1;
+
+    /* Estimate the length of the first step, start the line search and take
+       the first step along the search direction. */
+    if (opt->H->mp >= 1 || opt->H->rule == OPK_CUSTOM_APPROX) {
+      opt->alpha = 1.0;
+    } else if (0.0 < opt->epsilon && opt->epsilon < 1.0) {
+      double x1norm = opk_vnorm2(x1);
+      if (x1norm > 0.0) {
+        opt->alpha = (x1norm/opt->g1norm)*opt->epsilon;
+      } else {
+        opt->alpha = 1.0/opt->g1norm;
+      }
     } else {
       opt->alpha = 1.0/opt->g1norm;
     }
+    status = opk_lnsrch_start(opt->lnsrch, opt->f0, opt->dg0, opt->alpha,
+                              opt->stpmin*opt->alpha,
+                              opt->stpmax*opt->alpha);
+    if (status != OPK_LNSRCH_SEARCH) {
+      return line_search_failure(opt);
+    }
+    return next_step(opt, x1);
+
   } else {
-    opt->alpha = 1.0/opt->g1norm;
+
+    /* There must be something wrong. */
+    return opt->task;
+
   }
-  status = opk_lnsrch_start(opt->lnsrch, opt->f0, opt->dg0, opt->alpha,
-                            opt->stpmin*opt->alpha,
-                            opt->stpmax*opt->alpha);
-  if (status != OPK_LNSRCH_SEARCH) {
-    return line_search_failure(opt);
-  }
-  return next_step(opt, x1);
+
 }
 
 opk_task_t
