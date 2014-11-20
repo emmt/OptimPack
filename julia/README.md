@@ -1,8 +1,9 @@
+# OptimPack.jl
+
 OptimPack.jl is Julia interface for OptimPack library.
 
 
-Unconstrained Minimization of a Nonlinear Smooth Function
-=========================================================
+## Unconstrained Minimization of a Nonlinear Smooth Function
 
 There are two methods in OptimPack which can be used to minimize a
 nonlinear smooth multivariate function without constraints: non-linear
@@ -24,7 +25,7 @@ gradient.  The user defined function shall return the function value.
 
 The solution `x` can be computed by one of the implemented non-linear
 conjugate gradient methods with:
-```
+```julia
 x = OptimPack.nlcg(fg!, x0, method)
 ```
 where `x0` gives the initial value of the variables (as well as the data
@@ -35,29 +36,48 @@ implemented.
 
 Alternatively, the solution `x` can be computed by a limited memory version
 of the variable metric method (with BFGS updates) with:
-```
+```julia
 x = OptimPack.vmlm(fg!, x0, m)
 ```
 where the optional argument `m` is the number of previous steps to memorize
-(by deafult `m=3`) while other arguments have the same meaning as for
+(by default `m=3`) while other arguments have the same meaning as for
 `OptimPack.nlcg`.
 
 
-Operations on Vectors
-=====================
+## Low-level Interface
 
-To create a vector space for vectors of length `len` and element type `T`:
-```
-s = OptimPackShapedVectorSpace(T, dims)
+### Operations on Vectors
+
+To create a vector space for vectors of dimensions `dims` and element type `T`:
+```julia
+space = OptimPack.OptimPackShapedVectorSpace(T, dims)
 ```
 where `T` is `Float32` or `Float64` (or any type alias of these,
-e.g. `Cfloat` or `Cdouble`) and `dims` gives the list of dimensions.
+e.g. `Cfloat` or `Cdouble`) and `dims` is a tuple of the dimensions.
 
-It is also possible to create a vector space to wrap specific Julia arrays.
+It is also possible to *wrap* a vector around a specific Julia arrays:
+```julia
+vect = OptimPack.wrap(space, arr)
+```
+
+where `space` is an OptimPack *shaped* vector space and `arr` is a Julia
+array.  The element type and dimension list of the array must match those
+of the vector space.  A method is available to change the contents of such
+a vector:
+```julia
+OptimPack.wrap!(vect, arr2)
+```
+where `arr2` is another Julia array (the same constraints on the element
+type and dimensions apply).
+
+Note that `arr` must be a **dense array** (of type `DenseArray`) as the
+elements of *shaped* vectors are supposed to be stored contiguously in
+memory.  OptimPack offers the possibility to create custom vector spaces
+and this will be exploited in a near futur to allow for other flavors of
+Julia arrays.
 
 
-Error Management
-================
+### Error Management
 
 Run-time errors throw Julia exception.
 
