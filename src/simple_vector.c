@@ -343,7 +343,7 @@ NEW_VECTOR_SPACE(opk_index_t size)
 
 opk_vector_t*
 WRAP_VECTOR(opk_vspace_t* vspace, REAL data[],
-            void* client_data, void (*free_client_data)(void*))
+            void (*free_client_data)(void*), void* client_data)
 {
   opk_vector_t* v;
   if (vspace->ops != &operations) {
@@ -408,8 +408,8 @@ GET_FREE_CLIENT_DATA(opk_vector_t* v)
 
 int
 REWRAP_VECTOR(opk_vector_t* v, REAL new_data[],
-              void* new_client_data,
-              void (*new_free_client_data)(void*))
+              void (*new_free_client_data)(void*),
+              void* new_client_data)
 {
   simple_vector_t* sv;
   void *old_client_data;

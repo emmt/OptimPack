@@ -59,7 +59,7 @@
 /*---------------------------------------------------------------------------*/
 
 /*
- * Defines: Miscellaneous macros.
+ * Miscellaneous macros.
  *
  *   OPK_BEGIN_C_DECLS - Start declarations of C elements (functions, variables,
  *                       types, structures, etc.).
@@ -78,9 +78,9 @@
 #endif /* __cplusplus */
 
 
-/*
- * `OPK_JOIN(a,b)` joins its two arguments, possibly after performing macro
- * expansion of `a` and `b`.
+/**
+ * Macro `OPK_JOIN(a,b)` joins its two arguments, possibly after performing
+ * macro expansion of `a` and `b`.
  */
 #define OPK_JOIN(a,b)                _OPK_JOIN2(a,b)
 
@@ -93,8 +93,8 @@
 #define OPK_JOIN8(a,b,c,d,e,f,g,h)   _OPK_JOIN8(a,b,c,d,e,f,g,h)
 #define OPK_JOIN9(a,b,c,d,e,f,g,h,i) _OPK_JOIN8(a,b,c,d,e,f,g,h,i)
 
-/*
- * `OPK_STRINGIFY(x)` wraps its argument in "" (double quotation marks),
+/**
+ * Macro `OPK_STRINGIFY(x)` wraps its argument in "" (double quotation marks),
  * possibly after performing macro expansion of the argument.
  */
 #define OPK_STRINGIFY(x)  _OPK_STRINGIFY(x)
@@ -124,73 +124,73 @@
 
 /*---------------------------------------------------------------------------*/
 
-/*
+/**
  * Macro `OPK_ABS(a)` gives the absolute value of `a`.
  */
 #define OPK_ABS(a)   ((a) >= 0 ? (a) : -(a))
 
-/*
+/**
  * Macro `OPK_MIN(a,b)` yields the minimum value between `a` and `b`.
  */
 #define OPK_MIN(a,b) ((a) <= (b) ? (a) : (b))
 
-/*
+/**
  * Macro `OPK_MAX(a,b)` yields the maximum value between `a` and `b`.
  */
 #define OPK_MAX(a,b)  ((a) >= (b) ? (a) : (b))
 
-/*
+/**
  * Macro `OPK_HOW_MANY(a,b)` yields the minimal number of chunks with `b`
  * elements needed to store `a` elements.  Both `a` and `b` must be integers.
  */
 #define OPK_HOW_MANY(a,b)  ((((b) - 1) + (a))/(b))
 
-/*
+/**
  * Macro `OPK_ROUND_UP(a,b)` yields the integer `a` rounded up to a multiple of
  * integer `b`.
  */
 #define OPK_ROUND_UP(a,b)  (OPK_HOW_MANY(a,b)*(b))
 
-/*
+/**
  * Macro `OPK_LOOP(var,cnt)` yields a simple loop over variable `var` from 0 to
  * `cnt` - 1.
  */
 #define OPK_LOOP(var, cnt)  for (var = 0; var < cnt; ++var)
 
 
-/* Yields |a|*sign(b). */
+/** Yields |a|*sign(b). */
 #define opk_sign(a, b) ({ typeof(a) _1 = (a); typeof(b) _2 = (b); \
                           ((_1 < 0) == ((b) < 0)) ? _1 : -_1;})
 
-/* Yield absolute value. */
+/** Yield absolute value. */
 #define opk_abs(a)    ({ typeof(a) _1 = (a); _1 >= 0 ? _1 : -_1; })
 
-/* Yield minimum of two values. */
+/** Yield minimum of two values. */
 #define opk_min(a, b) ({ typeof(a) _1 = (a); typeof(b) _2 = (b); \
                          _1 <= _2 ? _1 : _2;})
 
-/* Yield maximum of two values. */
+/** Yield maximum of two values. */
 #define opk_max(a, b) ({ typeof(a) _1 = (a); typeof(b) _2 = (b); \
                          _1 >= _2 ? _1 : _2;})
 /*---------------------------------------------------------------------------*/
 
-/*
+/**
  * Macro `OPK_NEW(type)` allocates an object of structure/class `type`.
  */
 #define OPK_NEW(type)             ((type *)malloc(sizeof(type)))
 
-/*
+/**
  * Macro `OPK_ALLOC(type,number)` allocates an array of `number` items of
  * structure/class `type`.
  */
 #define OPK_ALLOC(type, number)   ((type *)malloc((number)*sizeof(type)))
 
-/*
+/**
  * Macro `OPK_FREE(ptr)` frees pointer `ptr` if non-null.
  */
 #define OPK_FREE(ptr)   if (! (ptr)) ; else free(ptr)
 
-/*
+/**
  * Macro `OPK_OFFSET(type,member)` yields offset (in bytes) of `member` in
  * structure/class `type`.
  */
@@ -200,13 +200,11 @@
 
 OPK_BEGIN_C_DECLS
 
-/*
- * Enum:  opk_status_t
+/**
+ *  Values returned by OptimPack routines.
  *
  *  OPK_FAILURE   - Status value returned upon success.
  *  OPK_SUCCESS   - Status value returned upon failure.
- *
- *  Values returned by SPL routines.
  */
 typedef enum {
   OPK_FAILURE = -1,
@@ -216,17 +214,13 @@ typedef enum {
 /*---------------------------------------------------------------------------*/
 /* DATA TYPES */
 
-/*
- * Type: opk_index_t
- *
- *   Integer data type used for array indices in SPL.
+/**
+ * Integer data type used for array indices in OptimPack.
  */
 typedef ptrdiff_t opk_index_t;
 
-/*
- * Type: opk_bool_t
- *
- *   Data type for boolean (logical) values.
+/**
+ * Data type for boolean (logical) values.
  */
 typedef int opk_bool_t;
 
@@ -416,17 +410,17 @@ opk_new_simple_double_vector_space(opk_index_t size);
  * @param vspace - The vector space which will own the vector.
  * @param data   - The array of values, must have at least `vspace->size`
  *                 elements.
- * @param client_data - Anything required by the `free_client_data()` method.
  * @param free_client_data - Function called to release ressources.  If not
  *                 `NULL`, it is called with argument `client_data` when the
  *                 vector is destroyed.
+ * @param client_data - Anything required by the `free_client_data()` method.
  *
  * @return A new vector of `vspace`, `NULL` in case of error.
  */
 extern opk_vector_t*
 opk_wrap_simple_double_vector(opk_vspace_t* vspace, double data[],
-                              void* client_data,
-                              void (*free_client_data)(void*));
+                              void (*free_client_data)(void*),
+                              void* client_data);
 
 extern double*
 opk_get_simple_double_vector_data(opk_vector_t* v);
@@ -455,8 +449,8 @@ opk_get_simple_double_vector_free_client_data(opk_vector_t* v);
  *
  * @param vect - The vector to re-wrap.
  * @param new_data - The new array of values.
- * @param new_client_data - The new client data.
  * @param new_free_client_data - The new method to free client data.
+ * @param new_client_data - The new client data.
  *
  * @return `OPK_SUCCESS` or `OPK_FAILURE`.  In case of failure, global variable
  *         `errno` is set to: `EFAULT` if `vect` or `new_data` are `NULL`,
@@ -464,8 +458,8 @@ opk_get_simple_double_vector_free_client_data(opk_vector_t* v);
  */
 extern int
 opk_rewrap_simple_double_vector(opk_vector_t* vect, double new_data[],
-                                void* new_client_data,
-                                void (*new_free_client_data)(void*));
+                                void (*new_free_client_data)(void*),
+                                void* new_client_data);
 
 /**
  * Create a vector space for array of float's in conventional memory.
@@ -482,8 +476,8 @@ opk_new_simple_float_vector_space(opk_index_t size);
  */
 extern opk_vector_t*
 opk_wrap_simple_float_vector(opk_vspace_t* vspace, float data[],
-                             void* client_data,
-                             void (*free_client_data)(void*));
+                             void (*free_client_data)(void*),
+                             void* client_data);
 
 
 extern float*
@@ -497,8 +491,8 @@ opk_get_simple_float_vector_free_client_data(opk_vector_t* v);
 
 extern int
 opk_rewrap_simple_float_vector(opk_vector_t* v, float new_data[],
-                               void* new_client_data,
-                               void (*new_free_client_data)(void*));
+                               void (*new_free_client_data)(void*),
+                               void* new_client_data);
 
 /**
  * Create a vector instance.
@@ -740,7 +734,7 @@ opk_error(const char* reason);
 /* REVERSE COMMUNICATION */
 
 /**
- * @brief Code returned by the reverse communication verison of optimzation
+ * @brief Code returned by the reverse communication version of optimzation
  * algorithms.
  */
 typedef enum {
@@ -876,52 +870,52 @@ extern opk_nlcg_t*
 opk_nlcg_new_with_line_search(opk_vspace_t* vspace, unsigned int method,
                               opk_lnsrch_t* lnsrch);
 extern opk_task_t
-opk_nlcg_start(opk_nlcg_t* ws);
+opk_nlcg_start(opk_nlcg_t* opt);
 
 extern opk_task_t
-opk_nlcg_iterate(opk_nlcg_t* ws, opk_vector_t* x1,
+opk_nlcg_iterate(opk_nlcg_t* opt, opk_vector_t* x1,
                  double f1, opk_vector_t* g1);
 
 extern int
-opk_nlcg_get_ftol(opk_nlcg_t* ws, double* frtol,
+opk_nlcg_get_ftol(opk_nlcg_t* opt, double* frtol,
                   double* fatol);
 
 extern int
-opk_nlcg_get_gtol(opk_nlcg_t* ws, double* grtol,
+opk_nlcg_get_gtol(opk_nlcg_t* opt, double* grtol,
                   double* gatol);
 
 extern int
-opk_nlcg_get_fmin(opk_nlcg_t* ws, double* fmin);
+opk_nlcg_get_fmin(opk_nlcg_t* opt, double* fmin);
 
 extern int
-opk_nlcg_set_fmin(opk_nlcg_t* ws, double fmin);
+opk_nlcg_set_fmin(opk_nlcg_t* opt, double fmin);
 
 extern int
-opk_nlcg_unset_fmin(opk_nlcg_t* ws);
+opk_nlcg_unset_fmin(opk_nlcg_t* opt);
 
 extern int
-opk_nlcg_get_iterations(opk_nlcg_t* ws);
+opk_nlcg_get_iterations(opk_nlcg_t* opt);
 
 extern int
-opk_nlcg_get_restarts(opk_nlcg_t* ws);
+opk_nlcg_get_restarts(opk_nlcg_t* opt);
 
 extern int
-opk_nlcg_get_evaluations(opk_nlcg_t* ws);
+opk_nlcg_get_evaluations(opk_nlcg_t* opt);
 
 extern unsigned int
-opk_nlcg_get_method(opk_nlcg_t* ws);
+opk_nlcg_get_method(opk_nlcg_t* opt);
 
 extern opk_bool_t
-opk_nlcg_get_starting(opk_nlcg_t* ws);
+opk_nlcg_get_starting(opk_nlcg_t* opt);
 
 extern opk_task_t
-opk_nlcg_get_task(opk_nlcg_t* ws);
+opk_nlcg_get_task(opk_nlcg_t* opt);
 
 extern double
-opk_nlcg_get_alpha(opk_nlcg_t* ws);
+opk_nlcg_get_alpha(opk_nlcg_t* opt);
 
 extern double
-opk_nlcg_get_beta(opk_nlcg_t* ws);
+opk_nlcg_get_beta(opk_nlcg_t* opt);
 
 
 #define OPK_NLCG_FLETCHER_REEVES        1
