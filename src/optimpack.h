@@ -587,6 +587,22 @@ extern double
 opk_vdot(const opk_vector_t* x, const opk_vector_t* y);
 
 /**
+ * Compute the inner product of three vectors.
+ *
+ * This functions computes the sum of the componentwise product of the elements
+ * of three vectors.  All three vectors must belong to the same vector space.
+ *
+ * @param w - A vector.
+ * @param x - Another vector.
+ * @param y - Yet another vector.
+ *
+ * @return The sum of the componentwise product of the elements of three
+ *         vectors.
+ */
+extern double
+opk_vdot3(const opk_vector_t* w, const opk_vector_t* x, const opk_vector_t* y);
+
+/**
  * Compute the L2 norm of a vector.
  *
  * This functions computes the L2 norm, also known as the Euclidean norm, of a
@@ -625,6 +641,20 @@ opk_vnorm1(const opk_vector_t* v);
  */
 extern double
 opk_vnorminf(const opk_vector_t* v);
+
+/**
+ * Compute the elementwise product of two vectors.
+ *
+ * All vectors must belong to the same vector space.
+ *
+ * @param dst   - The destination vector.
+ * @param x     - A vector.
+ * @param y     - Another vector.
+ */
+extern void
+opk_vproduct(opk_vector_t* dst,
+             const opk_vector_t* x,
+             const opk_vector_t* y);
 
 /**
  * Compute the linear combination of two vectors.

@@ -173,6 +173,23 @@ dot(opk_vspace_t* vspace,
   return (double)result;
 }
 
+static double
+dot3(opk_vspace_t* vspace,
+     const opk_vector_t* vw,
+     const opk_vector_t* vx,
+     const opk_vector_t* vy)
+{
+  REAL result = ZERO;
+  const REAL* w = DATA(vw);
+  const REAL* x = DATA(vx);
+  const REAL* y = DATA(vy);
+  opk_index_t j, n = vspace->size;
+  for (j = 0; j < n; ++j) {
+    result += w[j]*x[j]*y[j];
+  }
+  return (double)result;
+}
+
 static void
 copy(opk_vspace_t* vspace,
      opk_vector_t* vdst, const opk_vector_t* vsrc)
@@ -213,6 +230,19 @@ scale(opk_vspace_t* vspace, opk_vector_t* vdst,
 #endif
   for (j = 0; j < n; ++j) {
     dst[j] = ALPHA*src[j];
+  }
+}
+
+static void
+product(opk_vspace_t* vspace, opk_vector_t* vdst,
+        const opk_vector_t* vw, const opk_vector_t* vx)
+{
+  REAL* dst = DATA(vdst);
+  const REAL* w = DATA(vw);
+  const REAL* x = DATA(vx);
+  opk_index_t j, n = vspace->size;
+  for (j = 0; j < n; ++j) {
+    dst[j] = w[j]*x[j];
   }
 }
 
@@ -328,9 +358,11 @@ static opk_vspace_operations_t operations = {
   norm2,
   norminf,
   dot,
+  dot3,
   copy,
   swap,
   scale,
+  product,
   axpby,
   axpbypcz
 };

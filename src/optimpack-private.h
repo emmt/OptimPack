@@ -212,6 +212,14 @@ struct _opk_vspace_operations {
                 const opk_vector_t* x,
                 const opk_vector_t* y);
 
+  /* Compute the inner product between three elements of this vector space
+     defined as sum_i W[i]*X[i]*Y[i].  When this method is called, it is
+     guaranteed that W, X and Y belong to VSPACE. */
+  double (*dot3)(opk_vspace_t* vspace,
+                 const opk_vector_t* w,
+                 const opk_vector_t* x,
+                 const opk_vector_t* y);
+
   /* Copy vector SRC to vector DST.  When this method is called, it is
      guaranteed that DST and SRC are different and both belong to VSPACE. */
   void (*copy)(opk_vspace_t* vspace,
@@ -228,6 +236,12 @@ struct _opk_vspace_operations {
      DST and SRC belong to VSPACE and that ALPHA is neither 0 nor 1. */
   void (*scale)(opk_vspace_t* vspace,opk_vector_t* dst,
                 double alpha, const opk_vector_t* src);
+
+  /* Compute the elementwise product of two vectors: DST[i] = X[i]*Y[i] for
+     all i.  When this method is called, it is guaranteed that DST, X and Y
+     belong to VSPACE. */
+  void (*product)(opk_vspace_t* vspace, opk_vector_t* dst,
+                  const opk_vector_t* x, const opk_vector_t* y);
 
   /* Compute the linear combination of two elements of this vector space
      (DST = ALPHA*X + BETA*Y).   When this method is called, it is

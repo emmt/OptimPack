@@ -233,6 +233,17 @@ opk_vdot(const opk_vector_t* x, const opk_vector_t* y)
   }
 }
 
+double
+opk_vdot3(const opk_vector_t* w, const opk_vector_t* x, const opk_vector_t* y)
+{
+  opk_vspace_t* vspace = w->owner;
+  if (x->owner != vspace || y->owner != vspace) {
+    BAD_VECTORS("vdot3");
+    return 0.0;
+  } else {
+    return vspace->ops->dot3(vspace, x, x, y);
+  }
+}
 /* Compute L2 norm. */
 double
 opk_vnorm2(const opk_vector_t* x)
@@ -255,6 +266,19 @@ opk_vnorminf(const opk_vector_t* x)
 {
   opk_vspace_t* vspace = x->owner;
   return vspace->ops->norminf(vspace, x);
+}
+
+/* Compute the elementwise product of two vectors. */
+void
+opk_vproduct(opk_vector_t* dst,
+             const opk_vector_t* x, const opk_vector_t* y)
+{
+  opk_vspace_t* vspace = dst->owner;
+  if (x->owner != vspace || y->owner != vspace) {
+    BAD_VECTORS("vproduct");
+  } else {
+    vspace->ops->product(vspace, dst, x, y);
+  }
 }
 
 /* Compute linear combination of two vectors. */
