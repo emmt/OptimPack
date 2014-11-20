@@ -6,7 +6,7 @@ PATCH_LEVEL = 0
 VERSION = $(VERSION_MAJOR).$(VERSION_MINOR).$(PATCH_LEVEL)
 CC = gcc
 
-CFLAGS_SHARED = -fpic
+CFLAGS_SHARED = -fPIC
 CFLAGS_OPTIM = -O2 -DNDEBUG
 CFLAGS_DEBUG = -O2 -g
 
@@ -24,7 +24,7 @@ STATIC_LIBRARY = $(LIBNAME).a
 SHARED_LIBRARY = $(LIBNAME).so.$(VERSION)
 
 UNAME := $(shell uname)
-ifeq ($(UNAME), Darwin) 
+ifeq ($(UNAME), Darwin)
 WL_SONAME := install_name
 else
 WL_SONAME := soname
