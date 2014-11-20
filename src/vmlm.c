@@ -428,7 +428,7 @@ opk_new_vmlm_optimizer_with_line_search(opk_vspace_t* vspace,
 #endif
 
   /* Allocate and instanciate the workspace (not the part which is done by
-     opk_vmlm_start). */
+     opk_start_vmlm). */
   opt = (opk_vmlm_t*)opk_allocate_object(finalize_vmlm, sizeof(opk_vmlm_t));
   if (opt == NULL) {
     return NULL;
@@ -466,7 +466,7 @@ opk_new_vmlm_optimizer_with_line_search(opk_vspace_t* vspace,
   if (opt->p == NULL) {
     goto error;
   }
-  opk_vmlm_start(opt);
+  opk_start_vmlm(opt);
   return opt;
 
  error:
@@ -496,7 +496,7 @@ opk_new_vmlm_optimizer(opk_vspace_t* vspace,
 }
 
 opk_task_t
-opk_vmlm_start(opk_vmlm_t* opt)
+opk_start_vmlm(opk_vmlm_t* opt)
 {
   opt->iterations = 0;
   opt->starting = TRUE;
@@ -535,7 +535,7 @@ next_step(opk_vmlm_t* opt, opk_vector_t* x1)
 }
 
 opk_task_t
-opk_vmlm_iterate(opk_vmlm_t* opt, opk_vector_t* x1,
+opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x1,
                  double f1, opk_vector_t* g1)
 {
   double gtest, pg1;

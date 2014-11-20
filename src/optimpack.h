@@ -789,19 +789,43 @@ opk_lnsrch_new_nonmonotone(double ftol, opk_index_t m);
 #define OPK_LNSRCH_WARNING_STP_EQ_STPMAX                      4
 #define OPK_LNSRCH_WARNING_STP_EQ_STPMIN                      5
 
-/** Start a new line search.  The returned value is strictly negative to
-   indicate an error; it is equal to zero otherwise. */
+/**
+ * Start a new linesearch.
+ *
+ * @param ls     - The linesearch object.
+ * @param f0     - The function value at the start of the line search (that
+ *                 is, for a step of length 0).
+ * @param df0    - The dirctional derivative at the start of the line search.
+ * @param stp1   - The length of the first step to try (must be between
+ *                 `stpmin` and `stpmax`).
+ * @param stpmin - The minimum allowed step length (must be nonnegative).
+ * @param stpmax - The maximum allowed step length (must be greater than `stpmin`).
+ *
+ * @return The linesearch task, which is normally `OPK_LNSRCH_SEARCH` (zero).
+ *         A different value (strictly negative) indicate an error.
+ */
 extern int
-opk_lnsrch_start(opk_lnsrch_t* ls, double f0, double g0,
-                 double stp, double stpmin, double stpmax);
+opk_lnsrch_start(opk_lnsrch_t* ls, double f0, double df0,
+                 double stp1, double stpmin, double stpmax);
 
-/** Check whether line search has converged or update the step size.  The
-   returned value is strictly negative to indicate an error; it is equal to
-   zero when searching is in progress; it is strictly positive when line search
-   has converged or cannot make any more progresses.*/
+/**
+ * Check whether line search has converged or update the step size.
+ *
+ * @param ls      - The linesearch object.
+ * @param stp_ptr - The address at which the step length is stored.  On entry,
+ *                  it must be the current step length; on exit, it is updated
+ *                  with the next step to try (unless the line search is
+ *                  finished).
+ * @param f       - The function value for the current step length.
+ * @param df      - The directional derivative for the current step length.
+
+ * @return The returned value is strictly negative to indicate an error; it is
+ * equal to zero when searching is in progress; it is strictly positive when
+ * line search has converged or cannot make any more progresses.
+ */
 extern int
 opk_lnsrch_iterate(opk_lnsrch_t* ls, double* stp_ptr,
-                   double f1, double g1);
+                   double f, double df);
 
 /** Get current step lenght. Returned value should be >= 0; -1 is returned in
    case of error. */
@@ -861,61 +885,61 @@ typedef struct _opk_nlcg opk_nlcg_t;
  *         NULL.
  */
 extern opk_nlcg_t*
-opk_nlcg_new(opk_vspace_t* vspace, unsigned int method);
+opk_new_nlcg_optimizer(opk_vspace_t* vspace, unsigned int method);
 
 /*
  * Note that the optimizer will hold a reference to the line search object.
  */
 extern opk_nlcg_t*
-opk_nlcg_new_with_line_search(opk_vspace_t* vspace, unsigned int method,
-                              opk_lnsrch_t* lnsrch);
+opk_new_nlcg_optimizer_with_line_search(opk_vspace_t* vspace, unsigned int method,
+                                        opk_lnsrch_t* lnsrch);
 extern opk_task_t
-opk_nlcg_start(opk_nlcg_t* opt);
+opk_start_nlcg(opk_nlcg_t* opt);
 
 extern opk_task_t
-opk_nlcg_iterate(opk_nlcg_t* opt, opk_vector_t* x1,
+opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x1,
                  double f1, opk_vector_t* g1);
 
 extern int
-opk_nlcg_get_ftol(opk_nlcg_t* opt, double* frtol,
+opk_get_nlcg_ftol(opk_nlcg_t* opt, double* frtol,
                   double* fatol);
 
 extern int
-opk_nlcg_get_gtol(opk_nlcg_t* opt, double* grtol,
+opk_get_nlcg_gtol(opk_nlcg_t* opt, double* grtol,
                   double* gatol);
 
 extern int
-opk_nlcg_get_fmin(opk_nlcg_t* opt, double* fmin);
+opk_get_nlcg_fmin(opk_nlcg_t* opt, double* fmin);
 
 extern int
-opk_nlcg_set_fmin(opk_nlcg_t* opt, double fmin);
+opk_set_nlcg_fmin(opk_nlcg_t* opt, double fmin);
 
 extern int
-opk_nlcg_unset_fmin(opk_nlcg_t* opt);
+opk_unset_nlcg_fmin(opk_nlcg_t* opt);
 
-extern int
-opk_nlcg_get_iterations(opk_nlcg_t* opt);
+extern opk_index_t
+opk_get_nlcg_iterations(opk_nlcg_t* opt);
 
-extern int
-opk_nlcg_get_restarts(opk_nlcg_t* opt);
+extern opk_index_t
+opk_get_nlcg_restarts(opk_nlcg_t* opt);
 
-extern int
-opk_nlcg_get_evaluations(opk_nlcg_t* opt);
+extern opk_index_t
+opk_get_nlcg_evaluations(opk_nlcg_t* opt);
 
 extern unsigned int
-opk_nlcg_get_method(opk_nlcg_t* opt);
+opk_get_nlcg_method(opk_nlcg_t* opt);
 
 extern opk_bool_t
-opk_nlcg_get_starting(opk_nlcg_t* opt);
+opk_get_nlcg_starting(opk_nlcg_t* opt);
 
 extern opk_task_t
-opk_nlcg_get_task(opk_nlcg_t* opt);
+opk_get_nlcg_task(opk_nlcg_t* opt);
 
 extern double
-opk_nlcg_get_alpha(opk_nlcg_t* opt);
+opk_get_nlcg_alpha(opk_nlcg_t* opt);
 
 extern double
-opk_nlcg_get_beta(opk_nlcg_t* opt);
+opk_get_nlcg_beta(opk_nlcg_t* opt);
 
 
 #define OPK_NLCG_FLETCHER_REEVES        1
@@ -1068,10 +1092,10 @@ opk_new_vmlm_optimizer_with_line_search(opk_vspace_t* vspace,
                                         double fmin);
 
 extern opk_task_t
-opk_vmlm_start(opk_vmlm_t* opt);
+opk_start_vmlm(opk_vmlm_t* opt);
 
 extern opk_task_t
-opk_vmlm_iterate(opk_vmlm_t* opt, opk_vector_t* x1,
+opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x1,
                  double f1, opk_vector_t* g1);
 
 extern opk_task_t

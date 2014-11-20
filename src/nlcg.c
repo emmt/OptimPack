@@ -103,9 +103,9 @@ struct _opk_nlcg {
                             as: x1 = x0 - alpha*p, for alpha >= 0. */
   opk_vector_t* y;       /* Work vector (e.g., to store the gradient
                             difference: Y = G1 - G0). */
-  int iter;              /* Iteration number. */
-  int nrestarts;         /* Number of algorithm restarts. */
-  int nevals;            /* Number of function and gradient evaluations. */
+  opk_index_t iter;      /* Iteration number. */
+  opk_index_t nrestarts; /* Number of algorithm restarts. */
+  opk_index_t nevals;    /* Number of function and gradient evaluations. */
   unsigned int method;   /* Conjugate gradient method. */
   opk_task_t task;       /* Current caller task. */
   opk_bool_t start;      /* Indicate whether algorithm is starting */
@@ -383,8 +383,8 @@ finalize_nlcg(opk_object_t* obj)
 /* PUBLIC INTERFACE */
 
 opk_nlcg_t*
-opk_nlcg_new_with_line_search(opk_vspace_t* vspace, unsigned int method,
-                              opk_lnsrch_t* lnsrch)
+opk_new_nlcg_optimizer_with_line_search(opk_vspace_t* vspace, unsigned int method,
+                                        opk_lnsrch_t* lnsrch)
 {
   opk_nlcg_t* opt;
   int (*update)(opk_nlcg_t* opt,
@@ -481,7 +481,7 @@ opk_nlcg_new_with_line_search(opk_vspace_t* vspace, unsigned int method,
     }
   }
   opt->update_Hager_Zhang_orig = FALSE;
-  opk_nlcg_start(opt);
+  opk_start_nlcg(opt);
   return opt;
 
  error:
@@ -490,7 +490,7 @@ opk_nlcg_new_with_line_search(opk_vspace_t* vspace, unsigned int method,
 }
 
 opk_nlcg_t*
-opk_nlcg_new(opk_vspace_t* vspace, unsigned int method)
+opk_new_nlcg_optimizer(opk_vspace_t* vspace, unsigned int method)
 {
   opk_lnsrch_t* lnsrch;
   opk_nlcg_t* opt;
@@ -503,14 +503,14 @@ opk_nlcg_new(opk_vspace_t* vspace, unsigned int method)
   if (lnsrch == NULL) {
     return NULL;
   }
-  opt = opk_nlcg_new_with_line_search(vspace, method, lnsrch);
+  opt = opk_new_nlcg_optimizer_with_line_search(vspace, method, lnsrch);
   OPK_DROP(lnsrch); /* the line search is now owned by the optimizer */
   return opt;
 }
 
 
 int
-opk_nlcg_get_fmin(opk_nlcg_t* ws, double* fmin)
+opk_get_nlcg_fmin(opk_nlcg_t* ws, double* fmin)
 {
   if (ws == NULL) {
     errno = EFAULT;
@@ -527,7 +527,7 @@ opk_nlcg_get_fmin(opk_nlcg_t* ws, double* fmin)
 }
 
 int
-opk_nlcg_set_fmin(opk_nlcg_t* ws, double fmin)
+opk_set_nlcg_fmin(opk_nlcg_t* ws, double fmin)
 {
   if (ws == NULL) {
     errno = EFAULT;
@@ -543,7 +543,7 @@ opk_nlcg_set_fmin(opk_nlcg_t* ws, double fmin)
 }
 
 int
-opk_nlcg_unset_fmin(opk_nlcg_t* ws)
+opk_unset_nlcg_fmin(opk_nlcg_t* ws)
 {
   if (ws == NULL) {
     errno = EFAULT;
@@ -553,56 +553,56 @@ opk_nlcg_unset_fmin(opk_nlcg_t* ws)
   return OPK_SUCCESS;
 }
 
-int
-opk_nlcg_get_iterations(opk_nlcg_t* ws)
+opk_index_t
+opk_get_nlcg_iterations(opk_nlcg_t* ws)
 {
   return ws->iter;
 }
 
-int
-opk_nlcg_get_restarts(opk_nlcg_t* ws)
+opk_index_t
+opk_get_nlcg_restarts(opk_nlcg_t* ws)
 {
   return ws->nrestarts;
 }
 
-int
-opk_nlcg_get_evaluations(opk_nlcg_t* ws)
+opk_index_t
+opk_get_nlcg_evaluations(opk_nlcg_t* ws)
 {
   return ws->nevals;
 }
 
 unsigned int
-opk_nlcg_get_method(opk_nlcg_t* ws)
+opk_get_nlcg_method(opk_nlcg_t* ws)
 {
   return ws->method;
 }
 
 opk_bool_t
-opk_nlcg_get_starting(opk_nlcg_t* ws)
+opk_get_nlcg_starting(opk_nlcg_t* ws)
 {
   return ws->start;
 }
 
 opk_task_t
-opk_nlcg_get_task(opk_nlcg_t* ws)
+opk_get_nlcg_task(opk_nlcg_t* ws)
 {
   return ws->task;
 }
 
 double
-opk_nlcg_get_alpha(opk_nlcg_t* ws)
+opk_get_nlcg_alpha(opk_nlcg_t* ws)
 {
   return ws->alpha;
 }
 
 double
-opk_nlcg_get_beta(opk_nlcg_t* ws)
+opk_get_nlcg_beta(opk_nlcg_t* ws)
 {
   return ws->beta;
 }
 
 opk_task_t
-opk_nlcg_start(opk_nlcg_t* ws)
+opk_start_nlcg(opk_nlcg_t* ws)
 {
   ws->iter = 0;
   ws->nevals = 0;
@@ -613,7 +613,7 @@ opk_nlcg_start(opk_nlcg_t* ws)
 }
 
 opk_task_t
-opk_nlcg_iterate(opk_nlcg_t* ws, opk_vector_t* x1,
+opk_iterate_nlcg(opk_nlcg_t* ws, opk_vector_t* x1,
                  double f1, opk_vector_t* g1)
 {
   /*

@@ -167,38 +167,38 @@ yopt_extract(void* ptr, char* member)
 static void
 nlcg_start(opk_object_t* optimizer)
 {
-  ypush_int(opk_nlcg_start(NLCG(optimizer)));
+  ypush_int(opk_start_nlcg(NLCG(optimizer)));
 }
 
 static void
 nlcg_iterate(opk_object_t* optimizer,
              opk_vector_t* x, double fx, opk_vector_t* gx)
 {
-  ypush_int(opk_nlcg_iterate(NLCG(optimizer), x, fx, gx));
+  ypush_int(opk_iterate_nlcg(NLCG(optimizer), x, fx, gx));
 }
 
 static void
 nlcg_get_task(opk_object_t* optimizer)
 {
-  ypush_int(opk_nlcg_get_task(NLCG(optimizer)));
+  ypush_int(opk_get_nlcg_task(NLCG(optimizer)));
 }
 
 static void
 nlcg_get_iterations(opk_object_t* optimizer)
 {
-  ypush_long(opk_nlcg_get_iterations(NLCG(optimizer)));
+  ypush_long(opk_get_nlcg_iterations(NLCG(optimizer)));
 }
 
 static void
 nlcg_get_evaluations(opk_object_t* optimizer)
 {
-  ypush_long(opk_nlcg_get_evaluations(NLCG(optimizer)));
+  ypush_long(opk_get_nlcg_evaluations(NLCG(optimizer)));
 }
 
 static void
 nlcg_get_restarts(opk_object_t* optimizer)
 {
-  ypush_long(opk_nlcg_get_restarts(NLCG(optimizer)));
+  ypush_long(opk_get_nlcg_restarts(NLCG(optimizer)));
 }
 
 static yopt_operations_t nlcg_ops = {
@@ -219,14 +219,14 @@ static yopt_operations_t nlcg_ops = {
 static void
 vmlm_start(opk_object_t* optimizer)
 {
-  ypush_int(opk_vmlm_start(VMLM(optimizer)));
+  ypush_int(opk_start_vmlm(VMLM(optimizer)));
 }
 
 static void
 vmlm_iterate(opk_object_t* optimizer,
              opk_vector_t* x, double fx, opk_vector_t* gx)
 {
-  ypush_int(opk_vmlm_iterate(VMLM(optimizer), x, fx, gx));
+  ypush_int(opk_iterate_vmlm(VMLM(optimizer), x, fx, gx));
 }
 
 static void
@@ -410,7 +410,7 @@ void Y_opk_nlcg(int argc)
   if (opt->x == NULL || opt->gx == NULL) {
     y_error("failed to create working vectors");
   }
-  opt->optimizer = (opk_object_t*)opk_nlcg_new(opt->vspace, method);
+  opt->optimizer = (opk_object_t*)opk_new_nlcg_optimizer(opt->vspace, method);
   if (opt->optimizer == NULL) {
     y_error("failed to create NLCG optimizer");
   }
