@@ -20,11 +20,11 @@ function rosenbrock_fg!{T<:Real}(x::Array{T,1}, gx::Array{T,1})
   return sum(t1.*t1) + sum(t2.*t2)
 end
 
-function rosenbrock_test(n::Integer=20, m::Integer=5; single::Bool=false)
+function rosenbrock_test(n::Integer=20, m::Integer=3; single::Bool=false)
   T = (single ? Float32 : Float64)
   x0 = Array(T, n)
   rosenbrock_init!(x0)
-  lbfgs(rosenbrock_fg!, x0, 5, verb=true)
+  lbfgs(rosenbrock_fg!, x0, m, verb=true)
 end
 
 #space = OptimPack.OptimPackShapedVectorSpace(Float64, 10)
