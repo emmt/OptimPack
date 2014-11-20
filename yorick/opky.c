@@ -418,9 +418,6 @@ void Y_opk_nlcg(int argc)
 
 void Y_opk_vmlm(int argc)
 {
-  double fatol = 0.0;
-  double frtol = 0.0;
-  double fmin = 0.0;
   yopt_instance_t* opt;
   long n = 0, m = 5;
   int iarg, position = 0, single = FALSE;
@@ -484,8 +481,7 @@ void Y_opk_vmlm(int argc)
   if (opt->x == NULL || opt->gx == NULL) {
     y_error("failed to create working vectors");
   }
-  opt->optimizer = (opk_object_t*)opk_new_vmlm_optimizer(opt->vspace, m,
-                                                         frtol, fatol, fmin);
+  opt->optimizer = (opk_object_t*)opk_new_vmlm_optimizer(opt->vspace, m);
   if (opt->optimizer == NULL) {
     y_error("failed to create VMLM optimizer");
   }
