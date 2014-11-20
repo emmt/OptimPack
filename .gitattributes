@@ -7,7 +7,7 @@ TODO       filter=text-filter
 AUTHORS    filter=text-filter
 NEWS       filter=text-filter
 configure  filter=text-filter
-Makefile   filter=yorick-makefile-filter
+Makefile   filter=makefile-filter
 *.png      binary
 *.jpg      binary
 *.pdf      binary

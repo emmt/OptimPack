@@ -8,8 +8,16 @@
 #   - Macros like Y_HOME which are overwritten by 'yorick -batch make.i' are
 #     cleared.
 #
+# Replace CRLF (\r\n = \x0d\x0a) by a LF (the LF is preserved by sed and is after the
+# end-of-line $ marker):
 s/\x0d$//
-s/ *$//
+#
+# Remove trailing spaces:
+s/  *$//
+#
+# Replace single CR (\r = \x0d) preceded by any number of spaces by a LF (\n = \x0a):
 s/ *\x0d/\x0a/g
+#
+# Cleanup Yorick macros:
 s/^\( *Y_\(MAKEDIR\|EXE\(\|_PKGS\|_HOME\|_SITE\)\|HOME_PKG\) *=\).*/\1/
 #
