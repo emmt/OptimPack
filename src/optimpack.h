@@ -900,13 +900,123 @@ extern opk_task_t
 opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x1,
                  double f1, opk_vector_t* g1);
 
-extern int
-opk_get_nlcg_ftol(opk_nlcg_t* opt, double* frtol,
-                  double* fatol);
+/**
+ * Get the absolute threshold for the norm or the gradient for convergence.
+ *
+ * This function retrieves the absolute threshold for the norm or the gradient
+ * for convergence.  The convergence of the non-linear convergence gradient
+ * (NLCG) method is defined by:
+ * <pre>
+ * ||g|| <= max(0, gatol, grtol*||ginit||)
+ * </pre>
+ * where `||g||` is the Euclidean norm of the current gradient `g`, `||ginit||`
+ * is the Euclidean norm of the initial gradient `ginit` while `gatol` and
+ * `grtol` are absolute and relative thresholds.
 
+ * @param opt - The NLCG optimizer or `NULL` to get the default value.
+ *
+ * @return The value of `gatol` for the optimzer `opt`, if not `NULL`; the
+ *         default value of `gatol`, if `opt` is `NULL`.
+ */
+extern double
+opk_get_nlcg_gatol(opk_nlcg_t* opt);
+
+/**
+ * Set the absolute threshold for the norm or the gradient for convergence.
+ *
+ * @param opt - The NLCG optimizer.
+ * @param gatol - The new value of the absolute threshold.
+ *
+ * @return `OPK_SUCCESS`, or `OPK_FAILURE` on error with global variable
+ * `errno` set to `EFAULT` if `opt` is `NULL` and to `EINVAL` if the value of
+ * `gatol` is not valid.
+ *
+ * @see opk_get_nlcg_gatol()
+ */
 extern int
-opk_get_nlcg_gtol(opk_nlcg_t* opt, double* grtol,
-                  double* gatol);
+opk_set_nlcg_gatol(opk_nlcg_t* opt, double gatol);
+
+/**
+ * Get the relative threshold for the norm or the gradient for convergence.
+ *
+ * @param opt - The NLCG optimizer or `NULL` to get the default value.
+ *
+ * @return The value of `grtol` for the optimzer `opt`, if not `NULL`; the
+ *         default value of `grtol`, if `opt` is `NULL`.
+ *
+ * @see opk_get_nlcg_gatol()
+ */
+extern double
+opk_get_nlcg_grtol(opk_nlcg_t* opt);
+
+/**
+ * Set the relative threshold for the norm or the gradient for convergence.
+ *
+ * @param opt - The NLCG optimizer.
+ * @param grtol - The new value of the relative threshold.
+ *
+ * @return `OPK_SUCCESS`, or `OPK_FAILURE` on error with global variable
+ * `errno` set to `EFAULT` if `opt` is `NULL` and to `EINVAL` if the value of
+ * `grtol` is not valid.
+ *
+ * @see opk_get_nlcg_grtol()
+ */
+extern int
+opk_set_nlcg_grtol(opk_nlcg_t* opt, double grtol);
+
+/**
+ * Get the minimum relative step size.
+ *
+ * This function retrieves the value of the minimum relative step size `stpmin`
+ * for the line search.
+ *
+ * @param opt - The NLCG optimizer or `NULL` to get the default value.
+ *
+ * @return The value of `stpmin` for the optimzer `opt`, if not `NULL`; the
+ *         default value of `stpmin`, if `opt` is `NULL`.
+ *
+ * @see opk_get_nlcg_stpmax(), opk_set_nlcg_stpmin_and_stpmax().
+ */
+extern double
+opk_get_nlcg_stpmin(opk_nlcg_t* opt);
+
+/**
+ * Get the maximum relative step size.
+ *
+ * During a line search, the step is constrained to be within `stpmin` and
+ * `stpmax` times the lenght of the first step.  The relative bounds must be
+ * such that:
+ * <pre>
+ * 0 <= stpmin < stpmax
+ * </pre>
+ * This function retrieves the value of the maximum relative step size `stpmax`
+ * for the line search.
+ *
+ * @param opt - The NLCG optimizer or `NULL` to get the default value.
+ *
+ * @return The value of `stpmax` for the optimzer `opt`, if not `NULL`; the
+ *         default value of `stpmax`, if `opt` is `NULL`.
+ *
+ * @see opk_get_nlcg_stpmin(), opk_set_nlcg_stpmin_and_stpmax().
+ */
+extern double
+opk_get_nlcg_stpmax(opk_nlcg_t* opt);
+
+/**
+ * Set the relative step limits.
+ *
+ * @param opt - The NLCG optimizer or `NULL` to get the default value.
+ * @param stpmin - The minimum relative step size.
+ * @param stpmax - The maximum relative step size.
+ *
+ * @return `OPK_SUCCESS`, or `OPK_FAILURE` on error with global variable
+ * `errno` set to `EFAULT` if `opt` is `NULL` and to `EINVAL` if the values of
+ * `stpmin` or `stpmax` are not valid.
+ *
+ * @see opk_get_nlcg_stpmin(), opk_get_nlcg_stpmax().
+ */
+extern int
+opk_set_nlcg_stpmin_and_stpmax(opk_nlcg_t* opt, double stpmin, double stpmax);
 
 extern int
 opk_get_nlcg_fmin(opk_nlcg_t* opt, double* fmin);
@@ -1080,16 +1190,12 @@ opk_set_lbfgs_operator_preconditioner(opk_lbfgs_operator_t* op,
 typedef struct _opk_vmlm opk_vmlm_t;
 
 extern opk_vmlm_t*
-opk_new_vmlm_optimizer(opk_vspace_t* vspace, opk_index_t m,
-                       double frtol, double fatol, double fmin);
+opk_new_vmlm_optimizer(opk_vspace_t* vspace, opk_index_t m);
 
 extern opk_vmlm_t*
 opk_new_vmlm_optimizer_with_line_search(opk_vspace_t* vspace,
                                         opk_index_t m,
-                                        opk_lnsrch_t* lnsrch,
-                                        double frtol,
-                                        double fatol,
-                                        double fmin);
+                                        opk_lnsrch_t* lnsrch);
 
 extern opk_task_t
 opk_start_vmlm(opk_vmlm_t* opt);
@@ -1109,6 +1215,27 @@ opk_get_vmlm_evaluations(opk_vmlm_t* opt);
 
 extern opk_index_t
 opk_get_vmlm_restarts(opk_vmlm_t* opt);
+
+extern double
+opk_get_vmlm_gatol(opk_vmlm_t* opt);
+
+extern int
+opk_set_vmlm_gatol(opk_vmlm_t* opt, double gatol);
+
+extern double
+opk_get_vmlm_grtol(opk_vmlm_t* opt);
+
+extern int
+opk_set_vmlm_grtol(opk_vmlm_t* opt, double grtol);
+
+extern double
+opk_get_vmlm_stpmin(opk_vmlm_t* opt);
+
+extern double
+opk_get_vmlm_stpmax(opk_vmlm_t* opt);
+
+extern int
+opk_set_vmlm_stpmin_and_stpmax(opk_vmlm_t* opt, double stpmin, double stpmax);
 
 /** @} */
 
