@@ -335,24 +335,24 @@ type OptimPackNonmonotoneLineSearch <: OptimPackLineSearch
     end
 end
 
-OPK_LNSRCH_ERROR_ILLEGAL_ADDRESS		    = cint(-12)
-OPK_LNSRCH_ERROR_CORRUPTED_WORKSPACE		    = cint(-11)
-OPK_LNSRCH_ERROR_BAD_WORKSPACE			    = cint(-10)
-OPK_LNSRCH_ERROR_STP_CHANGED			    = cint( -9)
-OPK_LNSRCH_ERROR_STP_OUTSIDE_BRACKET		    = cint( -8)
-OPK_LNSRCH_ERROR_NOT_A_DESCENT			    = cint( -7)
-OPK_LNSRCH_ERROR_STPMIN_GT_STPMAX		    = cint( -6)
-OPK_LNSRCH_ERROR_STPMIN_LT_ZERO			    = cint( -5)
-OPK_LNSRCH_ERROR_STP_LT_STPMIN			    = cint( -4)
-OPK_LNSRCH_ERROR_STP_GT_STPMAX			    = cint( -3)
-OPK_LNSRCH_ERROR_INITIAL_DERIVATIVE_GE_ZERO	    = cint( -2)
-OPK_LNSRCH_ERROR_NOT_STARTED			    = cint( -1)
-OPK_LNSRCH_SEARCH				    = cint(  0)
-OPK_LNSRCH_CONVERGENCE				    = cint(  1)
-OPK_LNSRCH_WARNING_ROUNDING_ERRORS_PREVENT_PROGRESS = cint(  2)
-OPK_LNSRCH_WARNING_XTOL_TEST_SATISFIED		    = cint(  3)
-OPK_LNSRCH_WARNING_STP_EQ_STPMAX		    = cint(  4)
-OPK_LNSRCH_WARNING_STP_EQ_STPMIN		    = cint(  5)
+const OPK_LNSRCH_ERROR_ILLEGAL_ADDRESS                    = cint(-12)
+const OPK_LNSRCH_ERROR_CORRUPTED_WORKSPACE                = cint(-11)
+const OPK_LNSRCH_ERROR_BAD_WORKSPACE                      = cint(-10)
+const OPK_LNSRCH_ERROR_STP_CHANGED                        = cint( -9)
+const OPK_LNSRCH_ERROR_STP_OUTSIDE_BRACKET                = cint( -8)
+const OPK_LNSRCH_ERROR_NOT_A_DESCENT                      = cint( -7)
+const OPK_LNSRCH_ERROR_STPMIN_GT_STPMAX                   = cint( -6)
+const OPK_LNSRCH_ERROR_STPMIN_LT_ZERO                     = cint( -5)
+const OPK_LNSRCH_ERROR_STP_LT_STPMIN                      = cint( -4)
+const OPK_LNSRCH_ERROR_STP_GT_STPMAX                      = cint( -3)
+const OPK_LNSRCH_ERROR_INITIAL_DERIVATIVE_GE_ZERO         = cint( -2)
+const OPK_LNSRCH_ERROR_NOT_STARTED                        = cint( -1)
+const OPK_LNSRCH_SEARCH                                   = cint(  0)
+const OPK_LNSRCH_CONVERGENCE                              = cint(  1)
+const OPK_LNSRCH_WARNING_ROUNDING_ERRORS_PREVENT_PROGRESS = cint(  2)
+const OPK_LNSRCH_WARNING_XTOL_TEST_SATISFIED              = cint(  3)
+const OPK_LNSRCH_WARNING_STP_EQ_STPMAX                    = cint(  4)
+const OPK_LNSRCH_WARNING_STP_EQ_STPMIN                    = cint(  5)
 
 function start!(ls::OptimPackLineSearch, f0::Real, df0::Real,
                 stp1::Real, stpmin::Real, stpmax::Real)
@@ -393,9 +393,9 @@ get_xtol(ls::OptimPackMoreThuenteLineSearch) = ls.xtol
 # algorithms.
 const OPK_TASK_ERROR      = cint(-1) # An error has ocurred.
 const OPK_TASK_COMPUTE_FG = cint( 0) # Caller shall compute f(x) and g(x).
-const OPK_TASK_NEW_X	  = cint( 1) # A new iterate is available.
-const OPK_TASK_FINAL_X	  = cint( 2) # Algorithm has converged, solution is available.
-const OPK_TASK_WARNING	  = cint( 3) # Algorithm terminated with a warning.
+const OPK_TASK_NEW_X      = cint( 1) # A new iterate is available.
+const OPK_TASK_FINAL_X    = cint( 2) # Algorithm has converged, solution is available.
+const OPK_TASK_WARNING    = cint( 3) # Algorithm terminated with a warning.
 #typealias opkTask Cint
 
 abstract OptimPackOptimizer <: OptimPackObject
@@ -403,16 +403,16 @@ abstract OptimPackOptimizer <: OptimPackObject
 #------------------------------------------------------------------------------
 # NON LINEAR CONJUGATE GRADIENTS
 
-const OPK_NLCG_FLETCHER_REEVES	      = cuint(1)
-const OPK_NLCG_HESTENES_STIEFEL	      = cuint(2)
+const OPK_NLCG_FLETCHER_REEVES        = cuint(1)
+const OPK_NLCG_HESTENES_STIEFEL       = cuint(2)
 const OPK_NLCG_POLAK_RIBIERE_POLYAK   = cuint(3)
-const OPK_NLCG_FLETCHER		      = cuint(4)
-const OPK_NLCG_LIU_STOREY	      = cuint(5)
-const OPK_NLCG_DAI_YUAN		      = cuint(6)
-const OPK_NLCG_PERRY_SHANNO	      = cuint(7)
-const OPK_NLCG_HAGER_ZHANG	      = cuint(8)
-const OPK_NLCG_POWELL		      = cuint(1<<8) # force beta >= 0
-const OPK_NLCG_SHANNO_PHUA	      = cuint(1<<9) # compute scale from previous iterations
+const OPK_NLCG_FLETCHER               = cuint(4)
+const OPK_NLCG_LIU_STOREY             = cuint(5)
+const OPK_NLCG_DAI_YUAN               = cuint(6)
+const OPK_NLCG_PERRY_SHANNO           = cuint(7)
+const OPK_NLCG_HAGER_ZHANG            = cuint(8)
+const OPK_NLCG_POWELL                 = cuint(1<<8) # force beta >= 0
+const OPK_NLCG_SHANNO_PHUA            = cuint(1<<9) # compute scale from previous iterations
 
 # For instance: (OPK_NLCG_POLAK_RIBIERE_POLYAK | OPK_NLCG_POWELL) merely
 # corresponds to PRP+ (Polak, Ribiere, Polyak) while (OPK_NLCG_PERRY_SHANNO |
@@ -430,7 +430,7 @@ type OptimPackNLCG <: OptimPackOptimizer
     lnsrch::OptimPackLineSearch
     function OptimPackNLCG(space::OptimPackVectorSpace,
                            method::Integer=OPK_NLCG_DEFAULT;
-                           lnsrch::OptimPackLineSearch=OptimPackMoreThuenteLineSearch())
+                           lnsrch::OptimPackLineSearch=OptimPackMoreThuenteLineSearch(1E-4, 0.1))
         ptr = ccall((:opk_new_nlcg_optimizer_with_line_search, liboptk), Ptr{Void},
                 (Ptr{Void}, Cuint, Ptr{Void}), space.handle, method, lnsrch.handle)
         systemerror("failed to create optimizer", ptr == C_NULL)
@@ -457,6 +457,14 @@ evaluations(opt::OptimPackNLCG) = ccall((:opk_get_nlcg_evaluations, liboptk),
                                         Cptrdiff_t, (Ptr{Void},), opt.handle)
 restarts(opt::OptimPackNLCG) = ccall((:opk_get_nlcg_restarts, liboptk),
                                      Cptrdiff_t, (Ptr{Void},), opt.handle)
+get_gatol(opt::OptimPackNLCG) = ccall((:opk_get_nlcg_gatol, liboptk),
+                                      Cdouble, (Ptr{Void},), opt.handle)
+get_grtol(opt::OptimPackNLCG) = ccall((:opk_get_nlcg_grtol, liboptk),
+                                      Cdouble, (Ptr{Void},), opt.handle)
+get_stpmin(opt::OptimPackNLCG) = ccall((:opk_get_nlcg_stpmin, liboptk),
+                                       Cdouble, (Ptr{Void},), opt.handle)
+get_stpmax(opt::OptimPackNLCG) = ccall((:opk_get_nlcg_stpmax, liboptk),
+                                       Cdouble, (Ptr{Void},), opt.handle)
 
 #------------------------------------------------------------------------------
 # VARIABLE METRIC OPTIMIZATION METHOD
@@ -465,19 +473,21 @@ type OptimPackVMLM <: OptimPackOptimizer
     handle::Ptr{Void}
     vspace::OptimPackVectorSpace
     m::Cptrdiff_t
-    function OptimPackVMLM(space::OptimPackVectorSpace,
-                           m::Integer=3)
+    lnsrch::OptimPackLineSearch
+    function OptimPackVMLM(space::OptimPackVectorSpace, m::Integer=3;
+                           lnsrch::OptimPackLineSearch=OptimPackMoreThuenteLineSearch(1E-4, 0.9))
         if m < 1
             error("illegal number of memorized steps")
         end
         if m > length(space)
             m = length(space)
         end
-        ptr = ccall((:opk_new_vmlm_optimizer, liboptk), Ptr{Void},
-                (Ptr{Void}, Cptrdiff_t, Cdouble, Cdouble, Cdouble),
-                    space.handle, m, 0.0, 0.0, 0.0)
+        ptr = ccall((:opk_new_vmlm_optimizer_with_line_search, liboptk),
+                    Ptr{Void}, (Ptr{Void}, Cptrdiff_t, Ptr{Void},
+                                Cdouble, Cdouble, Cdouble),
+                    space.handle, m, lnsrch.handle, 0.0, 0.0, 0.0)
         systemerror("failed to create optimizer", ptr == C_NULL)
-        obj = new(ptr, space, m)
+        obj = new(ptr, space, m, lnsrch)
         finalizer(obj, obj -> __drop_object__(obj.handle))
         return obj
     end
@@ -563,6 +573,7 @@ end
 
 function vmlm{T,N}(fg!::Function, x0::Array{T,N},
                    m::Integer=3;
+                   lnsrch::OptimPackLineSearch=OptimPackMoreThuenteLineSearch(),
                    verb::Bool=false)
     #assert(T == Type{Cdouble} || T == Type{Cfloat})
 
@@ -602,3 +613,13 @@ function vmlm{T,N}(fg!::Function, x0::Array{T,N},
 end
 
 end
+
+# Local Variables:
+# mode: Julia
+# tab-width: 8
+# julia-basic-offset: 4
+# indent-tabs-mode: nil
+# fill-column: 79
+# coding: utf-8
+# ispell-local-dictionary: "american"
+# End:
