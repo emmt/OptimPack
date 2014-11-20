@@ -255,7 +255,7 @@ int opk_fmin_next(opk_fmin_context_t* ctx, double* xptr, double fx)
 #define flags (ctx->flags)
 
   double r, t;
-  int brent;
+  /* int brent; */
 
   if (ctx == NULL) {
     errno = EFAULT;
@@ -288,7 +288,7 @@ int opk_fmin_next(opk_fmin_context_t* ctx, double* xptr, double fx)
 
   if ((ctx->status == OPK_FMIN_FX) ||
       (ctx->status == OPK_FMIN_CONVERGENCE)) {
-    brent = ((flags & OPK_FMIN_SMOOTH) != 0);
+    /* brent = ((flags & OPK_FMIN_SMOOTH) != 0); */
     if (*xptr != x) {
       /* The workspace has been corrupted or the caller has changed the value
          of the variable. */
