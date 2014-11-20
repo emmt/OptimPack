@@ -29,6 +29,7 @@
  */
 
 #include <math.h>
+#include <float.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
@@ -305,6 +306,22 @@ opk_set_lbfgs_operator_update_threshold(opk_lbfgs_operator_t* op,
 
 /* FIXME: make a common super-type for NLCG and VMLM to share API. */
 
+/* Default parameters for the line search.  These values are from original
+   LBFGS algorithm by Jorge Nocedal but other values may be more suitable. */
+static const double STPMIN = 1E-20;
+static const double STPMAX = 1E+20;
+static const double SFTOL = 1E-4;
+static const double SGTOL = 0.9;
+static const double SXTOL = DBL_EPSILON;
+
+/* Default parameters for the global convergence. */
+static const double GRTOL = 1E-6;
+static const double GATOL = 0.0;
+
+/* Other default parameters. */
+static const double DELTA = 0.01;
+static const double EPSILON = 1e-3;
+
 struct _opk_vmlm {
   opk_object_t base; /**< Base type (must be the first member). */
   double alpha;      /**< Current step size. */
@@ -315,8 +332,7 @@ struct _opk_vmlm {
                           for convergence. */
   double gatol;      /**< Absolute threshold for the norm or the gradient for
                           convergence. */
-  double ginit;      /**< Euclidean norm or the initial gradient FIXME:
-                          GINIT */
+  double ginit;      /**< Euclidean norm or the initial gradient. */
   double f0;         /**< Function value at x0. */
   double dg0;        /**< Directional derivative at x0. */
   double g0norm;     /**< Euclidean norm of g0 the gradient at x0. */
@@ -354,6 +370,22 @@ typedef enum {
   OPK_LINE_SEARCH_WARNING, /**< Warning in line search. */
   OPK_LINE_SEARCH_ERROR,   /**< Error in line search. */
 } opk_reason_t;
+
+static double
+max3(double a1, double a2, double a3)
+{
+  if (a3 >= a2) {
+    return (a3 >= a1 ? a3 : a1);
+  } else {
+    return (a2 >= a1 ? a2 : a1);
+  }
+}
+
+static int
+non_finite(double x)
+{
+  return (isnan(x) || isinf(x));
+}
 
 static void
 finalize_vmlm(opk_object_t* obj)
@@ -400,10 +432,7 @@ line_search_failure(opk_vmlm_t* opt)
 opk_vmlm_t*
 opk_new_vmlm_optimizer_with_line_search(opk_vspace_t* vspace,
                                         opk_index_t m,
-                                        opk_lnsrch_t* lnsrch,
-                                        double frtol,
-                                        double fatol,
-                                        double fmin)
+                                        opk_lnsrch_t* lnsrch)
 {
   opk_vmlm_t* opt;
 
@@ -416,16 +445,6 @@ opk_new_vmlm_optimizer_with_line_search(opk_vspace_t* vspace,
     errno = EINVAL;
     return NULL;
   }
-#if 0
-  if (frtol <= 0.0) {
-    errno = EINVAL;
-    return NULL;
-  }
-  if (fatol <= 0.0) {
-    errno = EINVAL;
-    return NULL;
-  }
-#endif
 
   /* Allocate and instanciate the workspace (not the part which is done by
      opk_start_vmlm). */
@@ -440,15 +459,12 @@ opk_new_vmlm_optimizer_with_line_search(opk_vspace_t* vspace,
     goto error;
   }
   opt->save_memory = TRUE;
-#if 0
-  opt->frtol = frtol;
-  opt->fatol = fatol;
-  opt->fmin = fmin;
-#endif
-  opt->stpmin = 1e-20;
-  opt->stpmax = 1e+20;
-  opt->delta = 0.01;
-  opt->epsilon = 1e-3;
+  opt->grtol = GRTOL;
+  opt->gatol = GATOL;
+  opt->stpmin = STPMIN;
+  opt->stpmax = STPMAX;
+  opt->delta = DELTA;
+  opt->epsilon = EPSILON;
 
   /* Allocate work vectors.  If saving memory, x0 and g0 will be weak references
      to one of the saved vectors in the LBFGS operator. */
@@ -475,22 +491,16 @@ opk_new_vmlm_optimizer_with_line_search(opk_vspace_t* vspace,
 }
 
 opk_vmlm_t*
-opk_new_vmlm_optimizer(opk_vspace_t* vspace,
-                       opk_index_t m,
-                       double frtol,
-                       double fatol,
-                       double fmin)
+opk_new_vmlm_optimizer(opk_vspace_t* vspace, opk_index_t m)
 {
   opk_lnsrch_t* lnsrch;
   opk_vmlm_t* opt;
-  lnsrch = opk_lnsrch_new_csrch(/* sftol  */  1e-4,
-                                /* sgtol  */  1e-1,
-                                /* sxtol  */  1E-17);
+
+  lnsrch = opk_lnsrch_new_csrch(SFTOL, SGTOL, SXTOL);
   if (lnsrch == NULL) {
     return NULL;
   }
-  opt = opk_new_vmlm_optimizer_with_line_search(vspace, m, lnsrch,
-                                                frtol, fatol, fmin);
+  opt = opk_new_vmlm_optimizer_with_line_search(vspace, m, lnsrch);
   OPK_DROP(lnsrch); /* the line search is now owned by the optimizer */
   return opt;
 }
@@ -567,7 +577,7 @@ opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x1,
     if (opt->evaluations == 1) {
       opt->ginit = opt->g1norm;
     }
-    gtest = opt->gatol + opt->grtol*opt->ginit;
+    gtest = max3(0.0, opt->gatol, opt->grtol*opt->ginit);
     return optimizer_success(opt, ((opt->g1norm <= gtest)
                                    ? OPK_TASK_FINAL_X
                                    : OPK_TASK_NEW_X));
@@ -677,6 +687,77 @@ opk_index_t
 opk_get_vmlm_restarts(opk_vmlm_t* opt)
 {
   return opt->restarts;
+}
+
+double
+opk_get_vmlm_gatol(opk_vmlm_t* opt)
+{
+  return (opt == NULL ? GATOL : opt->gatol);
+}
+
+int
+opk_set_vmlm_gatol(opk_vmlm_t* opt, double gatol)
+{
+  if (opt == NULL) {
+    errno = EFAULT;
+    return OPK_FAILURE;
+  }
+  if (non_finite(gatol) || gatol < 0.0) {
+    errno = EINVAL;
+    return OPK_FAILURE;
+  }
+  opt->gatol = gatol;
+  return OPK_SUCCESS;
+}
+
+double
+opk_get_vmlm_grtol(opk_vmlm_t* opt)
+{
+  return (opt == NULL ? GRTOL : opt->grtol);
+}
+
+int
+opk_set_vmlm_grtol(opk_vmlm_t* opt, double grtol)
+{
+  if (opt == NULL) {
+    errno = EFAULT;
+    return OPK_FAILURE;
+  }
+  if (non_finite(grtol) || grtol < 0.0) {
+    errno = EINVAL;
+    return OPK_FAILURE;
+  }
+  opt->grtol = grtol;
+  return OPK_SUCCESS;
+}
+
+double
+opk_get_vmlm_stpmin(opk_vmlm_t* opt)
+{
+  return (opt == NULL ? STPMIN : opt->stpmin);
+}
+
+double
+opk_get_vmlm_stpmax(opk_vmlm_t* opt)
+{
+  return (opt == NULL ? STPMAX : opt->stpmax);
+}
+
+int
+opk_set_vmlm_stpmin_and_stpmax(opk_vmlm_t* opt, double stpmin, double stpmax)
+{
+  if (opt == NULL) {
+    errno = EFAULT;
+    return OPK_FAILURE;
+  }
+  if (non_finite(stpmin) || non_finite(stpmax) ||
+      stpmin < 0.0 || stpmax <= stpmin) {
+    errno = EINVAL;
+    return OPK_FAILURE;
+  }
+  opt->stpmin = stpmin;
+  opt->stpmax = stpmax;
+  return OPK_SUCCESS;
 }
 
 /*
