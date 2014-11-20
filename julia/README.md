@@ -5,14 +5,14 @@ OptimPack.jl is Julia interface for OptimPack library.
 
 ## Unconstrained Minimization of a Nonlinear Smooth Function
 
-There are two methods in OptimPack which can be used to minimize a
-nonlinear smooth multivariate function without constraints: non-linear
-conjugate gradient (NLCG) and limited memory variable metric method (VMLM).
+There are two methods in OptimPack to minimize a nonlinear smooth
+multivariate function without constraints: non-linear conjugate gradient
+(NLCG) and limited memory variable metric method (VMLM).
 
 The easiest way to use these minimizers is to provide a Julia function, say
 `fg!`, which is in charge of computing the value of the function and its
 gradient for given variables.  This function must have the form:
-```
+```julia
 function fg!(x, g)
    g[...] = ... # store the gradient of the function
    f = ...      # compute the function value
@@ -20,8 +20,12 @@ function fg!(x, g)
 end
 ```
 where the arguments `x` and `g` are Julia arrays (same types and
-dimensions) respectively with (on entry) the variables and (on exit) the
-gradient.  The user defined function shall return the function value.
+dimensions) with, on entry, `x` storing the variables and, on exit, `g`
+storing the gradient.  The user defined function shall return the function
+value.
+
+
+## Non-linear conjugate gradient (NLCG)
 
 The solution `x` can be computed by one of the implemented non-linear
 conjugate gradient methods with:
@@ -31,11 +35,31 @@ x = OptimPack.nlcg(fg!, x0, method)
 where `x0` gives the initial value of the variables (as well as the data
 type and dimensions of the solution).  `x0` is a Julia dense array with any
 dimensions and with elements of type `Float64` or `Float32`.  Argument
-`method` is optional and can be used to achoose among the different methods
-implemented.
+`method` is optional and can be used to choose among the different implemented
+methods.
+
+The keyword `lnsrch` can be used to specify another linesearch method
+than the default one:
+```julia
+x = OptimPack.nlcg(fg!, x0, method, lnsrch=ls)
+```
+where `ls` is one of the implemented line search methods:
+```julia
+ls = OptimPack.OptimPackArmijoLineSearch(ftol)
+ls = OptimPack.OptimPackMoreThuenteLineSearch(ftol, gtol, xtol)
+ls = OptimPack.OptimPackNonmonotoneLineSearch(ftol, m)
+```
+with `ftol` the tolerance on the function reduction for the Armijo or
+first Wolfe condition, `gtol` the tolerance on the gradient the second
+(strong) Wolfe condition, `xtol` the relative precision for the step
+length (set to the machine relative precision by default) and `m` the
+number of previous steps to remember for the nonmonotone linesearch.
+
+
+## Limited memory variable metric (VMLM)
 
 Alternatively, the solution `x` can be computed by a limited memory version
-of the variable metric method (with BFGS updates) with:
+of the variable metric method (implementing BFGS updates) with:
 ```julia
 x = OptimPack.vmlm(fg!, x0, m)
 ```
@@ -55,7 +79,7 @@ space = OptimPack.OptimPackShapedVectorSpace(T, dims)
 where `T` is `Float32` or `Float64` (or any type alias of these,
 e.g. `Cfloat` or `Cdouble`) and `dims` is a tuple of the dimensions.
 
-It is also possible to *wrap* a vector around a specific Julia arrays:
+It is also possible to *wrap* a vector around a specific Julia array:
 ```julia
 vect = OptimPack.wrap(space, arr)
 ```

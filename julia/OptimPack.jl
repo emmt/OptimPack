@@ -283,6 +283,110 @@ if false
 end
 
 #------------------------------------------------------------------------------
+# LINE SEARCH METHODS
+
+abstract OptimPackLineSearch <: OptimPackObject
+
+type OptimPackArmijoLineSearch <: OptimPackLineSearch
+    handle::Ptr{Void}
+    ftol::Cdouble
+    function OptimPackArmijoLineSearch(ftol::Real=1e-4)
+        assert(0.0 <= ftol < 1.0)
+        ptr = ccall((:opk_lnsrch_new_backtrack, liboptk), Ptr{Void},
+                (Cdouble,), ftol)
+        systemerror("failed to create linesearch", ptr == C_NULL)
+        obj = new(ptr, ftol)
+        finalizer(obj, obj -> __drop_object__(obj.handle))
+        return obj
+    end
+end
+
+type OptimPackMoreThuenteLineSearch <: OptimPackLineSearch
+    handle::Ptr{Void}
+    ftol::Cdouble
+    gtol::Cdouble
+    xtol::Cdouble
+    function OptimPackMoreThuenteLineSearch(ftol::Real=1e-4, gtol::Real=0.9,
+                                            xtol::Real=eps(Cdouble))
+        assert(0.0 <= ftol < gtol < 1.0)
+        assert(0.0 <= xtol < 1.0)
+        ptr = ccall((:opk_lnsrch_new_csrch, liboptk), Ptr{Void},
+                (Cdouble, Cdouble, Cdouble), ftol, gtol, xtol)
+        systemerror("failed to create linesearch", ptr == C_NULL)
+        obj = new(ptr, ftol, gtol, xtol)
+        finalizer(obj, obj -> __drop_object__(obj.handle))
+        return obj
+    end
+end
+
+type OptimPackNonmonotoneLineSearch <: OptimPackLineSearch
+    handle::Ptr{Void}
+    ftol::Cdouble
+    m::Int
+    function OptimPackNonmonotoneLineSearch(ftol::Real=1e-4, m::Integer=10)
+        assert(0.0 <= ftol < 1.0)
+        assert(1 <= m)
+        ptr = ccall((:opk_lnsrch_new_nonmonotone, liboptk), Ptr{Void},
+                (Cdouble, Cptrdiff_t), ftol, m)
+        systemerror("failed to create linesearch", ptr == C_NULL)
+        obj = new(ptr, ftol, m)
+        finalizer(obj, obj -> __drop_object__(obj.handle))
+        return obj
+    end
+end
+
+OPK_LNSRCH_ERROR_ILLEGAL_ADDRESS		    = cint(-12)
+OPK_LNSRCH_ERROR_CORRUPTED_WORKSPACE		    = cint(-11)
+OPK_LNSRCH_ERROR_BAD_WORKSPACE			    = cint(-10)
+OPK_LNSRCH_ERROR_STP_CHANGED			    = cint( -9)
+OPK_LNSRCH_ERROR_STP_OUTSIDE_BRACKET		    = cint( -8)
+OPK_LNSRCH_ERROR_NOT_A_DESCENT			    = cint( -7)
+OPK_LNSRCH_ERROR_STPMIN_GT_STPMAX		    = cint( -6)
+OPK_LNSRCH_ERROR_STPMIN_LT_ZERO			    = cint( -5)
+OPK_LNSRCH_ERROR_STP_LT_STPMIN			    = cint( -4)
+OPK_LNSRCH_ERROR_STP_GT_STPMAX			    = cint( -3)
+OPK_LNSRCH_ERROR_INITIAL_DERIVATIVE_GE_ZERO	    = cint( -2)
+OPK_LNSRCH_ERROR_NOT_STARTED			    = cint( -1)
+OPK_LNSRCH_SEARCH				    = cint(  0)
+OPK_LNSRCH_CONVERGENCE				    = cint(  1)
+OPK_LNSRCH_WARNING_ROUNDING_ERRORS_PREVENT_PROGRESS = cint(  2)
+OPK_LNSRCH_WARNING_XTOL_TEST_SATISFIED		    = cint(  3)
+OPK_LNSRCH_WARNING_STP_EQ_STPMAX		    = cint(  4)
+OPK_LNSRCH_WARNING_STP_EQ_STPMIN		    = cint(  5)
+
+function start!(ls::OptimPackLineSearch, f0::Real, df0::Real,
+                stp1::Real, stpmin::Real, stpmax::Real)
+    ccall((:opk_lnsrch_start, liboptk), Cint,
+          (Ptr{Void}, Cdouble, Cdouble, Cdouble, Cdouble, Cdouble),
+          ls, f0, df0, stp1, stpmin, stpmax)
+end
+
+function iterate!(ls::OptimPackLineSearch, stp::Real, f::Real, df::Real)
+    _stp = Cdouble[stp]
+    task = ccall((:opk_lnsrch_iterate, liboptk), Cint,
+                 (Ptr{Void}, Ptr{Cdouble}, Cdouble, Cdouble),
+                 ls, _stp, f, df)
+    return (task, _stp[1])
+end
+
+get_step(ls::OptimPackLineSearch) = ccall((:opk_lnsrch_get_step, liboptk),
+                                          Cdouble, (Ptr{Void}, ), ls)
+get_status(ls::OptimPackLineSearch) = ccall((:opk_lnsrch_get_status, liboptk),
+                                            Cint, (Ptr{Void}, ), ls)
+has_errors(ls::OptimPackLineSearch) = (ccall((:opk_lnsrch_has_errors, liboptk),
+                                             Cint, (Ptr{Void}, ), ls) != 0)
+has_warnings(ls::OptimPackLineSearch) = (ccall((:opk_lnsrch_has_warnings, liboptk),
+                                               Cint, (Ptr{Void}, ), ls) != 0)
+converged(ls::OptimPackLineSearch) = (ccall((:opk_lnsrch_converged, liboptk),
+                                            Cint, (Ptr{Void}, ), ls) != 0)
+finished(ls::OptimPackLineSearch) = (ccall((:opk_lnsrch_finished, liboptk),
+                                            Cint, (Ptr{Void}, ), ls) != 0)
+get_ftol(ls::OptimPackLineSearch) = ls.ftol
+get_gtol(ls::OptimPackMoreThuenteLineSearch) = ls.gtol
+get_xtol(ls::OptimPackMoreThuenteLineSearch) = ls.xtol
+
+
+#------------------------------------------------------------------------------
 # NON LINEAR OPTIMIZERS
 
 # Codes returned by the reverse communication version of optimzation
@@ -323,32 +427,36 @@ type OptimPackNLCG <: OptimPackOptimizer
     handle::Ptr{Void}
     vspace::OptimPackVectorSpace
     method::Cuint
+    lnsrch::OptimPackLineSearch
     function OptimPackNLCG(space::OptimPackVectorSpace,
-                           method::Integer=OPK_NLCG_DEFAULT)
-        ptr = ccall((:opk_nlcg_new, liboptk), Ptr{Void},
-                (Ptr{Void}, Cuint), space.handle, method)
+                           method::Integer=OPK_NLCG_DEFAULT;
+                           lnsrch::OptimPackLineSearch=OptimPackMoreThuenteLineSearch())
+        ptr = ccall((:opk_new_nlcg_optimizer_with_line_search, liboptk), Ptr{Void},
+                (Ptr{Void}, Cuint, Ptr{Void}), space.handle, method, lnsrch.handle)
         systemerror("failed to create optimizer", ptr == C_NULL)
-        obj = new(ptr, space, method)
+        obj = new(ptr, space, method, lnsrch)
         finalizer(obj, obj -> __drop_object__(obj.handle))
         return obj
     end
 end
 
-start(opt::OptimPackNLCG) = ccall((:opk_nlcg_start, liboptk), Cint,
-                                  (Ptr{Void},), opt.handle)
+start!(opt::OptimPackNLCG) = ccall((:opk_start_nlcg, liboptk), Cint,
+                                   (Ptr{Void},), opt.handle)
 
 function iterate!(opt::OptimPackNLCG, x::OptimPackVector, f::Real, g::OptimPackVector)
-    ccall((:opk_nlcg_iterate, liboptk), Cint,
+    ccall((:opk_iterate_nlcg, liboptk), Cint,
           (Ptr{Void}, Ptr{Void}, Cdouble, Ptr{Void}),
           opt.handle, x.handle, f, g.handle)
 end
 
-iterations(opt::OptimPackNLCG) = ccall((:opk_nlcg_get_iterations, liboptk), Cint,
-                                       (Ptr{Void},), opt.handle)
-evaluations(opt::OptimPackNLCG) = ccall((:opk_nlcg_get_evaluations, liboptk), Cint,
-                                        (Ptr{Void},), opt.handle)
-restarts(opt::OptimPackNLCG) = ccall((:opk_nlcg_get_restarts, liboptk), Cint,
-                                     (Ptr{Void},), opt.handle)
+get_task(opt::OptimPackNLCG) = ccall((:opk_get_nlcg_task, liboptk),
+                                     Cint, (Ptr{Void},), opt.handle)
+iterations(opt::OptimPackNLCG) = ccall((:opk_get_nlcg_iterations, liboptk),
+                                       Cptrdiff_t, (Ptr{Void},), opt.handle)
+evaluations(opt::OptimPackNLCG) = ccall((:opk_get_nlcg_evaluations, liboptk),
+                                        Cptrdiff_t, (Ptr{Void},), opt.handle)
+restarts(opt::OptimPackNLCG) = ccall((:opk_get_nlcg_restarts, liboptk),
+                                     Cptrdiff_t, (Ptr{Void},), opt.handle)
 
 #------------------------------------------------------------------------------
 # VARIABLE METRIC OPTIMIZATION METHOD
@@ -375,24 +483,26 @@ type OptimPackVMLM <: OptimPackOptimizer
     end
 end
 
-start(opt::OptimPackVMLM) = ccall((:opk_vmlm_start, liboptk), Cint,
-                                  (Ptr{Void},), opt.handle)
+start!(opt::OptimPackVMLM) = ccall((:opk_start_vmlm, liboptk), Cint,
+                                   (Ptr{Void},), opt.handle)
 
 function iterate!(opt::OptimPackVMLM, x::OptimPackVector, f::Real, g::OptimPackVector)
-    ccall((:opk_vmlm_iterate, liboptk), Cint,
+    ccall((:opk_iterate_vmlm, liboptk), Cint,
           (Ptr{Void}, Ptr{Void}, Cdouble, Ptr{Void}),
           opt.handle, x.handle, f, g.handle)
 end
 
-iterations(opt::OptimPackVMLM) = ccall((:opk_get_vmlm_iterations, liboptk), Cint,
-                                       (Ptr{Void},), opt.handle)
-evaluations(opt::OptimPackVMLM) = ccall((:opk_get_vmlm_evaluations, liboptk), Cint,
-                                        (Ptr{Void},), opt.handle)
-restarts(opt::OptimPackVMLM) = ccall((:opk_get_vmlm_restarts, liboptk), Cint,
-                                     (Ptr{Void},), opt.handle)
+get_task(opt::OptimPackVMLM) = ccall((:opk_get_vmlm_task, liboptk),
+                                     Cint, (Ptr{Void},), opt.handle)
+iterations(opt::OptimPackVMLM) = ccall((:opk_get_vmlm_iterations, liboptk),
+                                       Cptrdiff_t, (Ptr{Void},), opt.handle)
+evaluations(opt::OptimPackVMLM) = ccall((:opk_get_vmlm_evaluations, liboptk),
+                                        Cptrdiff_t, (Ptr{Void},), opt.handle)
+restarts(opt::OptimPackVMLM) = ccall((:opk_get_vmlm_restarts, liboptk),
+                                     Cptrdiff_t, (Ptr{Void},), opt.handle)
 
 #------------------------------------------------------------------------------
-# NON LINEAR OPTIMIZATION
+# DRIVERS FOR NON-LINEAR OPTIMIZATION
 
 # x = minimize(fg!, x0)
 #
@@ -408,8 +518,13 @@ restarts(opt::OptimPackVMLM) = ccall((:opk_get_vmlm_restarts, liboptk), Cint,
 #
 function nlcg{T,N}(fg!::Function, x0::Array{T,N},
                    method::Integer=OPK_NLCG_DEFAULT;
+                   lnsrch::Union(Nothing,OptimPackLineSearch)=nothing,
                    verb::Bool=false)
     #assert(T == Type{Cdouble} || T == Type{Cfloat})
+
+    if lnsrch == nothing
+        lnsrch = OptimPackMoreThuenteLineSearch()
+    end
 
     # Allocate workspaces
     dims = size(x0)
@@ -418,8 +533,8 @@ function nlcg{T,N}(fg!::Function, x0::Array{T,N},
     g = Array(T, dims)
     wx = wrap(space, x)
     wg = wrap(space, g)
-    opt = OptimPackNLCG(space, method)
-    task = start(opt)
+    opt = OptimPackNLCG(space, method; lnsrch=lnsrch)
+    task = start!(opt)
     while true
         if task == OPK_TASK_COMPUTE_FG
             f = fg!(x, g)
@@ -459,7 +574,7 @@ function vmlm{T,N}(fg!::Function, x0::Array{T,N},
     wx = wrap(space, x)
     wg = wrap(space, g)
     opt = OptimPackVMLM(space, m)
-    task = start(opt)
+    task = start!(opt)
     while true
         if task == OPK_TASK_COMPUTE_FG
             f = fg!(x, g)
