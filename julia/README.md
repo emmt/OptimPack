@@ -25,7 +25,7 @@ storing the gradient.  The user defined function shall return the function
 value.
 
 
-## Non-linear conjugate gradient (NLCG)
+## Non-Linear Conjugate Gradient (NLCG)
 
 The solution `x` can be computed by one of the implemented non-linear
 conjugate gradient methods with:
@@ -37,6 +37,22 @@ type and dimensions of the solution).  `x0` is a Julia dense array with any
 dimensions and with elements of type `Float64` or `Float32`.  Argument
 `method` is optional and can be used to choose among the different implemented
 methods.
+
+The non-linear conjugate gradient is an iterative algorithm, the
+convergence is assumed when the Euclidean norm of the gradient is
+smaller than a threshold:
+```julia
+||g|| <= max(0, gatol, grtol*||g0||)
+```
+where `||g||` is the Euclidean norm of the current gradient, `||g0||`
+is Euclidean norm of the current gradient, `gatol` is an absolute
+threshold parameter and `grtol` is a relative threshold parameter.
+The keywords `gatol` and `grtol` can be used to specify other values
+for these parameters than the default ones which are `gatol = 0.0` and
+`grtol = 1E-6`.
+
+The keyword `verb` can be set true to print information at each
+iteration.
 
 The keyword `lnsrch` can be used to specify another linesearch method
 than the default one:
@@ -55,6 +71,12 @@ first Wolfe condition, `gtol` the tolerance on the gradient the second
 length (set to the machine relative precision by default) and `m` the
 number of previous steps to remember for the nonmonotone linesearch.
 
+The linesearch is safeguarded by imposing a lower and an upper bounds
+on the step.  Keywords `stpmin` and `stpmax` can be used to specify
+the step bounds relatively to the size of the first step (for each
+linesearch).  Their default values are: `stpmin = 1E-20` and `stpmax =
+1E+20`; they must be given such that: `0 <= stpmin < stpmax`.
+
 
 ## Limited memory variable metric (VMLM)
 
@@ -66,6 +88,10 @@ x = OptimPack.vmlm(fg!, x0, m)
 where the optional argument `m` is the number of previous steps to memorize
 (by default `m=3`) while other arguments have the same meaning as for
 `OptimPack.nlcg`.
+
+Keywords `verb`, `gatol`, `grtol`, `lnsrch`, `stpmin` and `stpmax` can
+also be specified for `OptimPack.vmlm` and have the same meaning as
+for `OptimPack.nlcg`.
 
 
 ## Low-level Interface

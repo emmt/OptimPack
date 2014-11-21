@@ -465,6 +465,40 @@ get_stpmin(opt::OptimPackNLCG) = ccall((:opk_get_nlcg_stpmin, liboptk),
                                        Cdouble, (Ptr{Void},), opt.handle)
 get_stpmax(opt::OptimPackNLCG) = ccall((:opk_get_nlcg_stpmax, liboptk),
                                        Cdouble, (Ptr{Void},), opt.handle)
+function set_gatol!(opt::OptimPackNLCG, gatol::Real)
+    if ccall((:opk_set_nlcg_gatol, liboptk),
+             Cint, (Ptr{Void},Cdouble), opt.handle, gatol) != OPK_SUCCESS
+        e = errno()
+        if e == Base.EINVAL
+            error("invalid value for parameter gatol")
+        else
+            error("unexpected error while setting parameter gatol")
+        end
+    end
+end
+function set_grtol!(opt::OptimPackNLCG, grtol::Real)
+    if ccall((:opk_set_nlcg_grtol, liboptk),
+             Cint, (Ptr{Void},Cdouble), opt.handle, grtol) != OPK_SUCCESS
+        e = errno()
+        if e == Base.EINVAL
+            error("invalid value for parameter grtol")
+        else
+            error("unexpected error while setting parameter grtol")
+        end
+    end
+end
+function set_stpmin_and_stpmax!(opt::OptimPackNLCG, stpmin::Real, stpmax::Real)
+    if ccall((:opk_set_nlcg_stpmin_and_stpmax, liboptk),
+             Cint, (Ptr{Void},Cdouble,Cdouble),
+             opt.handle, stpmin, stpmax) != OPK_SUCCESS
+        e = errno()
+        if e == Base.EINVAL
+            error("invalid values for parameters stpmin and stpmax")
+        else
+            error("unexpected error while setting parameters stpmin and stpmax")
+        end
+    end
+end
 
 #------------------------------------------------------------------------------
 # VARIABLE METRIC OPTIMIZATION METHOD
@@ -510,6 +544,48 @@ evaluations(opt::OptimPackVMLM) = ccall((:opk_get_vmlm_evaluations, liboptk),
                                         Cptrdiff_t, (Ptr{Void},), opt.handle)
 restarts(opt::OptimPackVMLM) = ccall((:opk_get_vmlm_restarts, liboptk),
                                      Cptrdiff_t, (Ptr{Void},), opt.handle)
+get_gatol(opt::OptimPackVMLM) = ccall((:opk_get_vmlm_gatol, liboptk),
+                                      Cdouble, (Ptr{Void},), opt.handle)
+get_grtol(opt::OptimPackVMLM) = ccall((:opk_get_vmlm_grtol, liboptk),
+                                      Cdouble, (Ptr{Void},), opt.handle)
+get_stpmin(opt::OptimPackVMLM) = ccall((:opk_get_vmlm_stpmin, liboptk),
+                                       Cdouble, (Ptr{Void},), opt.handle)
+get_stpmax(opt::OptimPackVMLM) = ccall((:opk_get_vmlm_stpmax, liboptk),
+                                       Cdouble, (Ptr{Void},), opt.handle)
+function set_gatol!(opt::OptimPackVMLM, gatol::Real)
+    if ccall((:opk_set_vmlm_gatol, liboptk),
+             Cint, (Ptr{Void},Cdouble), opt.handle, gatol) != OPK_SUCCESS
+        e = errno()
+        if e == Base.EINVAL
+            error("invalid value for parameter gatol")
+        else
+            error("unexpected error while setting parameter gatol")
+        end
+    end
+end
+function set_grtol!(opt::OptimPackVMLM, grtol::Real)
+    if ccall((:opk_set_vmlm_grtol, liboptk),
+             Cint, (Ptr{Void},Cdouble), opt.handle, grtol) != OPK_SUCCESS
+        e = errno()
+        if e == Base.EINVAL
+            error("invalid value for parameter grtol")
+        else
+            error("unexpected error while setting parameter grtol")
+        end
+    end
+end
+function set_stpmin_and_stpmax!(opt::OptimPackVMLM, stpmin::Real, stpmax::Real)
+    if ccall((:opk_set_vmlm_stpmin_and_stpmax, liboptk),
+             Cint, (Ptr{Void},Cdouble,Cdouble),
+             opt.handle, stpmin, stpmax) != OPK_SUCCESS
+        e = errno()
+        if e == Base.EINVAL
+            error("invalid values for parameters stpmin and stpmax")
+        else
+            error("unexpected error while setting parameters stpmin and stpmax")
+        end
+    end
+end
 
 #------------------------------------------------------------------------------
 # DRIVERS FOR NON-LINEAR OPTIMIZATION
@@ -529,7 +605,9 @@ restarts(opt::OptimPackVMLM) = ccall((:opk_get_vmlm_restarts, liboptk),
 function nlcg{T,N}(fg!::Function, x0::Array{T,N},
                    method::Integer=OPK_NLCG_DEFAULT;
                    lnsrch::Union(Nothing,OptimPackLineSearch)=nothing,
-                   verb::Bool=false)
+                   gatol::Real=0.0, grtol::Real=1E-6,
+                   stpmin::Real=1E-20, stpmax::Real=1E+20,
+                   verb::Bool=false, debug::Bool=false)
     #assert(T == Type{Cdouble} || T == Type{Cfloat})
 
     if lnsrch == nothing
@@ -544,6 +622,14 @@ function nlcg{T,N}(fg!::Function, x0::Array{T,N},
     wx = wrap(space, x)
     wg = wrap(space, g)
     opt = OptimPackNLCG(space, method; lnsrch=lnsrch)
+    set_gatol!(opt, gatol)
+    set_grtol!(opt, grtol)
+    set_stpmin_and_stpmax!(opt, stpmin, stpmax)
+    if debug
+        @printf("gatol=%E; grtol=%E; stpmin=%E; stpmax=%E\n",
+                get_gatol(opt), get_grtol(opt),
+                get_stpmin(opt), get_stpmax(opt))
+    end
     task = start!(opt)
     while true
         if task == OPK_TASK_COMPUTE_FG
@@ -552,7 +638,13 @@ function nlcg{T,N}(fg!::Function, x0::Array{T,N},
             if verb
                 iter = iterations(opt)
                 eval = evaluations(opt)
-                @printf("%4d  %4d  %.16E  %.5E\n", iter, eval, f, norm2(wg))
+                if iter == 0
+                    @printf("%s\n%s\n",
+                            " ITER   EVAL           F(X)             ||G(X)||",
+                            "-------------------------------------------------")
+                end
+                @printf("%5d  %5d  %24.16E %10.3E\n",
+                        iter, eval, f, norm2(wg))
             end
             if task == OPK_TASK_FINAL_X
                 return x
@@ -574,7 +666,9 @@ end
 function vmlm{T,N}(fg!::Function, x0::Array{T,N},
                    m::Integer=3;
                    lnsrch::OptimPackLineSearch=OptimPackMoreThuenteLineSearch(),
-                   verb::Bool=false)
+                   gatol::Real=0.0, grtol::Real=1E-6,
+                   stpmin::Real=1E-20, stpmax::Real=1E+20,
+                   verb::Bool=false, debug::Bool=false)
     #assert(T == Type{Cdouble} || T == Type{Cfloat})
 
     # Allocate workspaces
@@ -585,6 +679,14 @@ function vmlm{T,N}(fg!::Function, x0::Array{T,N},
     wx = wrap(space, x)
     wg = wrap(space, g)
     opt = OptimPackVMLM(space, m)
+    set_gatol!(opt, gatol)
+    set_grtol!(opt, grtol)
+    set_stpmin_and_stpmax!(opt, stpmin, stpmax)
+    if debug
+        @printf("gatol=%E; grtol=%E; stpmin=%E; stpmax=%E\n",
+                get_gatol(opt), get_grtol(opt),
+                get_stpmin(opt), get_stpmax(opt))
+    end
     task = start!(opt)
     while true
         if task == OPK_TASK_COMPUTE_FG
@@ -593,7 +695,13 @@ function vmlm{T,N}(fg!::Function, x0::Array{T,N},
             if verb
                 iter = iterations(opt)
                 eval = evaluations(opt)
-                @printf("%4d  %4d  %.16E  %.5E\n", iter, eval, f, norm2(wg))
+                if iter == 0
+                    @printf("%s\n%s\n",
+                            " ITER   EVAL           F(X)             ||G(X)||",
+                            "-------------------------------------------------")
+                end
+                @printf("%5d  %5d  %24.16E %10.3E\n",
+                        iter, eval, f, norm2(wg))
             end
             if task == OPK_TASK_FINAL_X
                 return x
