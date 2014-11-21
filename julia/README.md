@@ -36,11 +36,68 @@ where `x0` gives the initial value of the variables (as well as the data
 type and dimensions of the solution).  `x0` is a Julia dense array with any
 dimensions and with elements of type `Float64` or `Float32`.  Argument
 `method` is optional and can be used to choose among the different implemented
-methods.
+methods (see below).
+
+The keyword `verb` can be set true to print information at each iteration.
+Other keywords are described in the following sub-sections.
+
+
+### Method Settings
+
+The different nonlinear conjugate gradient methods mainly differ by the way
+they compute the search direction.  The conjugate gradient iteration
+writes:
+```julia
+x_{k+1} = x_{k} + alpha_{k} * d_{k}
+```
+with `alpha_{k}` the step length and where the search direction `d_{k}` is
+derived from the gradient `g(x_{k})` of the objective function at the
+current point `x_{k}` and from the previous search direction `d_{k-1}` by
+an *update rule* which depends on the specific method.  Typically:
+```julia
+d_{k} = -g(x_{k}) + beta_{k} * d_{k-1}
+```
+where `beta_{k}` is computed following different recipes.  To choose which
+recipe to use, the value of the `method` argument can be set to one of the
+following values:
+
+- `OPK_NLCG_FLETCHER_REEVES` for Fletcher & Reeve method;
+- `OPK_NLCG_HESTENES_STIEFEL` for Hestenes & Stiefel method;
+- `OPK_NLCG_POLAK_RIBIERE_POLYAK` for Polak, Ribière & Polyak method;
+- `OPK_NLCG_FLETCHER` for Fletcher "*Conjugate Descent*" method;
+- `OPK_NLCG_LIU_STOREY` for Liu & Storey method;
+- `OPK_NLCG_DAI_YUAN` for Dai & Yuan method;
+- `OPK_NLCG_PERRY_SHANNO` for Perry & Shanno update rule;
+- `OPK_NLCG_HAGER_ZHANG` for Hager & Zhang method.
+
+The above values can be bitwise or'ed with the following bits:
+
+- `OPK_NLCG_POWELL` to force parameter `beta` to be nonnegative;
+- `OPK_NLCG_SHANNO_PHUA` to guess the stpe length following the
+  prescription of Shanno & Phua.
+
+For instance:
+```julia
+method = OPK_NLCG_POLAK_RIBIERE_POLYAK | OPK_NLCG_POWELL
+```
+merely corresponds to PRP+ algorithm by Polak, Ribière & Polyak; while:
+```julia
+method = OPK_NLCG_PERRY_SHANNO | OPK_NLCG_SHANNO_PHUA
+```
+merely corresponds to the nonlinear conjugate gradient method implemented
+in CONMIN.
+
+The default settings for nonlinear conjugate gradient is:
+```julia
+const OPK_NLCG_DEFAULT  = (OPK_NLCG_HAGER_ZHANG | OPK_NLCG_SHANNO_PHUA)
+```
+
+
+### Convergence Settings
 
 The nonlinear conjugate gradient methods are iterative algorithms, the
-convergence is assumed to achieved when the Euclidean norm of the gradient
-is smaller than a threshold.  In pseudo-code, the criterion is:
+convergence is assumed to be achieved when the Euclidean norm of the
+gradient is smaller than a threshold.  In pseudo-code, the criterion is:
 ```julia
 ||g(x)|| <= max(0, gatol, grtol*||g(x0)||)
 ```
@@ -51,7 +108,8 @@ threshold parameter.  The keywords `gatol` and `grtol` can be used to
 specify other values for these parameters than the default ones which are
 `gatol = 0.0` and `grtol = 1E-6`.
 
-The keyword `verb` can be set true to print information at each iteration.
+
+### Linesearch Settings
 
 The keyword `lnsrch` can be used to specify another linesearch method than
 the default one:
@@ -97,7 +155,8 @@ be specified for `OptimPack.vmlm` and have the same meaning as for
 
 ### Operations on Vectors
 
-To create a vector space for vectors of dimensions `dims` and element type `T`:
+To create a vector space for vectors of dimensions `dims` and element type
+`T`:
 ```julia
 space = OptimPack.OptimPackShapedVectorSpace(T, dims)
 ```
@@ -108,7 +167,6 @@ It is also possible to *wrap* a vector around a specific Julia array:
 ```julia
 vect = OptimPack.wrap(space, arr)
 ```
-
 where `space` is an OptimPack *shaped* vector space and `arr` is a Julia
 array.  The element type and dimension list of the array must match those
 of the vector space.  A method is available to change the contents of such
