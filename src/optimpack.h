@@ -1081,7 +1081,7 @@ opk_get_nlcg_alpha(opk_nlcg_t* opt);
 extern double
 opk_get_nlcg_beta(opk_nlcg_t* opt);
 
-
+/* Rules to compute the search direction in NLCG: */
 #define OPK_NLCG_FLETCHER_REEVES        1
 #define OPK_NLCG_HESTENES_STIEFEL       2
 #define OPK_NLCG_POLAK_RIBIERE_POLYAK   3
@@ -1090,9 +1090,16 @@ opk_get_nlcg_beta(opk_nlcg_t* opt);
 #define OPK_NLCG_DAI_YUAN               6
 #define OPK_NLCG_PERRY_SHANNO           7
 #define OPK_NLCG_HAGER_ZHANG            8
-#define OPK_NLCG_POWELL              (1<<8) /* force beta >= 0 */
-#define OPK_NLCG_SHANNO_PHUA         (1<<9) /* compute scale from previous
-                                               iteration */
+
+/* The rule can be combined (bitwise or'ed) with the following bits to force
+   beta >= 0 (according to Powell's prescription): */
+#define OPK_NLCG_POWELL              (1<<8)
+
+/* The rule can be combined (bitwise or'ed) with one of the following bits to
+   compute the initial step size from the previous iteration: */
+#define OPK_NLCG_SHANNO_PHUA         (1<<9)
+#define OPK_NLCG_OREN_SPEDICATO	     (2<<9)
+#define OPK_NLCG_BARZILAI_BORWEIN    (3<<9)
 
 /* For instance: (OPK_NLCG_POLAK_RIBIERE_POLYAK | OPK_NLCG_POWELL) merely
    corresponds to PRP+ (Polak, Ribiere, Polyak) while (OPK_NLCG_PERRY_SHANNO |
@@ -1102,6 +1109,7 @@ opk_get_nlcg_beta(opk_nlcg_t* opt);
 /* Default settings for non linear conjugate gradient (should correspond to
    the method which is, in general, the most successful). */
 #define OPK_NLCG_DEFAULT (OPK_NLCG_HAGER_ZHANG | OPK_NLCG_SHANNO_PHUA)
+
 
 /** @} */
 
@@ -1126,24 +1134,22 @@ opk_get_nlcg_beta(opk_nlcg_t* opt);
     from the `opk_operator_t` object.  */
 typedef struct _opk_lbfgs_operator opk_lbfgs_operator_t;
 
-/** Rule to estimate the initial inverse Hessian approximation. */
-typedef enum {
-  OPK_CUSTOM_APPROX = 0,
-  OPK_BARZILAI_BORWEIN_1, /**< gamma = <s,y>/<y,y> */
-  OPK_BARZILAI_BORWEIN_2, /**< gamma = <s,s>/<s,y> */
-} opk_inverse_hessian_rule_t;
+/** Rules for scaling the inverse Hessian approximation. */
+#define OPK_SCALING_NONE               0
+#define OPK_SCALING_OREN_SPEDICATO     1  /**< gamma = <s,y>/<y,y> */
+#define OPK_SCALING_BARZILAI_BORWEIN   2  /**< gamma = <s,s>/<s,y> */
 
 /**
  * Create a new limited memory BFGS operator.
  *
  * @param vspace - The input and output vector space of the operator.
- * @param m - The maximum number of previous steps to memorize.
- * @param rule - The rule for updating the scale of the approximation of the
- *               inverse Hessian.
+ * @param m       - The maximum number of previous steps to memorize.
+ * @param scaling - The rule for scaling the approximation of the
+ *                   inverse Hessian.
  */
 extern opk_lbfgs_operator_t*
 opk_new_lbfgs_operator(opk_vspace_t* vspace, opk_index_t m,
-                       opk_inverse_hessian_rule_t rule);
+                       int rule);
 
 /** Forget all memorized steps in limited memory BFGS operator. */
 extern void
@@ -1245,6 +1251,12 @@ opk_get_vmlm_evaluations(opk_vmlm_t* opt);
 
 extern opk_index_t
 opk_get_vmlm_restarts(opk_vmlm_t* opt);
+
+extern int
+opk_get_vmlm_scaling(opk_vmlm_t* opt);
+
+extern int
+opk_set_vmlm_scaling(opk_vmlm_t* opt, int scaling);
 
 extern double
 opk_get_vmlm_gatol(opk_vmlm_t* opt);

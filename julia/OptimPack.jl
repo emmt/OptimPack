@@ -587,6 +587,19 @@ function set_stpmin_and_stpmax!(opt::OptimPackVMLM, stpmin::Real, stpmax::Real)
     end
 end
 
+const OPK_SCALING_NONE             = cint(0)
+const OPK_SCALING_OREN_SPEDICATO   = cint(1) # gamma = <s,y>/<y,y>
+const OPK_SCALING_BARZILAI_BORWEIN = cint(2) # gamma = <s,s>/<s,y>
+
+get_scaling(opt::OptimPackVMLM) = ccall((:opk_get_vmlm_scaling, liboptk),
+                                      Cint, (Ptr{Void},), opt.handle)
+function set_scaling!(opt::OptimPackVMLM, scaling::Integer)
+    if ccall((:opk_set_vmlm_scaling, liboptk),
+             Cint, (Ptr{Void},Cint), opt.handle, scaling) != OPK_SUCCESS
+        error("unexpected error while setting scaling scaling")
+    end
+end
+
 #------------------------------------------------------------------------------
 # DRIVERS FOR NON-LINEAR OPTIMIZATION
 
@@ -665,6 +678,7 @@ end
 
 function vmlm{T,N}(fg!::Function, x0::Array{T,N},
                    m::Integer=3;
+                   scaling::Integer=OPK_SCALING_OREN_SPEDICATO,
                    lnsrch::OptimPackLineSearch=OptimPackMoreThuenteLineSearch(),
                    gatol::Real=0.0, grtol::Real=1E-6,
                    stpmin::Real=1E-20, stpmax::Real=1E+20,
@@ -679,6 +693,7 @@ function vmlm{T,N}(fg!::Function, x0::Array{T,N},
     wx = wrap(space, x)
     wg = wrap(space, g)
     opt = OptimPackVMLM(space, m)
+    set_scaling!(opt, scaling)
     set_gatol!(opt, gatol)
     set_grtol!(opt, grtol)
     set_stpmin_and_stpmax!(opt, stpmin, stpmax)

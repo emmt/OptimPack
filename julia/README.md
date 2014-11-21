@@ -85,7 +85,7 @@ merely corresponds to PRP+ algorithm by Polak, Ribière & Polyak; while:
 method = OPK_NLCG_PERRY_SHANNO | OPK_NLCG_SHANNO_PHUA
 ```
 merely corresponds to the nonlinear conjugate gradient method implemented
-in CONMIN.
+in CONMIN (Shanno & Phua, 1980).
 
 The default settings for nonlinear conjugate gradient is:
 ```julia
@@ -149,6 +149,16 @@ where the optional argument `m` is the number of previous steps to memorize
 Keywords `verb`, `gatol`, `grtol`, `lnsrch`, `stpmin` and `stpmax` can also
 be specified for `OptimPack.vmlm` and have the same meaning as for
 `OptimPack.nlcg`.
+
+In addition to these keywords, you can specify how to scale the inverse
+Hessian in variable metric method via the `scaling` keyword:
+```julia
+scaling = OPK_SCALING_NONE              # to use a unit scaling (no scaling)
+scaling = OPK_SCALING_OREN_SPEDICATO   # to scale by: gamma = <s,y>/<y,y>
+scaling = OPK_SCALING_BARZILAI_BORWEIN # to scale by: gamma = <s,s>/<s,y>
+```
+where `<s,y>` is the inner product between the previous step `s` and
+gradient difference `y`.
 
 
 ## Low-level Interface

@@ -62,7 +62,7 @@ struct _opk_lbfgs_operator {
   opk_index_t m;       /**< Maximum number of memorized steps. */
   opk_index_t mp;      /**< Actual number of memorized steps (0 <= mp <= m). */
   opk_index_t mark;    /**< Index of oldest saved step. */
-  opk_inverse_hessian_rule_t rule;
+  int scaling;
 };
 
 static opk_index_t
@@ -154,7 +154,7 @@ static opk_operator_operations_t lbfgs_operations = {
 
 opk_lbfgs_operator_t*
 opk_new_lbfgs_operator(opk_vspace_t* vspace, opk_index_t m,
-                       opk_inverse_hessian_rule_t rule)
+                       int scaling)
 {
   opk_lbfgs_operator_t* op;
   size_t s_offset, y_offset, beta_offset, rho_offset, size;
@@ -195,7 +195,7 @@ opk_new_lbfgs_operator(opk_vspace_t* vspace, opk_index_t m,
   op->epsilon = 1e-6;
   op->gamma = 1.0;
   op->m = m;
-  op->rule = rule;
+  op->scaling = scaling;
   for (k = 0; k < m; ++k) {
     op->s[k] = opk_vcreate(vspace);
     if (op->s[k] == NULL) {
@@ -270,9 +270,9 @@ opk_update_lbfgs_operator(opk_lbfgs_operator_t* op,
   } else {
     /* Compute RHO[j] and GAMMA. */
     op->rho[j] = 1.0/sty;
-    if (op->rule == OPK_BARZILAI_BORWEIN_1) {
+    if (op->scaling == OPK_SCALING_OREN_SPEDICATO) {
       op->gamma = (sty/ynorm)/ynorm;
-    } else if (op->rule == OPK_BARZILAI_BORWEIN_2) {
+    } else if (op->scaling == OPK_SCALING_BARZILAI_BORWEIN) {
       op->gamma = (snorm/sty)*snorm;
     }
     /* Update the mark and the number of saved pairs. */
@@ -321,6 +321,7 @@ static const double GATOL = 0.0;
 /* Other default parameters. */
 static const double DELTA = 0.01;
 static const double EPSILON = 1e-3;
+static const int    SCALING = OPK_SCALING_OREN_SPEDICATO;
 
 struct _opk_vmlm {
   opk_object_t base; /**< Base type (must be the first member). */
@@ -454,7 +455,7 @@ opk_new_vmlm_optimizer_with_line_search(opk_vspace_t* vspace,
   }
   opt->vspace = OPK_HOLD_VSPACE(vspace);
   opt->lnsrch = OPK_HOLD_LNSRCH(lnsrch);
-  opt->H = opk_new_lbfgs_operator(vspace, m, OPK_BARZILAI_BORWEIN_2);
+  opt->H = opk_new_lbfgs_operator(vspace, m, SCALING);
   if (opt->H == NULL) {
     goto error;
   }
@@ -636,7 +637,7 @@ opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x1,
 
     /* Estimate the length of the first step, start the line search and take
        the first step along the search direction. */
-    if (opt->H->mp >= 1 || opt->H->rule == OPK_CUSTOM_APPROX) {
+    if (opt->H->mp >= 1 || opt->H->scaling == OPK_SCALING_NONE) {
       opt->alpha = 1.0;
     } else if (0.0 < opt->epsilon && opt->epsilon < 1.0) {
       double x1norm = opk_vnorm2(x1);
@@ -687,6 +688,31 @@ opk_index_t
 opk_get_vmlm_restarts(opk_vmlm_t* opt)
 {
   return opt->restarts;
+}
+
+int
+opk_get_vmlm_scaling(opk_vmlm_t* opt)
+{
+  return (opt == NULL ? SCALING : opt->H->scaling);
+}
+
+int
+opk_set_vmlm_scaling(opk_vmlm_t* opt, int scaling)
+{
+  if (opt == NULL) {
+    errno = EFAULT;
+    return OPK_FAILURE;
+  }
+  switch (scaling) {
+  case OPK_SCALING_NONE:
+  case OPK_SCALING_OREN_SPEDICATO:
+  case OPK_SCALING_BARZILAI_BORWEIN:
+    opt->H->scaling = scaling;
+    return OPK_SUCCESS;
+  default:
+    errno = EINVAL;
+    return OPK_FAILURE;
+  }
 }
 
 double
