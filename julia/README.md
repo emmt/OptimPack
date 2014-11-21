@@ -78,7 +78,7 @@ linesearch).  Their default values are: `stpmin = 1E-20` and `stpmax =
 1E+20`; they must be given such that: `0 <= stpmin < stpmax`.
 
 
-## Limited memory variable metric (VMLM)
+## Limited Memory Variable Metric (VMLM)
 
 Alternatively, the solution `x` can be computed by a limited memory version
 of the variable metric method (implementing BFGS updates) with:
