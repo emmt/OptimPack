@@ -31,15 +31,19 @@ end
 
 x0 = Array(Float64, 20)
 rosenbrock_init!(x0)
+println("Testing NLCG in double precision")
 x1 = OptimPack.nlcg(rosenbrock_fg!, x0, verb=true)
-println(x1)
+#println(x1)
+println("\nTesting VMLM in double precision")
 x2 = OptimPack.vmlm(rosenbrock_fg!, x0, verb=true)
-println(x2)
+#println(x2)
 
 x0 = Array(Float32, 20)
 rosenbrock_init!(x0)
+println("\nTesting NLCG in single precision")
 x1 = OptimPack.nlcg(rosenbrock_fg!, x0, verb=true)
-println(x1)
+#println(x1)
+println("\nTesting VMLM in single precision")
 x2 = OptimPack.vmlm(rosenbrock_fg!, x0, verb=true)
-println(x2)
+#println(x2)
 
