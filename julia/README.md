@@ -73,7 +73,7 @@ following values:
 The above values can be bitwise or'ed with the following bits:
 
 - `OPK_NLCG_POWELL` to force parameter `beta` to be nonnegative;
-- `OPK_NLCG_SHANNO_PHUA` to guess the stpe length following the
+- `OPK_NLCG_SHANNO_PHUA` to guess the step length following the
   prescription of Shanno & Phua.
 
 For instance:
@@ -153,11 +153,11 @@ be specified for `OptimPack.vmlm` and have the same meaning as for
 In addition to these keywords, you can specify how to scale the inverse
 Hessian in variable metric method via the `scaling` keyword:
 ```julia
-scaling = OPK_SCALING_NONE              # to use a unit scaling (no scaling)
-scaling = OPK_SCALING_OREN_SPEDICATO   # to scale by: gamma = <s,y>/<y,y>
-scaling = OPK_SCALING_BARZILAI_BORWEIN # to scale by: gamma = <s,s>/<s,y>
+scaling = OPK_SCALING_NONE             # to use a unit scaling (no scaling)
+scaling = OPK_SCALING_OREN_SPEDICATO   # to scale by: gamma1 = <s,y>/<y,y>
+scaling = OPK_SCALING_BARZILAI_BORWEIN # to scale by: gamma2 = <s,s>/<s,y>
 ```
-where `<s,y>` is the inner product between the previous step `s` and
+where `<s,y>` denotes the inner product between the previous step `s` and
 gradient difference `y`.
 
 
