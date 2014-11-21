@@ -25,9 +25,9 @@ storing the gradient.  The user defined function shall return the function
 value.
 
 
-## Non-Linear Conjugate Gradient (NLCG)
+## Nonlinear Conjugate Gradient (NLCG)
 
-The solution `x` can be computed by one of the implemented non-linear
+The solution `x` can be computed by one of the implemented nonlinear
 conjugate gradient methods with:
 ```julia
 x = OptimPack.nlcg(fg!, x0, method)
@@ -38,24 +38,23 @@ dimensions and with elements of type `Float64` or `Float32`.  Argument
 `method` is optional and can be used to choose among the different implemented
 methods.
 
-The non-linear conjugate gradient is an iterative algorithm, the
-convergence is assumed when the Euclidean norm of the gradient is
-smaller than a threshold:
+The nonlinear conjugate gradient methods are iterative algorithms, the
+convergence is assumed to achieved when the Euclidean norm of the gradient
+is smaller than a threshold.  In pseudo-code, the criterion is:
 ```julia
-||g|| <= max(0, gatol, grtol*||g0||)
+||g(x)|| <= max(0, gatol, grtol*||g(x0)||)
 ```
-where `||g||` is the Euclidean norm of the current gradient, `||g0||`
-is Euclidean norm of the current gradient, `gatol` is an absolute
-threshold parameter and `grtol` is a relative threshold parameter.
-The keywords `gatol` and `grtol` can be used to specify other values
-for these parameters than the default ones which are `gatol = 0.0` and
-`grtol = 1E-6`.
+where `||g(x)||` is the Euclidean norm of the gradient at the current
+solution `x`, `||g(x0)||` is the Euclidean norm of the initial gradient at
+`x0`, `gatol` is an absolute threshold parameter and `grtol` is a relative
+threshold parameter.  The keywords `gatol` and `grtol` can be used to
+specify other values for these parameters than the default ones which are
+`gatol = 0.0` and `grtol = 1E-6`.
 
-The keyword `verb` can be set true to print information at each
-iteration.
+The keyword `verb` can be set true to print information at each iteration.
 
-The keyword `lnsrch` can be used to specify another linesearch method
-than the default one:
+The keyword `lnsrch` can be used to specify another linesearch method than
+the default one:
 ```julia
 x = OptimPack.nlcg(fg!, x0, method, lnsrch=ls)
 ```
@@ -65,20 +64,20 @@ ls = OptimPack.OptimPackArmijoLineSearch(ftol)
 ls = OptimPack.OptimPackMoreThuenteLineSearch(ftol, gtol, xtol)
 ls = OptimPack.OptimPackNonmonotoneLineSearch(ftol, m)
 ```
-with `ftol` the tolerance on the function reduction for the Armijo or
-first Wolfe condition, `gtol` the tolerance on the gradient the second
-(strong) Wolfe condition, `xtol` the relative precision for the step
-length (set to the machine relative precision by default) and `m` the
-number of previous steps to remember for the nonmonotone linesearch.
+with `ftol` the tolerance on the function reduction for the Armijo or first
+Wolfe condition, `gtol` the tolerance on the gradient for the second
+(strong) Wolfe condition, `xtol` the relative precision for the step length
+(set to the machine relative precision by default) and `m` the number of
+previous steps to remember for the nonmonotone linesearch.
 
-The linesearch is safeguarded by imposing a lower and an upper bounds
-on the step.  Keywords `stpmin` and `stpmax` can be used to specify
-the step bounds relatively to the size of the first step (for each
-linesearch).  Their default values are: `stpmin = 1E-20` and `stpmax =
-1E+20`; they must be given such that: `0 <= stpmin < stpmax`.
+The linesearch is safeguarded by imposing lower and upper bounds on the
+step.  Keywords `stpmin` and `stpmax` can be used to specify the step
+bounds relatively to the size of the first step (for each linesearch).
+Their default values are: `stpmin = 1E-20` and `stpmax = 1E+20`; if
+specified, they must be such that: `0 <= stpmin < stpmax`.
 
 
-## Limited Memory Variable Metric (VMLM)
+## Variable Metric with Limited Memory (VMLM)
 
 Alternatively, the solution `x` can be computed by a limited memory version
 of the variable metric method (implementing BFGS updates) with:
@@ -89,9 +88,9 @@ where the optional argument `m` is the number of previous steps to memorize
 (by default `m=3`) while other arguments have the same meaning as for
 `OptimPack.nlcg`.
 
-Keywords `verb`, `gatol`, `grtol`, `lnsrch`, `stpmin` and `stpmax` can
-also be specified for `OptimPack.vmlm` and have the same meaning as
-for `OptimPack.nlcg`.
+Keywords `verb`, `gatol`, `grtol`, `lnsrch`, `stpmin` and `stpmax` can also
+be specified for `OptimPack.vmlm` and have the same meaning as for
+`OptimPack.nlcg`.
 
 
 ## Low-level Interface
