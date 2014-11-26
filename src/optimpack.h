@@ -91,7 +91,7 @@
 #define OPK_JOIN6(a,b,c,d,e,f)       _OPK_JOIN6(a,b,c,d,e,f)
 #define OPK_JOIN7(a,b,c,d,e,f,g)     _OPK_JOIN7(a,b,c,d,e,f,g)
 #define OPK_JOIN8(a,b,c,d,e,f,g,h)   _OPK_JOIN8(a,b,c,d,e,f,g,h)
-#define OPK_JOIN9(a,b,c,d,e,f,g,h,i) _OPK_JOIN8(a,b,c,d,e,f,g,h,i)
+#define OPK_JOIN9(a,b,c,d,e,f,g,h,i) _OPK_JOIN9(a,b,c,d,e,f,g,h,i)
 
 /**
  * Macro `OPK_STRINGIFY(x)` wraps its argument in "" (double quotation marks),
@@ -126,6 +126,8 @@
 
 /**
  * Macro `OPK_ABS(a)` gives the absolute value of `a`.
+ *
+ * Beware that `a` is evaluated twice.
  */
 #define OPK_ABS(a)   ((a) >= 0 ? (a) : -(a))
 
