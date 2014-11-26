@@ -770,11 +770,15 @@ opk_error(const char* reason);
  * algorithms.
  */
 typedef enum {
-  OPK_TASK_ERROR      = -1, /**< An error has ocurred. */
-  OPK_TASK_COMPUTE_FG =  0, /**< Caller shall compute f(x) and g(x). */
-  OPK_TASK_NEW_X      =  1, /**< A new iterate is available. */
-  OPK_TASK_FINAL_X    =  2, /**< Algorithm has converged, solution is available. */
-  OPK_TASK_WARNING    =  3  /**< Algorithm terminated with a warning. */
+  OPK_TASK_ERROR       = -1, /**< An error has ocurred. */
+  OPK_TASK_PROJECT_X   =  0, /**< Caller must project variables x. */
+  OPK_TASK_COMPUTE_FG  =  1, /**< Caller must compute f(x) and g(x). */
+  OPK_TASK_FREE_VARS   =  2, /**< Caller must update the subspace of free
+                                  variables. */
+  OPK_TASK_NEW_X       =  3, /**< A new iterate is available. */
+  OPK_TASK_FINAL_X     =  4, /**< Algorithm has converged, solution is
+                                  available. */
+  OPK_TASK_WARNING     =  5  /**< Algorithm terminated with a warning. */
 } opk_task_t;
 
 
