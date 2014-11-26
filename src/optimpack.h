@@ -801,9 +801,37 @@ opk_lnsrch_new_csrch(double ftol, double gtol, double xtol);
 extern opk_lnsrch_t*
 opk_lnsrch_new_backtrack(double ftol);
 
-/** Create a nonmonotone line search. */
+/**
+ * Create a nonmonotone line search.
+ *
+ * Nonmonotone line search is described in SPG2 paper:
+ *
+ * E.G. Birgin, J.M. Martínez, & M. Raydan, "<i>Nonmonotone
+ * Spectral Projected Gradient Methods on Convex Sets</i>," SIAM
+ * J. Optim. <b>10</b>, 1196-1211 (2000).
+ *
+ * The parameters used in the SPG2 paper:
+ * <pre>
+ * m = 10
+ * ftol = 1E-4
+ * sigma1 = 0.1
+ * sigma2 = 0.9
+ * </pre>
+ *
+ * With {@code m = 1}, this line search method is equivalent to Armijo's line
+ * search except that it attempts to use quadratic interpolation rather than
+ * systematically use bisection to reduce the step size.
+ *
+ * @param m      - Number of previous steps to remember.
+ * @param ftol   - Parameter for the function reduction criterion.
+ * @param sigma1 - Lower steplength bound to trigger bissection.
+ * @param sigma2 - Upper steplength relative bound to trigger bissection.
+ *
+ * @return A new line search object.
+ */
 extern opk_lnsrch_t*
-opk_lnsrch_new_nonmonotone(double ftol, opk_index_t m);
+opk_lnsrch_new_nonmonotone(opk_index_t m, double ftol,
+                           double sigma1, double sigma2);
 
 /* Possible values returned by opk_lnsrch_start and opk_lnsrch_iterate. */
 #define OPK_LNSRCH_ERROR_ILLEGAL_ADDRESS                    -12

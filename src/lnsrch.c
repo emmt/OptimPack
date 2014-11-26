@@ -1,8 +1,8 @@
 /*
  * lnsrch.c --
  *
- * Line search routines for OptimPack library.  Implements Armijo and Moré &
- * Thuente inexact line search methods.
+ * Linesearch routines for OptimPack library.  Implements Armijo linesearch,
+ * Moré & Thuente inexact linesearch and nonmonotone linesearch methods.
  *
  *-----------------------------------------------------------------------------
  *
@@ -47,6 +47,15 @@
 #if (OPK_LNSRCH_SEARCH != 0)
 # error OPK_LNSRCH_SEARCH != 0
 #endif
+
+/*---------------------------------------------------------------------------*/
+/* PRIVATE ROUTINES */
+
+static int
+non_finite(double x)
+{
+  return (isnan(x) || isinf(x));
+}
 
 /*---------------------------------------------------------------------------*/
 /* UNIFIED INTERFACE FOR LINE SEARCH */
@@ -198,12 +207,12 @@ backtrack_start(opk_lnsrch_t* _ws)
 
 static int
 backtrack_iterate(opk_lnsrch_t* ls,
-                  double* stp_ptr, double f1, double g1)
+                  double* stp_ptr, double f, double g)
 {
   backtrack_lnsrch_t* bls = (backtrack_lnsrch_t*)ls;
-  int status;
+  int status = OPK_LNSRCH_SEARCH;
 
-  if (f1 <= ls->finit + bls->ftol*(*stp_ptr)*ls->ginit) {
+  if (f <= ls->finit + bls->ftol*(*stp_ptr)*ls->ginit) {
     /* First Wolfe conditions satisfied. */
     status = OPK_LNSRCH_CONVERGENCE;
   } else {
@@ -213,6 +222,7 @@ backtrack_iterate(opk_lnsrch_t* ls,
     } else {
       *stp_ptr = (*stp_ptr + ls->stpmin)*0.5;
     }
+    /* Safeguard the step. */
     if (*stp_ptr < ls->stpmin) {
       *stp_ptr = ls->stpmin;
     }
@@ -250,11 +260,13 @@ opk_lnsrch_new_backtrack(double ftol)
 /* Sub-type for nonmonotone line search. */
 typedef struct _nonmonotone_lnsrch nonmonotone_lnsrch_t;
 struct _nonmonotone_lnsrch {
-  opk_lnsrch_t base; /* Base type (must be the first member). */
-  double ftol;
-  double* fsav;
-  opk_index_t m;
-  opk_index_t mp;
+  opk_lnsrch_t base; /**< Base type (must be the first member). */
+  double ftol;       /**< Parameter for the function reduction criterion. */
+  double sigma1;     /**< Lower steplength bound to trigger bissection. */
+  double sigma2;     /**< Upper steplength relative bound to trigger bissection. */
+  double* fsav;      /**< Function values for M last accepted steps. */
+  opk_index_t m;     /**< Number of previous steps to remember. */
+  opk_index_t mp;    /**< Number of steps since starting. */
 };
 
 static int
@@ -267,48 +279,63 @@ nonmonotone_start(opk_lnsrch_t* ls)
 }
 
 #if 0
-static int
-nonmonotone_restart(opk_lnsrch_t* ls)
+static void
+nonmonotone_reset(opk_lnsrch_t* ls)
 {
   nonmonotone_lnsrch_t* nmls = (nonmonotone_lnsrch_t*)ls;
   nmls->mp = 0;
-  return nonmonotone_start(ls);
 }
 #endif
 
 static int
 nonmonotone_iterate(opk_lnsrch_t* ls,
-                    double* stp_ptr, double f1, double g1)
+                    double* stp_ptr, double f, double g)
 {
   nonmonotone_lnsrch_t* nmls = (nonmonotone_lnsrch_t*)ls;
-  double ftest;
+  double fmax, alpha, delta, q, r;
   opk_index_t j, n;
-  int status;
 
   /* Get the worst function value among the N last steps. */
   n = MIN(nmls->mp, nmls->m);
-  ftest = nmls->fsav[0];
+  fmax = nmls->fsav[0];
   for (j = 1; j < n; ++j) {
-    if (nmls->fsav[j] > ftest) {
-      ftest = nmls->fsav[j];
+    if (nmls->fsav[j] > fmax) {
+      fmax = nmls->fsav[j];
     }
   }
 
-  if (f1 <= ftest + nmls->ftol*(*stp_ptr)*ls->ginit) {
+  /* Check convergence criterion. */
+  alpha = *stp_ptr;   /* current steplength */
+  delta = ls->ginit;  /* directional derivative at alpha=0 */
+  if (f <= fmax + nmls->ftol*alpha*delta) {
     /* First Wolfe conditions satisfied. */
-    status = OPK_LNSRCH_CONVERGENCE;
-  } else {
-    /* Take a bisection step unless already at the lower bound. */
-    if (*stp_ptr <= ls->stpmin) {
-      status = OPK_LNSRCH_WARNING_STP_EQ_STPMIN;
-    } else {
-      *stp_ptr = (*stp_ptr + ls->stpmin)*0.5;
-    }
-    if (*stp_ptr < ls->stpmin) {
-      *stp_ptr = ls->stpmin;
-    }
+    return OPK_LNSRCH_CONVERGENCE;
   }
-  return status;
+
+  /* Check whether step is already at the lower bound. */
+  if (alpha <= ls->stpmin) {
+    *stp_ptr = ls->stpmin;
+    return OPK_LNSRCH_WARNING_STP_EQ_STPMIN;
+  }
+
+  /* Attempt to use safeguarded quadratic interpolation to find a better step.
+     The optimal steplength estimated by quadratic interpolation is q/r and
+     r > 0 must hold for the quadratic approximation to be strictly convex. */
+  q = -delta*alpha*alpha;
+  r = (f - ls->finit - alpha*delta)*2.0;
+  if (r > 0.0 && nmls->sigma1*r <= q && q <= nmls->sigma2*alpha*r) {
+    /* Quadratic approximation is strictly convex and its minimum is within
+       the bounds.  Take the quadratic interpolation step. */
+    alpha = q/r;
+  } else {
+    /* Take the bisection step. */
+    alpha = (alpha + ls->stpmin)/2.0;
+  }
+
+  /* Safeguard the step. */
+  alpha = MAX(alpha, ls->stpmin);
+  *stp_ptr = alpha;
+  return (alpha > 0.0 ? OPK_LNSRCH_SEARCH : OPK_LNSRCH_WARNING_STP_EQ_STPMIN);
 }
 
 static opk_lnsrch_operations_t nonmonotone_operations = {
@@ -318,12 +345,15 @@ static opk_lnsrch_operations_t nonmonotone_operations = {
 };
 
 opk_lnsrch_t*
-opk_lnsrch_new_nonmonotone(double ftol, opk_index_t m)
+opk_lnsrch_new_nonmonotone(opk_index_t m, double ftol,
+                           double sigma1, double sigma2)
 {
   opk_lnsrch_t* ls;
   size_t size, offset;
 
-  if (ftol <= 0.0 || m < 1) {
+  if (non_finite(ftol) || non_finite(sigma1) || non_finite(sigma1) ||
+      ftol <= 0.0 || sigma1 <= 0.0 || sigma1 >= sigma2 || sigma2 >= 1.0 ||
+      m < 1) {
     errno = EINVAL;
     return NULL;
   }
@@ -333,6 +363,8 @@ opk_lnsrch_new_nonmonotone(double ftol, opk_index_t m)
   if (ls != NULL) {
     nonmonotone_lnsrch_t* nmls = (nonmonotone_lnsrch_t*)ls;
     nmls->ftol = ftol;
+    nmls->sigma1 = sigma1;
+    nmls->sigma2 = sigma2;
     nmls->fsav = (double*)(((char*)ls) + offset);
     nmls->m = m;
     nmls->mp = 0;
