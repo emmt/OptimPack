@@ -396,14 +396,15 @@ finalize_nlcg(opk_object_t* obj)
 /* PUBLIC INTERFACE */
 
 opk_nlcg_t*
-opk_new_nlcg_optimizer_with_line_search(opk_vspace_t* vspace, unsigned int method,
+opk_new_nlcg_optimizer_with_line_search(opk_vspace_t* vspace,
+                                        unsigned int method,
                                         opk_lnsrch_t* lnsrch)
 {
   opk_nlcg_t* opt;
+  opk_bool_t g0_needed, y_needed;
   int (*update)(opk_nlcg_t* opt,
                 const opk_vector_t* x1,
                 const opk_vector_t* g1);
-  opk_bool_t g0_needed, y_needed;
 
   /* Check the input arguments for errors. */
   if (vspace == NULL || lnsrch == NULL) {
