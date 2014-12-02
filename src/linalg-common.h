@@ -37,8 +37,8 @@
 #ifndef _OPTIMPACK_H
 # include "optimpack.h"
 #endif
-#ifndef _OPK_LINALG_H
-# include "opk_linalg.h"
+#ifndef _OPTIMPACK_LINALG_H
+# include "optimpack-linalg.h"
 #endif
 
 /* Macros to replace some Fortran intrinsics. */

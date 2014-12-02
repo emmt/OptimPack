@@ -1,5 +1,5 @@
 /*
- * opk_linalg.h --
+ * optimpack-linalg.h --
  *
  * Definitions for linear algebra routines in OptimPack library.
  *
@@ -30,8 +30,8 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef _OPK_LINALG_H
-#define _OPK_LINALG_H 1
+#ifndef _OPTIMPACK_LINALG_H
+#define _OPTIMPACK_LINALG_H 1
 
 #ifndef _OPTIMPACK_H
 # include "optimpack.h"
@@ -1335,7 +1335,7 @@ opk_trcg_f(opk_index_t n, float p[], const float q[],
 
 OPK_END_C_DECLS
 
-#endif /* _OPK_LINALG_C */
+#endif /* _OPTIMPACK_LINALG_H */
 
 /*
  * Local Variables:

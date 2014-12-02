@@ -18,7 +18,7 @@ CPPFLAGS = -I.
 MGH_DIR = ../tests
 
 HEADERS = optimpack.h optimpack-private.h
-LINALG_HEADERS = opk_linalg.h linalg-common.h linalg-single.h linalg-double.h
+LINALG_HEADERS = optimpack-linalg.h linalg-common.h linalg-single.h linalg-double.h
 OBJS = algebra.o dblvector.o fltvector.o error.o gqtpar.o lnsrch.o linalg.o nlcg.o fmin.o vmlm.o
 
 STATIC_LIBRARY = $(LIBNAME).a
