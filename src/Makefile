@@ -18,7 +18,8 @@ CPPFLAGS = -I.
 MGH_DIR = ../tests
 
 HEADERS = optimpack.h optimpack-private.h
-OBJS = algebra.o fltvector.o dblvector.o error.o lnsrch.o nlcg.o fmin.o vmlm.o
+LINALG_HEADERS = opk_linalg.h linalg-common.h linalg-single.h linalg-double.h
+OBJS = algebra.o dblvector.o fltvector.o error.o gqtpar.o lnsrch.o linalg.o nlcg.o fmin.o vmlm.o
 
 STATIC_LIBRARY = $(LIBNAME).a
 SHARED_LIBRARY = $(LIBNAME).so.$(VERSION)
@@ -48,6 +49,9 @@ $(STATIC_LIBRARY): $(OBJS)
 
 error.o: error.c optimpack.h
 algebra.o: algebra.c $(HEADERS)
+
+linalg.o: linalg.c optimpack.h $(LINALG_HEADERS)
+gqtpar.o: gqtpar.c optimpack.h $(LINALG_HEADERS)
 
 fltvector.o: simple_vector.c $(HEADERS)
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) -DSINGLE_PRECISION=1 $< -o $@

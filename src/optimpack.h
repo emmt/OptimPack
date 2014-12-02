@@ -5,7 +5,9 @@
  *
  *-----------------------------------------------------------------------------
  *
- * Copyright (c) 2014 Éric Thiébaut
+ * The OptimPack library is licensed under the MIT "Expat" License:
+ *
+ * Copyright (c) 2014: Éric Thiébaut
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -1448,6 +1450,233 @@ opk_fmin_with_context(double (*f)(void *data, double x),
                       double a, double b, unsigned int flags,
                       long maxeval, double prec,
                       double out[7], void *data);
+
+/*---------------------------------------------------------------------------*/
+/* Group: Trust Region Step */
+
+/*
+ * Function: opk_dgqt
+ *
+ *   Computes a trust region step.
+ *
+ *
+ * Description:
+ *
+ *   Given an _n_ by _n_ symmetric matrix _A_, an _n_-vector _b_, and
+ *   a positive number _delta_, this subroutine determines a vector _x_
+ *   which approximately minimizes the quadratic function:
+ *
+ *   > f(x) = (1/2) x'.A.x + b'.x
+ *
+ *   subject to the Euclidean norm constraint
+ *
+ *   > norm(x) <= delta.
+ *
+ *   This subroutine computes an approximation _x_ and a Lagrange multiplier
+ *   _par_ such that either _par_ is zero and
+ *
+ *   > norm(x) <= (1 + rtol)*delta,
+ *
+ *   or _par_ is positive and
+ *
+ *   > abs(norm(x) - delta) <= rtol*delta.
+ *
+ *   If _xsol_ is the exact solution to the problem, the approximation _x_
+ *   satisfies
+ *
+ *   > f(x) <= ((1 - rtol)^2)*f(xsol)
+ *
+ *   (where '^' means exponentiation).
+ *
+ *
+ * Parameters:
+ *
+ *   n - The order of _A_.
+ *
+ *   a - A real array of dimensions _lda_ by _n_.  On entry the full upper
+ *       triangle of _a_ must contain the full upper triangle of the symmetric
+ *       matrix _A_.  On exit the array contains the matrix _A_.
+ *
+ *   lda - The leading dimension of the array _a_.
+ *
+ *   b - A real array of dimension _n_.  On entry _b_ specifies the
+ *       linear term in the quadratic.  On exit _b_ is unchanged.
+ *
+ *   delta - The bound on the Euclidean norm of _x_.
+ *
+ *   rtol - The relative accuracy desired in the solution. Convergence occurs
+ *       if _f(x) <= ((1-rtol)^2)*f(xsol)_ where _xsol_ is the exact solution.
+ *
+ *   atol - The absolute accuracy desired in the solution. Convergence occurs
+ *      when _norm(x) <= (1+rtol)*delta_ and
+ *      _max(-f(x),-f(xsol)) <= atol_.
+ *
+ *   itmax - The maximum number of iterations.
+ *
+ *   par_ptr - If non _NULL_, the address of an integer variable used to store
+ *       the Lagrange multiplier.  On entry _*par_ptr_ is an initial estimate
+ *       of the Lagrange multiplier for the constraint norm(_x_) <= _delta_.
+ *       On exit _*par_ptr_ contains the final estimate of the multiplier. If
+ *       _NULL, the initial Lagrange parameter is 0.
+ *
+ *   f_ptr - If non _NULL_, the address of a floating point variable used to
+ *       store the function value. On entry _*f_ptr_ need not be specified.
+ *       On exit _*f_ptr_ is set to _f(x)_ at the output _x_.
+ *
+ *   x - A real array of dimension _n_.  On entry _x_ need not be specified.
+ *       On exit _x_ is set to the final estimate of the solution.
+ *
+ *   iter_ptr - If non _NULL_, the address of an integer variable used to
+ *       store the number of iterations.
+ *
+ *   z - A real work array of dimension _n_.
+ *
+ *   wa1 - A real work array of dimension _n_.
+ *
+ *   wa2 - A real work array of dimension _n_.
+ *
+ *
+ * Returns:
+ *   The function returns one of the following integer values:
+ *
+ *   1 - The function value _f(x)_ has the relative accuracy specified by
+ *       _rtol_.
+ *
+ *   2 - The function value _f(x)_ has the absolute accuracy specified by
+ *       _atol_.
+ *
+ *   3 - Rounding errors prevent further progress.  On exit _x_ is the best
+ *       available approximation.
+ *
+ *   4 - Failure to converge after _itmax_ iterations.  On exit _x_ is the
+ *       best available approximation.
+ *
+ *
+ * See Also:
+ *
+ *   MINPACK-2: <opk_destsv>, <opk_sgqt>.
+ *
+ *   LAPACK: <opk_dpotrf>
+ *
+ *   Level 1 BLAS:  <opk_dasum>, <opk_daxpy>, <opk_dcopy>, <opk_ddot>,
+ *   <opk_dnrm2>, <opk_dscal>.
+ *
+ *   Level 2 BLAS: <opk_dtrmv>, <opk_dtrsv>.
+ *
+ *
+ * History:
+ *
+ *   - MINPACK-2 Project. July 1994.
+ *     Argonne National Laboratory and University of Minnesota.
+ *     Brett M. Averick, Richard Carter, and Jorge J. Moré
+ *
+ *   - C-version on 30 January 2006 by Eric Thiébaut (CRAL);
+ *     _info_ is the value returned by the function.
+ */
+extern int
+opk_dgqt(opk_index_t n, double a[], opk_index_t lda, const double b[],
+         double delta, double rtol, double atol,
+         opk_index_t itmax, double *par_ptr, double *f_ptr,
+         double x[], opk_index_t *iter_ptr, double z[],
+         double wa1[], double wa2[]);
+
+/*
+ * Function: opk_sgqt
+ *   Computes a trust region step.
+ *
+ * Description:
+ *   This function is the single precision version of <opk_dgqt>.
+ *
+ * See Also:
+ *
+ *   MINPACK-2: <opk_sestsv>, <opk_dgqt>.
+ *
+ *   LAPACK: <opk_spotrf>
+ *
+ *   Level 1 BLAS:  <opk_sasum>, <opk_saxpy>, <opk_scopy>, <opk_sdot>,
+ *   <opk_snrm2>, <opk_sscal>.
+ *
+ *   Level 2 BLAS: <opk_strmv>, <opk_strsv>.
+ *
+ *
+ * History:
+ *
+ *   - MINPACK-2 Project. July 1994.
+ *     Argonne National Laboratory and University of Minnesota.
+ *     Brett M. Averick, Richard Carter, and Jorge J. Moré
+ *
+ *   - C-version on 30 January 2006 by Eric Thiébaut (CRAL);
+ *     _info_ is the value returned by the function.
+ */
+extern
+int opk_sgqt(opk_index_t n, float a[], opk_index_t lda, const float b[],
+             float delta, float rtol, float atol,
+             opk_index_t itmax, float *par_ptr, float *f_ptr,
+             float x[], opk_index_t *iter_ptr, float z[],
+             float wa1[], float wa2[]);
+
+/*
+ * Function: opk_destsv
+ *   Computes smallest singular value and corresponding vector from an upper
+ *   triangular matrix.
+ *
+ * Description:
+ *   Given an _n_ by _n_ upper triangular matrix _R_, this subroutine
+ *   estimates the smallest singular value and the associated singular vector
+ *   of _R_.
+ *
+ *   In the algorithm a vector _e_ is selected so that the solution _y_ to the
+ *   system _R'*y = e_ is large. The choice of sign for the components of
+ *   _e_ cause maximal local growth in the components of _y_ as the forward
+ *   substitution proceeds. The vector _z_ is the solution of the system
+ *   _R_*_z_ = _y_, and the estimate _svmin_ is norm(_y_)/norm(_z_) in the
+ *   Euclidean norm.
+ *
+ * Parameters:
+ *   n - The order of _R_.
+ *   r - A real array of dimension _ldr_ by _n_.  On entry the full upper
+ *       triangle must contain the full upper triangle of the matrix _R_.  On
+ *       exit _r_ is unchanged.
+ *   ldr - The leading dimension of _r_.
+ *   z - A real array of dimension _n_.  On entry _z_ need not be specified.
+ *       On exit _z_ contains a singular vector associated with the estimate
+ *       _svmin_ such that _norm(R*z)=svmin_ and _norm(z)=1_ in the
+ *       Euclidean norm.
+ *
+ * Returns:
+ *   This function returns _svmin_, an estimate for the smallest
+ *   singular value of _R_.
+ *
+ * See Also:
+ *   MINPACK-2: <opk_dgqt>, <opk_sestsv>.
+ *
+ *   Level 1 BLAS: <opk_dasum>,  <opk_daxpy>,  <opk_dnrm2>,  <opk_dscal>.
+ *
+ * History:
+ *   - MINPACK-2 Project. October 1993.
+ *     Argonne National Laboratory
+ *     Brett M. Averick and Jorge J. Moré.
+ *   - C-version on 30 January 2006 by Eric Thiébaut (CRAL);
+ *     _svmin_ is the value returned by the function.
+ */
+extern double
+opk_destsv(opk_index_t n, const double r_[], opk_index_t ldr, double z_[]);
+
+/*
+ * Function: opk_sestsv
+ *   Computes smallest singular value and corresponding vector from an upper
+ *   triangular matrix.
+ *
+ * Description:
+ *   This function is the single precision version of <opk_destsv>.
+ *
+ * See Also:
+ *   MINPACK-2: <opk_sgqt>, <opk_destsv>.
+ *
+ *   Level 1 BLAS: <opk_sasum>,  <opk_saxpy>,  <opk_snrm2>,  <opk_sscal>.
+ */
+extern float
+opk_sestsv(opk_index_t n, const float r_[], opk_index_t ldr, float z_[]);
 
 OPK_END_C_DECLS
 
