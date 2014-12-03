@@ -37,7 +37,7 @@
 
 /**
  * @defgroup Objects         Management of objects and derived types.
- * @defgroup Vectors         Vectors and vector spaces.
+ * @defgroup Vectors         Vectors to store variables and vector spaces.
  * @defgroup Operators       Operators acting on vectors.
  * @defgroup LineSearch      Line search methods.
  * @defgroup NLCG            Non-linear conjugate gradient methods.
@@ -46,6 +46,7 @@
  * @defgroup TrustRegion     Trust region methods.
  * @defgroup Utilities       Miscellaneous utility functions and macros.
  * @defgroup LowLevel        Low-level API to implement objects.
+ * @defgroup LinearAlgebra   BLAS/LAPACK/LINPACK-like linear algebra routines for small arrays.
  *
  * @mainpage Optimization of large scale problems
  *
@@ -53,10 +54,15 @@
  * focus is solving large inverse problems as image reconstruction.
  *
  * @section ManagementOfObjects Management of objects and derived types.
+ *
  * @subsection BasicObjects Basic objects.
  * @ref Objects
+ *
  * @subsection VectorSpaces Vectors and vector spaces.
  * @ref Vectors
+ *
+ * @section Linear Algebra
+ * @ref LinearAlgebra
  */
 
 /*---------------------------------------------------------------------------*/
