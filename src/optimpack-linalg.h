@@ -45,9 +45,18 @@ OPK_BEGIN_C_DECLS
  * This part of the library provides simple versions of some BLAS/LINPACK/LAPACK
  * linear algebra routines.  This routines are intended for *small* problems.
  *
- * Following BLAS/LAPACK conventions, the prefixes `s` and `d` are used to
- * distinguish between the single/double precision floating point versions of
- * some numerical functions.
+ * Following BLAS, LINPACK and LAPACK conventions, the prefixes `s` and `d` are
+ * used to distinguish between the single/double precision floating point
+ * versions of some numerical functions.
+ *
+ * For large scale problems, variables are stored in so-called *vectors* which
+ * have nothing to do with the moderate size arrays targeted by the functions
+ * of this package.  Prefix 'v' is used to disantangle between the routines of
+ * the different packages.  For instance, opk_ddot() and opk_sdot() are the
+ * functions to compute the dot product beween two vectors (respectively with
+ * double and single precision floating point elements) stored in conventional
+ * memory, while opk_vdot() computes the dot product of two vectors (of the
+ * same vector space) that may be stored in any suitable way.
  */
 
 /*---------------------------------------------------------------------------*/
@@ -1064,7 +1073,7 @@ typedef enum {
  *     }
  *     state = OPK_CG_RESTART;
  *     for (;;) {
- *       opk_plcg_d(n, p, q, r, x, z, rho, &state);
+ *       opk_dplcg(n, p, q, r, x, z, rho, &state);
  *       if (state == OPK_CG_AP) {
  *         for (i = 0; i < n; ++i) {
  *           double s = 0.0;
@@ -1096,50 +1105,50 @@ typedef enum {
  *       }
  *     }
  *
- * @see opk_lcg_d, opk_plcg_f.
+ * @see opk_dlcg, opk_splcg.
  */
 extern void
-opk_plcg_d(opk_index_t n, double p[], double q[],
-           double r[], double x[], double z[],
-           double rho[4], opk_cg_state_t *state);
+opk_dplcg(opk_index_t n, double p[], double q[],
+          double r[], double x[], double z[],
+          double rho[4], opk_cg_state_t *state);
 
 /**
  * Preconditioned linear conjugate gradient (single precision).
  *
- * @see opk_lcg_f(), opk_plcg_d() for the meaning of the arguments.
+ * @see opk_slcg(), opk_dplcg() for the meaning of the arguments.
  */
 extern void
-opk_plcg_f(opk_index_t n, float p[], float q[],
-           float r[], float x[], float z[],
-           float rho[4], opk_cg_state_t *state);
+opk_splcg(opk_index_t n, float p[], float q[],
+          float r[], float x[], float z[],
+          float rho[4], opk_cg_state_t *state);
 
 /**
  * Linear conjugate gradient (double precision).
  *
  * This function implements reverse communication linear conjugate gradient
  * without predconditioner for double precision floating point.  See
- * opk_plcg_d() for the meaning of the arguments and opk_lcg_f() for a single
+ * opk_dplcg() for the meaning of the arguments and opk_slcg() for a single
  * precision version.
  *
- * @see opk_lcg_f, opk_plcg_d.
+ * @see opk_slcg, opk_dplcg.
  */
 extern void
-opk_lcg_d(opk_index_t n, double p[], double q[], double r[],
-          double x[], double rho[4], opk_cg_state_t *state);
+opk_dlcg(opk_index_t n, double p[], double q[], double r[],
+         double x[], double rho[4], opk_cg_state_t *state);
 
 /**
  * Linear conjugate gradient (single precision).
  *
  * This function implements reverse communication linear conjugate gradient
  * without predconditioner for single precision floating point.  See
- * opk_plcg_d() for the meaning of the arguments and opk_lcg_d() for a double
+ * opk_dplcg() for the meaning of the arguments and opk_dlcg() for a double
  * precision version.
  *
- * @see opk_lcg_d(), opk_plcg_d().
+ * @see opk_dlcg(), opk_dplcg().
  */
 extern void
-opk_lcg_f(opk_index_t n, float p[], float q[], float r[],
-          float x[], float rho[4], opk_cg_state_t *state);
+opk_slcg(opk_index_t n, float p[], float q[], float r[],
+         float x[], float rho[4], opk_cg_state_t *state);
 
 /**
  * Trust region conjugate gradient (double precision).
@@ -1148,7 +1157,7 @@ opk_lcg_f(opk_index_t n, float p[], float q[], float r[],
  * linear conjugate gradient algorithm with optional preconditioning.  The
  * trust-region (or truncated) conjugate gradient method is due to Steihaug
  * (see References below).  This version is for double precision variables, see
- * opk_trcg_f() for a single precision version.  See opk_plcg_d() for an
+ * opk_strcg() for a single precision version.  See opk_dplcg() for an
  * example of using reverse communication.
  *
  * @param n - The number of variables.
@@ -1185,7 +1194,6 @@ opk_lcg_f(opk_index_t n, float p[], float q[], float r[],
  *            <tt>rho[2]</tt> is the optimal step size (`alpha`);
  *            <tt>rho[3]</tt> is the weight of the former search direction
  *            (`beta`); <tt>rho[4]</tt> is the Euclidean norm of `x`.
-
  * @param state - Address of integer variable to store the current stage of the
  *            algorithm (must not be altered by the caller between calls except
  *            to restart the algorithm).  On initialization or restart of the
@@ -1246,29 +1254,29 @@ opk_lcg_f(opk_index_t n, float p[], float q[], float r[],
  *     scale optimization", SIAM Journal on Numerical Analysis, vol. **20**,
  *     pp. 626-637, 1983.
  *
- * @see opk_trcg_f, opk_plcg_d.
+ * @see opk_strcg, opk_dplcg.
  */
 extern void
-opk_trcg_d(opk_index_t n, double p[], const double q[],
-           double r[], double x[], const double z[],
-           double delta, double rho[5],
-           opk_cg_state_t *state);
+opk_dtrcg(opk_index_t n, double p[], const double q[],
+          double r[], double x[], const double z[],
+          double delta, double rho[5],
+          opk_cg_state_t *state);
 
 /**
  * Trust region conjugate gradient (single precision).
  *
  * This function implements reverse communication trust region linear conjugate
  * gradient with optional predconditioning.  This version is for single
- * precision variables, see opk_trcg_f() for a double precision version and for
+ * precision variables, see opk_strcg() for a double precision version and for
  * explanations.
  *
- * @see opk_trcg_d, opk_plcg_d.
+ * @see opk_dtrcg, opk_dplcg.
  */
 extern void
-opk_trcg_f(opk_index_t n, float p[], const float q[],
-           float r[], float x[], const float z[],
-           float delta, float rho[5],
-           opk_cg_state_t *state);
+opk_strcg(opk_index_t n, float p[], const float q[],
+          float r[], float x[], const float z[],
+          float delta, float rho[5],
+          opk_cg_state_t *state);
 
 /** @} */
 
