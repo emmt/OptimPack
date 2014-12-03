@@ -147,6 +147,7 @@ OPK_PLCG(const opk_index_t n, real_t p[], real_t q[], real_t r[],
         return;
       }
       alpha = rho[1]/pq; /* optimal step size */
+      rho[2] = alpha; /* memorize optimal step size */
       if (alpha == zero) {
         /* If alpha too small, then algorithm has converged. */
         *state = OPK_CG_FINISH;
@@ -155,7 +156,6 @@ OPK_PLCG(const opk_index_t n, real_t p[], real_t q[], real_t r[],
       AXPY(n,  alpha, p, x);
       AXPY(n, -alpha, q, r);
       rho[0] = rho[1];
-      rho[2] = alpha; /* memorize optimal step size */
     } else {
       /* Caller has been requested to compute q = A.x0
          Update the residuals. */
