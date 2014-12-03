@@ -39,11 +39,6 @@
 
 #include "optimpack-linalg.h"
 
-/* FIXME: what about negative BETA?
- * FIXME: detect exact convergence...
- * FIXME: check if Q and Z can be the same array
- */
-
 #define COPY(n, x, y)    OPK_COPY(n, x, 1, y, 1)
 #define AXPY(n, a, x, y) OPK_AXPY(n, a, x, 1, y, 1)
 #define DOT(n, x, y)     OPK_DOT(n, x, 1, y, 1)
@@ -295,12 +290,12 @@ OPK_TRCG(const opk_index_t n, real_t p[], const real_t q[], real_t r[],
       pq = DOT(n, p, q);
       if (pq > zero) {
         alpha = rho[1]/pq; /* optimal step size */
+        rho[2] = alpha; /* memorize optimal step size */
         if (alpha == zero) {
           /* If alpha too small, then algorithm has converged. */
           *state = OPK_CG_FINISH;
           return;
         }
-        /* FIXME: use Z if not NULL as a scratch array to save computations */
         sum = zero;
         for (i = 0; i < n; ++i) {
           tmp = x[i] + alpha*p[i];
@@ -312,7 +307,6 @@ OPK_TRCG(const opk_index_t n, real_t p[], const real_t q[], real_t r[],
           AXPY(n,  alpha, p, x);
           AXPY(n, -alpha, q, r);
           rho[0] = rho[1];
-          rho[2] = alpha; /* memorize optimal step size */
           rho[4] = xn;
           *state = (xn < delta ? OPK_CG_NEWX : OPK_CG_TRUNCATED);
           return;
@@ -321,16 +315,17 @@ OPK_TRCG(const opk_index_t n, real_t p[], const real_t q[], real_t r[],
 
       /* Operator A is not positive definite (P'.A.P < 0) or optimal step
          leads us ouside the trust region.  In these cases, we take a
-         truncated step X + ALPHA*P along P so that |X + ALPHA*P| = DELTA
-         with ALPHA >= 0.  This amounts to find the positive root of:
-         A*ALPHA^2 + 2*B*ALPHA + C with: A = |P|^2, B = X'.P, and
-         C = |X|^2 - DELTA^2. */
+         truncated step X + ALPHA*P along P so that |X + ALPHA*P| = DELTA with
+         ALPHA >= 0.  This amounts to find the positive root of: A*ALPHA^2 +
+         2*B*ALPHA + C with: A = |P|^2, B = X'.P, and C = |X|^2 - DELTA^2.
+         Note that the reduced discriminant is D = B*B - A*C which expands to
+         D = (DELTA^2 - |X|^2*sin(THETA)^2)*|P|^2 with THETA the angle between
+         X and P, as DELTA > |X|, then D > 0 must hold. */
       a = DOT(n, p, p);
       if (a <= zero) {
-        /* FIXME: This can only occurs if P = 0 (and thus A = 0).  It is
-           probably due to rounding errors and the algorithm should be
-           restarted. */
-        *state = OPK_CG_ERROR;
+        /* This can only occurs if P = 0 (and thus A = 0).  It is probably due
+           to rounding errors and the algorithm should be restarted. */
+        *state = OPK_CG_FINISH;
         return;
       }
       b = DOT(n, x, p);
@@ -352,21 +347,17 @@ OPK_TRCG(const opk_index_t n, real_t p[], const real_t q[], real_t r[],
       /* Compute the reduced discriminant. */
       d = b*b - a*c;
       if (d > zero) {
-        /* The polynomial has two real roots of opposite signs (because
-           C/A < 0 by construction), ALPHA is the positive one.  Compute
-           this root avoiding numerical errors (by adding numbers of
-           same sign). */
+        /* The polynomial has two real roots of opposite signs (because C/A <
+           0 by construction), ALPHA is the positive one.  Compute this root
+           avoiding numerical errors (by adding numbers of same sign). */
         e = SQRT(d);
         if (b >= zero) {
           alpha = -c/(e + b);
         } else {
           alpha = (e - b)/a;
         }
-      } else if (d == zero && b >= zero) {
-        /* A single positive root. */
-        alpha = -b/a;
       } else {
-        /* No real positive roots.  There must be something wrong... */
+        /* D > 0 must hold.  There must be something wrong... */
         *state = OPK_CG_ERROR;
         return;
       }
