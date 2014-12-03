@@ -1234,8 +1234,7 @@ opk_slcg(opk_index_t n, float p[], float q[], float r[],
  *   taken (unless with a larger `delta` and `state` set to `OPK_CG_RESTART`).
  *
  * - `OPK_CG_ERROR`: An error has been detected by the algorithm: invalid
- *   parameter, or corrupted workspace `rho`, or non-positive definitiveness of
- *   the matrix `A` or of the preconditioner.
+ *   parameter, or corrupted workspace `rho`.
  *
  * For consistency reasons, `OPK_CG_NEWX` is returned after internal
  * initialization, i.e., `x` is just `x0` and `r` is just <tt>r = b - A.x0<tt>.
