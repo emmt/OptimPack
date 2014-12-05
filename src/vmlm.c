@@ -68,7 +68,7 @@ struct _opk_lbfgs_operator {
 static opk_index_t
 slot(opk_lbfgs_operator_t* op, opk_index_t k)
 {
-  return (op->mark + k)%op->m;
+  return (op->m + op->mark + k)%op->m;
 }
 
 static void
