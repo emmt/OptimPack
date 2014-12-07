@@ -358,7 +358,6 @@ struct _opk_vmlm {
   opk_index_t restarts;
   opk_task_t task;
   int reason; /* some details about the error */
-  opk_bool_t starting;
   opk_bool_t save_memory; /**< To save space, the variable and gradient at the
                                start of a line search are weak references to
                                the (s,y) pair of vectors of the LBFGS operator
@@ -510,7 +509,6 @@ opk_task_t
 opk_start_vmlm(opk_vmlm_t* opt)
 {
   opt->iterations = 0;
-  opt->starting = TRUE;
   opk_reset_lbfgs_operator(opt->H);
   return optimizer_success(opt, OPK_TASK_COMPUTE_FG);
 }
