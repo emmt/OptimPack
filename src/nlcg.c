@@ -561,6 +561,12 @@ opk_set_nlcg_grtol(opk_nlcg_t* opt, double grtol)
 }
 
 double
+opk_get_nlcg_step(opk_nlcg_t* opt)
+{
+  return (opt == NULL ? -1.0 : opt->alpha);
+}
+
+double
 opk_get_nlcg_stpmin(opk_nlcg_t* opt)
 {
   return (opt == NULL ? STPMIN : opt->stpmin);
@@ -667,12 +673,6 @@ opk_task_t
 opk_get_nlcg_task(opk_nlcg_t* opt)
 {
   return opt->task;
-}
-
-double
-opk_get_nlcg_alpha(opk_nlcg_t* opt)
-{
-  return opt->alpha;
 }
 
 double

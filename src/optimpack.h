@@ -1038,6 +1038,20 @@ extern int
 opk_set_nlcg_grtol(opk_nlcg_t* opt, double grtol);
 
 /**
+ * Get the current step length.
+ *
+ * This function retrieves the value of the current step size.
+ *
+ * @param opt - The NLCG optimizer.
+ *
+ * @return The value of the current step size, should be strictly positive.
+ *
+ * @see opk_get_nlcg_stpmax(), opk_set_nlcg_stpmin_and_stpmax().
+ */
+extern double
+opk_get_nlcg_step(opk_nlcg_t* opt);
+
+/**
  * Get the minimum relative step size.
  *
  * This function retrieves the value of the minimum relative step size `stpmin`
@@ -1117,9 +1131,6 @@ opk_get_nlcg_starting(opk_nlcg_t* opt);
 
 extern opk_task_t
 opk_get_nlcg_task(opk_nlcg_t* opt);
-
-extern double
-opk_get_nlcg_alpha(opk_nlcg_t* opt);
 
 extern double
 opk_get_nlcg_beta(opk_nlcg_t* opt);
@@ -1312,6 +1323,9 @@ opk_get_vmlm_grtol(opk_vmlm_t* opt);
 
 extern int
 opk_set_vmlm_grtol(opk_vmlm_t* opt, double grtol);
+
+extern double
+opk_get_vmlm_step(opk_vmlm_t* opt);
 
 extern double
 opk_get_vmlm_stpmin(opk_vmlm_t* opt);

@@ -133,8 +133,8 @@ apply_lbfgs_operator(opk_operator_t* self, opk_vector_t* dst,
     opk_vscale(dst, op->gamma, dst);
   }
 
-  /* Second loop of the recursion (from the oldest saved pair to the
-   * newest one). */
+  /* Second loop of the recursion (from the oldest saved pair to the newest
+     one). */
   for (k = oldest; k <= newest; ++k) {
     j = slot(op, k);
     if (op->rho[j] > 0.0) {
@@ -303,8 +303,6 @@ opk_set_lbfgs_operator_update_threshold(opk_lbfgs_operator_t* op,
 
 /*---------------------------------------------------------------------------*/
 /* VARIABLE METRIC OPTIMIZER */
-
-/* FIXME: make a common super-type for NLCG and VMLM to share API. */
 
 /* Default parameters for the line search.  These values are from original
    LBFGS algorithm by Jorge Nocedal but other values may be more suitable. */
@@ -760,6 +758,12 @@ opk_set_vmlm_grtol(opk_vmlm_t* opt, double grtol)
 }
 
 double
+opk_get_vmlm_step(opk_vmlm_t* opt)
+{
+  return (opt == NULL ? -1.0 : opt->stp);
+}
+
+double
 opk_get_vmlm_stpmin(opk_vmlm_t* opt)
 {
   return (opt == NULL ? STPMIN : opt->stpmin);
@@ -772,7 +776,8 @@ opk_get_vmlm_stpmax(opk_vmlm_t* opt)
 }
 
 int
-opk_set_vmlm_stpmin_and_stpmax(opk_vmlm_t* opt, double stpmin, double stpmax)
+opk_set_vmlm_stpmin_and_stpmax(opk_vmlm_t* opt,
+                               double stpmin, double stpmax)
 {
   if (opt == NULL) {
     errno = EFAULT;
