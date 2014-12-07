@@ -57,7 +57,7 @@ struct _opk_lbfgs_operator {
   opk_vector_t* tmp;   /**< Scratch vector, needed if there is a
                             preconditioner. */
   opk_operator_t* H0;  /**< Preconditioner or NULL. */
-  double* beta;        /**< Workspace to save 1/<s[j],y[j]> */
+  double* alpha;        /**< Workspace to save 1/<s[j],y[j]> */
   double* rho;         /**< Workspace to save 1/<s[j],y[j]> */
   opk_index_t m;       /**< Maximum number of memorized steps. */
   opk_index_t mp;      /**< Actual number of memorized steps (0 <= mp <= m). */
@@ -116,10 +116,10 @@ apply_lbfgs_operator(opk_operator_t* self, opk_vector_t* dst,
   for (k = newest; k >= oldest; --k) {
     j = slot(op, k);
     if (op->rho[j] > 0.0) {
-      op->beta[j] = op->rho[j]*opk_vdot(tmp, op->s[j]);
-      opk_vaxpby(tmp, 1.0, tmp, -op->beta[j], op->y[j]);
+      op->alpha[j] = op->rho[j]*opk_vdot(tmp, op->s[j]);
+      opk_vaxpby(tmp, 1.0, tmp, -op->alpha[j], op->y[j]);
     } else {
-      op->beta[j] = 0.0;
+      op->alpha[j] = 0.0;
     }
   }
 
@@ -138,8 +138,8 @@ apply_lbfgs_operator(opk_operator_t* self, opk_vector_t* dst,
   for (k = oldest; k <= newest; ++k) {
     j = slot(op, k);
     if (op->rho[j] > 0.0) {
-      double phi = op->rho[j]*opk_vdot(dst, op->y[j]);
-      opk_vaxpby(dst, 1.0, dst, op->beta[j] - phi, op->s[j]);
+      double beta = op->rho[j]*opk_vdot(dst, op->y[j]);
+      opk_vaxpby(dst, 1.0, dst, op->alpha[j] - beta, op->s[j]);
     }
   }
   return OPK_SUCCESS;
@@ -157,7 +157,7 @@ opk_new_lbfgs_operator(opk_vspace_t* vspace, opk_index_t m,
                        int scaling)
 {
   opk_lbfgs_operator_t* op;
-  size_t s_offset, y_offset, beta_offset, rho_offset, size;
+  size_t s_offset, y_offset, alpha_offset, rho_offset, size;
   opk_index_t k;
 
   /* Check arguments. */
@@ -178,9 +178,9 @@ opk_new_lbfgs_operator(opk_vspace_t* vspace, opk_index_t m,
                       sizeof(opk_vector_t*));
   y_offset = ROUND_UP(s_offset + m*sizeof(opk_vector_t*),
                       sizeof(opk_vector_t*));
-  beta_offset = ROUND_UP(y_offset + m*sizeof(opk_vector_t*),
-                         sizeof(double));
-  rho_offset = ROUND_UP(beta_offset + m*sizeof(double),
+  alpha_offset = ROUND_UP(y_offset + m*sizeof(opk_vector_t*),
+                          sizeof(double));
+  rho_offset = ROUND_UP(alpha_offset + m*sizeof(double),
                         sizeof(double));
   size = rho_offset + m*sizeof(double);
   op = (opk_lbfgs_operator_t*)opk_allocate_operator(&lbfgs_operations,
@@ -190,7 +190,7 @@ opk_new_lbfgs_operator(opk_vspace_t* vspace, opk_index_t m,
   }
   op->s = (opk_vector_t**)(((char*)op) + s_offset);
   op->y = (opk_vector_t**)(((char*)op) + y_offset);
-  op->beta = (double*)(((char*)op) + beta_offset);
+  op->alpha = (double*)(((char*)op) + alpha_offset);
   op->rho = (double*)(((char*)op) + rho_offset);
   op->epsilon = 1e-6;
   op->gamma = 1.0;
@@ -325,7 +325,6 @@ static const int    SCALING = OPK_SCALING_OREN_SPEDICATO;
 
 struct _opk_vmlm {
   opk_object_t base; /**< Base type (must be the first member). */
-  double alpha;      /**< Current step size. */
   double delta;      /**< Threshold to accept descent direction. */
   double epsilon;    /**< Relative size for a small step. */
   double grtol;      /**< Relative threshold for the norm or the gradient
@@ -340,8 +339,9 @@ struct _opk_vmlm {
   double g1norm;     /**< Euclidean norm of the gradient at the last accepted
                           step. */
   double pnorm;      /**< Euclidean norm of p the anti-search direction */
-  double stpmin;
-  double stpmax;
+  double stp;        /**< Current step length. */
+  double stpmin;     /**< Relative mimimum step length. */
+  double stpmax;     /**< Relative maximum step length. */
 
   opk_vspace_t* vspace;
   opk_lnsrch_t* lnsrch;
@@ -349,7 +349,7 @@ struct _opk_vmlm {
   opk_vector_t*  x0; /**< Variables at the start of the line search. */
   opk_vector_t*  g0; /**< Gradient at x0. */
   opk_vector_t*  p;  /**< Anti-search direction; a iterate is computed
-                          as: x1 = x0 - alpha*p with alpha > 0. */
+                          as: x1 = x0 - stp*p with stp > 0. */
 
   opk_index_t evaluations; /**< Number of functions (and gradients)
                                 evaluations. */
@@ -539,7 +539,7 @@ opk_start_vmlm(opk_vmlm_t* opt)
 static opk_task_t
 next_step(opk_vmlm_t* opt, opk_vector_t* x1)
 {
-  opk_vaxpby(x1, 1.0, opt->x0, -opt->alpha, opt->p);
+  opk_vaxpby(x1, 1.0, opt->x0, -opt->stp, opt->p);
   return optimizer_success(opt, OPK_TASK_COMPUTE_FG);
 }
 
@@ -561,7 +561,7 @@ opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x1,
       /* A line search is in progress.  Compute directional derivative and
          check whether line search has converged. */
       pg1 = opk_vdot(opt->p, g1);
-      status = opk_lnsrch_iterate(opt->lnsrch, &opt->alpha, f1, -pg1);
+      status = opk_lnsrch_iterate(opt->lnsrch, &opt->stp, f1, -pg1);
       if (status == OPK_LNSRCH_SEARCH) {
         /* Line search has not yet converged. */
         return next_step(opt, x1);
@@ -640,20 +640,20 @@ opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x1,
     /* Estimate the length of the first step, start the line search and take
        the first step along the search direction. */
     if (opt->H->mp >= 1 || opt->H->scaling == OPK_SCALING_NONE) {
-      opt->alpha = 1.0;
+      opt->stp = 1.0;
     } else if (0.0 < opt->epsilon && opt->epsilon < 1.0) {
       double x1norm = opk_vnorm2(x1);
       if (x1norm > 0.0) {
-        opt->alpha = (x1norm/opt->g1norm)*opt->epsilon;
+        opt->stp = (x1norm/opt->g1norm)*opt->epsilon;
       } else {
-        opt->alpha = 1.0/opt->g1norm;
+        opt->stp = 1.0/opt->g1norm;
       }
     } else {
-      opt->alpha = 1.0/opt->g1norm;
+      opt->stp = 1.0/opt->g1norm;
     }
-    status = opk_lnsrch_start(opt->lnsrch, opt->f0, opt->dg0, opt->alpha,
-                              opt->stpmin*opt->alpha,
-                              opt->stpmax*opt->alpha);
+    status = opk_lnsrch_start(opt->lnsrch, opt->f0, opt->dg0, opt->stp,
+                              opt->stpmin*opt->stp,
+                              opt->stpmax*opt->stp);
     if (status != OPK_LNSRCH_SEARCH) {
       return line_search_failure(opt);
     }
