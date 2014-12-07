@@ -552,7 +552,9 @@ opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x1,
   double gtest, pg1;
   int status;
 
-  if (opt->task == OPK_TASK_COMPUTE_FG) {
+  switch (opt->task) {
+
+  case OPK_TASK_COMPUTE_FG:
 
     /* Caller has computed the function value and the gradient at the current
        point. */
@@ -583,14 +585,16 @@ opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x1,
                                    ? OPK_TASK_FINAL_X
                                    : OPK_TASK_NEW_X));
 
-  } else if (opt->task == OPK_TASK_NEW_X || opt->task != OPK_TASK_FINAL_X) {
+  case OPK_TASK_NEW_X:
 
-    if (opt->task == OPK_TASK_NEW_X && opt->evaluations > 1) {
+    if (opt->evaluations > 1) {
       /* Update the LBFGS matrix. */
       opk_update_lbfgs_operator(opt->H,
                                 x1, opt->x0,
                                 g1, opt->g0);
     }
+
+  case OPK_TASK_FINAL_X:
 
     /* Compute a search direction.  We take care of checking whether D = -P is
        a sufficient descent direction.  As shown by Zoutendijk, this is true
@@ -657,7 +661,7 @@ opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x1,
     }
     return next_step(opt, x1);
 
-  } else {
+  default:
 
     /* There must be something wrong. */
     return opt->task;
