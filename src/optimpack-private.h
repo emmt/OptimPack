@@ -313,18 +313,18 @@ typedef struct _opk_lnsrch_operations opk_lnsrch_operations_t;
 /* The base structure for line search must be exposed for line search
    methods. */
 struct _opk_lnsrch {
-  opk_object_t base;            /* Base type (must be the first member). */
-  opk_lnsrch_operations_t *ops; /* Table of line search methods. */
-  double stp;                   /* Current step length. */
-  double stpmin;                /* Lower bound for the step. */
-  double stpmax;                /* Upper bound for the step. */
-  double finit;                 /* Function value at the start of the
-                                   search. */
-  double ginit;                 /* Directional derivative value at the start of
-                                   the search. */
-  int status;                   /* Last value returned by line search
-                                   methods. */
-  int searching;                /* True if search is in progress. */
+  opk_object_t base;            /**< Base type (must be the first member). */
+  opk_lnsrch_operations_t *ops; /**< Table of line search methods. */
+  double stp;                   /**< Current step length. */
+  double stpmin;                /**< Lower bound for the step. */
+  double stpmax;                /**< Upper bound for the step. */
+  double finit;                 /**< Function value at the start of the
+                                     search. */
+  double ginit;                 /**< Directional derivative value at the start
+                                     of the search. */
+  int status;                   /**< Last value returned by line search
+                                     methods. */
+  int searching;                /**< True if search is in progress. */
 };
 
 struct _opk_lnsrch_operations {
@@ -348,6 +348,12 @@ struct _opk_lnsrch_operations {
      STP, F and D are left unchanged; otherwise STP is the new step to try. */
   int (*iterate)(opk_lnsrch_t* self,
                  double* stp_ptr, double f1, double d1);
+
+  /* Flag to indicate whether directional derivative are needed to check the
+     line search convergence; else only function values are used (e.g. Armijo
+     or 1st Wolfe condition only).  The initial directional derivative at the
+     start of each search is always needed. */
+  opk_bool_t use_deriv;
 };
 
 extern opk_lnsrch_t*

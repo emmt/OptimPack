@@ -165,28 +165,34 @@ opk_lnsrch_get_status(const opk_lnsrch_t* ls)
   return (ls != NULL ? ls->status : OPK_LNSRCH_ERROR_ILLEGAL_ADDRESS);
 }
 
-int
+opk_bool_t
 opk_lnsrch_has_errors(const opk_lnsrch_t* ls)
 {
   return (opk_lnsrch_get_status(ls) < 0);
 }
 
-int
+opk_bool_t
 opk_lnsrch_has_warnings(const opk_lnsrch_t* ls)
 {
   return (opk_lnsrch_get_status(ls) > OPK_LNSRCH_CONVERGENCE);
 }
 
-int
+opk_bool_t
 opk_lnsrch_converged(const opk_lnsrch_t* ls)
 {
   return (opk_lnsrch_get_status(ls) == OPK_LNSRCH_CONVERGENCE);
 }
 
-int
+opk_bool_t
 opk_lnsrch_finished(const opk_lnsrch_t* ls)
 {
   return (opk_lnsrch_get_status(ls) != OPK_LNSRCH_SEARCH);
+}
+
+opk_bool_t
+opk_lnsrch_use_deriv(const opk_lnsrch_t* ls)
+{
+  return ls->ops->use_deriv;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -233,7 +239,8 @@ backtrack_iterate(opk_lnsrch_t* ls,
 static opk_lnsrch_operations_t backtrack_operations = {
   NULL,
   backtrack_start,
-  backtrack_iterate
+  backtrack_iterate,
+  FALSE
 };
 
 opk_lnsrch_t*
@@ -341,7 +348,8 @@ nonmonotone_iterate(opk_lnsrch_t* ls,
 static opk_lnsrch_operations_t nonmonotone_operations = {
   NULL,
   nonmonotone_start,
-  nonmonotone_iterate
+  nonmonotone_iterate,
+  TRUE
 };
 
 opk_lnsrch_t*
@@ -558,7 +566,8 @@ csrch_iterate(opk_lnsrch_t* _ws,
 static opk_lnsrch_operations_t csrch_operations = {
   NULL,
   csrch_start,
-  csrch_iterate
+  csrch_iterate,
+  TRUE
 };
 
 

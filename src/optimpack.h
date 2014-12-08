@@ -908,17 +908,20 @@ opk_lnsrch_get_step(const opk_lnsrch_t* ls);
 extern int
 opk_lnsrch_get_status(const opk_lnsrch_t* ls);
 
-extern int
+extern opk_bool_t
 opk_lnsrch_has_errors(const opk_lnsrch_t* ls);
 
-extern int
+extern opk_bool_t
 opk_lnsrch_has_warnings(const opk_lnsrch_t* ls);
 
-extern int
+extern opk_bool_t
 opk_lnsrch_converged(const opk_lnsrch_t* ls);
 
-extern int
+extern opk_bool_t
 opk_lnsrch_finished(const opk_lnsrch_t* ls);
+
+extern opk_bool_t
+opk_lnsrch_use_deriv(const opk_lnsrch_t* ls);
 
 /** Moré & Thuente method to perform a cubic safeguarded step. */
 extern int
