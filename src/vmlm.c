@@ -75,11 +75,17 @@ static void
 finalize_lbfgs_operator(opk_operator_t* self)
 {
   opk_lbfgs_operator_t* op = (opk_lbfgs_operator_t*)self;
-  opk_index_t k, m = op->m;
+  opk_index_t k;
 
-  for (k = 0; k < m; ++k) {
-    OPK_DROP(op->s[k]);
-    OPK_DROP(op->y[k]);
+  if (op->s != NULL) {
+    for (k = 0; k < op->m; ++k) {
+      OPK_DROP(op->s[k]);
+    }
+  }
+  if (op->y != NULL) {
+    for (k = 0; k < op->m; ++k) {
+      OPK_DROP(op->y[k]);
+    }
   }
   OPK_DROP(op->tmp);
   OPK_DROP(op->H0);
@@ -174,14 +180,10 @@ opk_new_lbfgs_operator(opk_vspace_t* vspace, opk_index_t m,
   }
 
   /* Allocate enough memory for the workspace and its arrays. */
-  s_offset = ROUND_UP(sizeof(opk_lbfgs_operator_t),
-                      sizeof(opk_vector_t*));
-  y_offset = ROUND_UP(s_offset + m*sizeof(opk_vector_t*),
-                      sizeof(opk_vector_t*));
-  alpha_offset = ROUND_UP(y_offset + m*sizeof(opk_vector_t*),
-                          sizeof(double));
-  rho_offset = ROUND_UP(alpha_offset + m*sizeof(double),
-                        sizeof(double));
+  s_offset = ROUND_UP(sizeof(opk_lbfgs_operator_t), sizeof(opk_vector_t*));
+  y_offset = s_offset + m*sizeof(opk_vector_t*);
+  alpha_offset = ROUND_UP(y_offset + m*sizeof(opk_vector_t*), sizeof(double));
+  rho_offset = alpha_offset + m*sizeof(double);
   size = rho_offset + m*sizeof(double);
   op = (opk_lbfgs_operator_t*)opk_allocate_operator(&lbfgs_operations,
                                                     vspace, vspace, size);
