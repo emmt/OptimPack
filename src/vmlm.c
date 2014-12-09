@@ -269,6 +269,9 @@ opk_update_lbfgs_operator(opk_lbfgs_operator_t* op,
   if (sty <= op->epsilon*snorm*ynorm) {
     /* This pair will be skipped. */
     op->rho[j] = 0.0;
+    if (op->mp == op->m) {
+      --op->mp;
+    }
   } else {
     /* Compute RHO[j] and GAMMA. */
     op->rho[j] = 1.0/sty;
