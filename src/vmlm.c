@@ -50,7 +50,6 @@
 
 struct _opk_lbfgs_operator {
   opk_operator_t base; /**< Base type (must be the first member). */
-  double epsilon;      /**< Threshold to skip update. */
   double gamma;        /**< Scale factor to approximate inverse Hessian. */
   opk_vector_t** s;    /**< Storage for variable differences. */
   opk_vector_t** y;    /**< Storage for gradient differences. */
@@ -194,7 +193,6 @@ opk_new_lbfgs_operator(opk_vspace_t* vspace, opk_index_t m,
   op->y = (opk_vector_t**)(((char*)op) + y_offset);
   op->alpha = (double*)(((char*)op) + alpha_offset);
   op->rho = (double*)(((char*)op) + rho_offset);
-  op->epsilon = 1e-6;
   op->gamma = 1.0;
   op->m = m;
   op->scaling = scaling;
@@ -266,7 +264,7 @@ opk_update_lbfgs_operator(opk_lbfgs_operator_t* op,
   /* Compute RHO[j] and GAMMA.  If the update formula for GAMMA does not yield
      a strictly positive value, the strategy is to keep the previous value. */
   sty = opk_vdot(op->s[j], op->y[j]);
-  if (sty <= op->epsilon*snorm*ynorm) {
+  if (sty <= 0.0) {
     /* This pair will be skipped. */
     op->rho[j] = 0.0;
     if (op->mp == op->m) {
@@ -286,24 +284,6 @@ opk_update_lbfgs_operator(opk_lbfgs_operator_t* op,
       ++op->mp;
     }
   }
-}
-
-double
-opk_get_lbfgs_operator_update_threshold(opk_lbfgs_operator_t* op)
-{
-  return op->epsilon;
-}
-
-opk_status_t
-opk_set_lbfgs_operator_update_threshold(opk_lbfgs_operator_t* op,
-                                        double epsilon)
-{
-  if (epsilon < 0.0 || epsilon >= 1.0) {
-    errno = EINVAL;
-    return OPK_FAILURE;
-  }
-  op->epsilon = epsilon;
-  return OPK_SUCCESS;
 }
 
 /*---------------------------------------------------------------------------*/

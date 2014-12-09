@@ -1242,13 +1242,6 @@ extern void
 opk_set_lbfgs_operator_preconditioner(opk_lbfgs_operator_t* op,
                                       opk_operator_t* B0);
 
-extern double
-opk_get_lbfgs_operator_update_threshold(opk_lbfgs_operator_t* op);
-
-extern opk_status_t
-opk_set_lbfgs_operator_update_threshold(opk_lbfgs_operator_t* op,
-                                        double epsilon);
-
 /**
  * Update LBFGS operator with a new pair of variables and gradient
  * differences.
