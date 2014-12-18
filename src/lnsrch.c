@@ -268,9 +268,10 @@ opk_lnsrch_new_backtrack(double ftol)
 typedef struct _nonmonotone_lnsrch nonmonotone_lnsrch_t;
 struct _nonmonotone_lnsrch {
   opk_lnsrch_t base; /**< Base type (must be the first member). */
+  double sigma1;     /**< Lower steplength bound to trigger bisection. */
+  double sigma2;     /**< Upper steplength relative bound to trigger bisection. */
   double ftol;       /**< Parameter for the function reduction criterion. */
-  double sigma1;     /**< Lower steplength bound to trigger bissection. */
-  double sigma2;     /**< Upper steplength relative bound to trigger bissection. */
+  double fmax;       /**< Maximum function value for the past M steps. */
   double* fsav;      /**< Function values for M last accepted steps. */
   opk_index_t m;     /**< Number of previous steps to remember. */
   opk_index_t mp;    /**< Number of steps since starting. */
@@ -280,8 +281,21 @@ static int
 nonmonotone_start(opk_lnsrch_t* ls)
 {
   nonmonotone_lnsrch_t* nmls = (nonmonotone_lnsrch_t*)ls;
+  opk_index_t j, n;
+
+  /* Save function value. */
   nmls->fsav[nmls->mp%nmls->m] = ls->finit;
   ++nmls->mp;
+
+  /* Get the worst function value among the N last steps. */
+  n = MIN(nmls->mp, nmls->m);
+  nmls->fmax = nmls->fsav[0];
+  for (j = 1; j < n; ++j) {
+    if (nmls->fsav[j] > nmls->fmax) {
+      nmls->fmax = nmls->fsav[j];
+    }
+  }
+
   return OPK_LNSRCH_SEARCH;
 }
 
@@ -299,23 +313,13 @@ nonmonotone_iterate(opk_lnsrch_t* ls,
                     double* stp_ptr, double f, double g)
 {
   nonmonotone_lnsrch_t* nmls = (nonmonotone_lnsrch_t*)ls;
-  double fmax, alpha, delta, q, r;
-  opk_index_t j, n;
+  double alpha, delta, q, r;
 
-  /* Get the worst function value among the N last steps. */
-  n = MIN(nmls->mp, nmls->m);
-  fmax = nmls->fsav[0];
-  for (j = 1; j < n; ++j) {
-    if (nmls->fsav[j] > fmax) {
-      fmax = nmls->fsav[j];
-    }
-  }
-
-  /* Check convergence criterion. */
+  /* Check whether Armijo-like condition satisfied. */
   alpha = *stp_ptr;   /* current steplength */
   delta = ls->ginit;  /* directional derivative at alpha=0 */
-  if (f <= fmax + nmls->ftol*alpha*delta) {
-    /* First Wolfe conditions satisfied. */
+  if (f <= nmls->fmax + nmls->ftol*alpha*delta) {
+    /* Convergence criterion satisfied. */
     return OPK_LNSRCH_CONVERGENCE;
   }
 
