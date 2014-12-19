@@ -14,15 +14,15 @@ problems.  This version implements:
 - limited memory variable metric (LBFGS, see ref. [4]) possibly with bound
   constraints and/or preconditioning (VMLMB, see ref. [5], or BLMVM, see ref. [6]);
 
-- spectral project gradient (SPG, seee ref. [7]) method;
+- spectral project gradient (SPG, see ref. [7]) method;
 
 - inexact monotone and nonmonotone line searches (see ref. [7,8]);
 
- - computaion of a trust region step;
+- computation of a trust region step;
 
- - linear conjugate gradients [1] and trust region conjugate gradient [9].
+- linear conjugate gradients [1] and trust region conjugate gradient [9].
 
-Most of the documention is in the header files, *e.g.*
+Most of the documentation is in the header files, *e.g.*
 [src/optimpack.h](src/optimpack.h), in Doxygen format.
 
 
