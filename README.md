@@ -12,17 +12,18 @@ problems.  This version implements:
 - several non-linear conjugate gradient (NLCG) methods (see refs. [1-3]);
 
 - limited memory variable metric (LBFGS, see ref. [4]) possibly with bound
-  constraints and/or preconditioning (VMLMB, see ref. [5], or BLMVM, see ref. [6]);
+  constraints and/or preconditioning (VMLMB, see ref. [5], or BLMVM, see
+  ref. [6]);
 
-- spectral project gradient (SPG, seee ref. [7]) method;
+- spectral project gradient (SPG, see ref. [7]) method;
 
 - inexact monotone and nonmonotone line searches (see ref. [7,8]);
 
-- computaion of a trust region step;
+- computation of a trust region step;
 
 - linear conjugate gradients [1] and trust region conjugate gradient [9].
 
-Most of the documention is in the header files, *e.g.*
+Most of the documentation is in the header files, *e.g.*
 [src/optimpack.h](src/optimpack.h), in Doxygen format.
 
 
@@ -106,6 +107,13 @@ programming languages:
 ## Authors
 
 * Éric Thiébaut (https://github.com/emmt)
+
+
+## Credits
+
+The development of OptimPack was supported by the
+[MiTiV](http://mitiv-univ-lyon1.fr) project funded by the French *Agence
+Nationale pour la Recherche* (ref. ANR-09-EMER-008).
 
 
 ## License
