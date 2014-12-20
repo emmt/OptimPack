@@ -18,9 +18,9 @@ problems.  This version implements:
 
 - inexact monotone and nonmonotone line searches (see ref. [7,8]);
 
- - computaion of a trust region step;
+- computaion of a trust region step;
 
- - linear conjugate gradients [1] and trust region conjugate gradient [9].
+- linear conjugate gradients [1] and trust region conjugate gradient [9].
 
 Most of the documention is in the header files, *e.g.*
 [src/optimpack.h](src/optimpack.h), in Doxygen format.
