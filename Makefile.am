@@ -1,5 +1,6 @@
 AUTOMAKE_OPTIONS = foreign
 SUBDIRS = src
+ACLOCAL_AMFLAGS = -I m4
 
 # Additional files to include in the distribution.
 EXTRA_DIST = doc yorick LICENSE.md README.md
