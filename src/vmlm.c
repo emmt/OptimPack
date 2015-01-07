@@ -56,7 +56,7 @@ struct _opk_lbfgs_operator {
   opk_vector_t* tmp;   /**< Scratch vector, needed if there is a
                             preconditioner. */
   opk_operator_t* H0;  /**< Preconditioner or NULL. */
-  double* alpha;        /**< Workspace to save 1/<s[j],y[j]> */
+  double* alpha;       /**< Workspace to save 1/<s[j],y[j]> */
   double* rho;         /**< Workspace to save 1/<s[j],y[j]> */
   opk_index_t m;       /**< Maximum number of memorized steps. */
   opk_index_t mp;      /**< Actual number of memorized steps (0 <= mp <= m). */
