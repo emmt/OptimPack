@@ -30,5 +30,5 @@ AC_FUNC_STRTOD
 AC_CHECK_FUNCS([memset sqrt])
 
 # Output files.
-AC_CONFIG_FILES([Makefile src/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile tests/Makefile])
 AC_OUTPUT
