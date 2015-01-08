@@ -967,14 +967,15 @@ opk_new_nlcg_optimizer(opk_vspace_t* vspace, unsigned int method);
  * Note that the optimizer will hold a reference to the line search object.
  */
 extern opk_nlcg_t*
-opk_new_nlcg_optimizer_with_line_search(opk_vspace_t* vspace, unsigned int method,
+opk_new_nlcg_optimizer_with_line_search(opk_vspace_t* vspace,
+                                        unsigned int method,
                                         opk_lnsrch_t* lnsrch);
 extern opk_task_t
 opk_start_nlcg(opk_nlcg_t* opt);
 
 extern opk_task_t
-opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x1,
-                 double f1, opk_vector_t* g1);
+opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x,
+                 double f, opk_vector_t* g);
 
 /**
  * Get the absolute threshold for the norm or the gradient for convergence.
@@ -1287,8 +1288,8 @@ extern opk_task_t
 opk_start_vmlm(opk_vmlm_t* opt);
 
 extern opk_task_t
-opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x1,
-                 double f1, opk_vector_t* g1);
+opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x,
+                 double f, opk_vector_t* g);
 
 extern opk_task_t
 opk_get_vmlm_task(opk_vmlm_t* opt);
