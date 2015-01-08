@@ -2,6 +2,9 @@
 #AM_CFLAGS = -Wpedantic -Wall -std=c99 -O2
 #AM_LDFLAGS =
 
+# Additional files to clean.
+CLEANFILES = *~
+
 # Headers to install:
 include_HEADERS = optimpack.h optimpack-linalg.h
 
