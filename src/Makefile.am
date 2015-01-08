@@ -1,5 +1,5 @@
 # Specific compilation flags.
-#AM_CFLAGS = --pedantic -Wall -std=c99 -O2
+#AM_CFLAGS = -Wpedantic -Wall -std=c99 -O2
 #AM_LDFLAGS =
 
 # Headers to install:
