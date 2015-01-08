@@ -152,7 +152,7 @@ main(int argc, const char* argv[])
   if (g1 == NULL) {
     fatal_error("failed to create vector wrapper G1");
   }
-  opt = opk_nlcg_new(vspace, method);
+  opt = opk_new_nlcg_optimizer(vspace, method);
   if (opt == NULL) {
     fatal_error("failed to create optimizer workspace");
   }
@@ -168,16 +168,16 @@ main(int argc, const char* argv[])
   mgh_umgrd(n, x1buf, g1buf, prob);
   g0norm = opk_vnorm2(g1);
 
-  task = opk_nlcg_start(opt);
+  task = opk_start_nlcg(opt);
   while (OPK_TRUE) {
     if (verbose) {
       fprintf(output,
-              "ITER = %3d / NEVALS = %3d / TASK = %d / START = %d%s",
-              opk_nlcg_get_iterations(opt),
-              opk_nlcg_get_evaluations(opt),
-              opk_nlcg_get_task(opt),
-              opk_nlcg_get_starting(opt),
-              (opk_nlcg_get_task(opt) == OPK_TASK_COMPUTE_FG ? " / " : "\n"));
+              "ITER = %3ld / NEVALS = %3ld / TASK = %d / START = %d%s",
+              (long)opk_get_nlcg_iterations(opt),
+              (long)opk_get_nlcg_evaluations(opt),
+              opk_get_nlcg_task(opt),
+              opk_get_nlcg_starting(opt),
+              (opk_get_nlcg_task(opt) == OPK_TASK_COMPUTE_FG ? " / " : "\n"));
     }
     if (task == OPK_TASK_COMPUTE_FG) {
       f1 = mgh_umobj(n, x1buf, prob);
@@ -186,7 +186,7 @@ main(int argc, const char* argv[])
       if (verbose) {
         fprintf(output,
                 "ALPHA =%9.2e / BETA = %+9.2e / F = %+15.8E / |G| =%9.2E\n",
-                opk_nlcg_get_alpha(opt), opk_nlcg_get_beta(opt), f1, g1norm);
+                opk_get_nlcg_step(opt), opk_get_nlcg_beta(opt), f1, g1norm);
       }
       if (f1 != f1 || g1norm != g1norm) {
         /* Exit if f(x) or g(x) is NaN (Not a Number). */
@@ -205,12 +205,12 @@ main(int argc, const char* argv[])
         break;
       }
     }
-    if (opk_nlcg_get_evaluations(opt) >= mxfun) {
+    if (opk_get_nlcg_evaluations(opt) >= mxfun) {
       /* Exit if too many iterartions. */
       task = OPK_TASK_ERROR;
       break;
     }
-    task = opk_nlcg_iterate(opt, x1, f1, g1);
+    task = opk_iterate_nlcg(opt, x1, f1, g1);
   }
 
   /* Deal with the reason of stopping the algorithm. */
@@ -223,10 +223,12 @@ main(int argc, const char* argv[])
   }
   fprintf(output, (" - %s (%d) / factor = %g\n"
                    "   start: f0 =%16.8E, ||g0|| =%10.2E\n"
-                   "   final:  f =%16.8E,  ||g|| =%10.2E, %d iterations, %d function calls\n"),
+                   "   final:  f =%16.8E,  ||g|| =%10.2E, "
+                   "%ld iterations, %ld function calls\n"),
           reason, task,
-          factor, f0, g0norm, f1, opk_vnorm2(g1), opk_nlcg_get_iterations(opt),
-          opk_nlcg_get_evaluations(opt));
+          factor, f0, g0norm, f1, opk_vnorm2(g1),
+          (long)opk_get_nlcg_iterations(opt),
+          (long)opk_get_nlcg_evaluations(opt));
 
 #if 0
   /* Write final X and G vectors. */
