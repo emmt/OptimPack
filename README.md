@@ -112,6 +112,11 @@ steps:
 
    There are many options, so you may run `configure --help` first to
    figure out.
+   
+   If you directly clone OptimPack from GitHub, you'll have to generate the
+   `configure` script before:
+   
+        autoreconf --install
 
 2. Compile the library:
 
