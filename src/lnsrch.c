@@ -353,7 +353,7 @@ static opk_lnsrch_operations_t nonmonotone_operations = {
   NULL,
   nonmonotone_start,
   nonmonotone_iterate,
-  TRUE
+  FALSE
 };
 
 opk_lnsrch_t*
