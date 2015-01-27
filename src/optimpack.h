@@ -42,6 +42,7 @@
  * @defgroup LineSearch      Line search methods.
  * @defgroup NLCG            Non-linear conjugate gradient methods.
  * @defgroup VariableMetric  Variable metric methods.
+ * @defgroup ConstrainedVariableMetric  Variable metric methods with convex constraints.
  * @defgroup Error           Reporting of errors.
  * @defgroup TrustRegion     Trust region methods.
  * @defgroup Utilities       Miscellaneous utility functions and macros.
@@ -782,12 +783,13 @@ typedef enum {
   OPK_TASK_ERROR       = -1, /**< An error has ocurred. */
   OPK_TASK_PROJECT_X   =  0, /**< Caller must project variables x. */
   OPK_TASK_COMPUTE_FG  =  1, /**< Caller must compute f(x) and g(x). */
-  OPK_TASK_FREE_VARS   =  2, /**< Caller must update the subspace of free
+  OPK_TASK_PROJECT_D   =  2, /**< Caller must project the direction d. */
+  OPK_TASK_FREE_VARS   =  3, /**< Caller must update the subspace of free
                                   variables. */
-  OPK_TASK_NEW_X       =  3, /**< A new iterate is available. */
-  OPK_TASK_FINAL_X     =  4, /**< Algorithm has converged, solution is
+  OPK_TASK_NEW_X       =  4, /**< A new iterate is available. */
+  OPK_TASK_FINAL_X     =  5, /**< Algorithm has converged, solution is
                                   available. */
-  OPK_TASK_WARNING     =  5  /**< Algorithm terminated with a warning. */
+  OPK_TASK_WARNING     =  6  /**< Algorithm terminated with a warning. */
 } opk_task_t;
 
 
@@ -1332,6 +1334,79 @@ opk_get_vmlm_stpmax(opk_vmlm_t* opt);
 
 extern int
 opk_set_vmlm_stpmin_and_stpmax(opk_vmlm_t* opt, double stpmin, double stpmax);
+
+/** @} */
+
+/*---------------------------------------------------------------------------*/
+/* VARIABLE METRIC OPTIMIZATION METHOD WITH CONVEX CONSTRAINTS */
+
+/**
+ * @addtogroup ConstrainedVariableMetric
+ * @{
+ */
+
+/** Opaque type for a variable metric optimizer. */
+typedef struct _opk_vmlmc opk_vmlmc_t;
+
+extern opk_vmlmc_t*
+opk_new_vmlmc_optimizer(opk_vspace_t* vspace,
+                        opk_index_t m,
+                        double xsmall);
+
+extern opk_vmlmc_t*
+opk_new_vmlmc_optimizer_with_line_search(opk_vspace_t* vspace,
+                                         opk_index_t m,
+                                         double xsmall,
+                                         opk_lnsrch_t* lnsrch);
+
+extern opk_task_t
+opk_start_vmlmc(opk_vmlmc_t* opt);
+
+extern opk_task_t
+opk_iterate_vmlmc(opk_vmlmc_t* opt, opk_vector_t* x,
+                  double f, opk_vector_t* g, opk_vector_t* d);
+
+extern opk_task_t
+opk_get_vmlmc_task(opk_vmlmc_t* opt);
+
+extern opk_index_t
+opk_get_vmlmc_iterations(opk_vmlmc_t* opt);
+
+extern opk_index_t
+opk_get_vmlmc_evaluations(opk_vmlmc_t* opt);
+
+extern opk_index_t
+opk_get_vmlmc_restarts(opk_vmlmc_t* opt);
+
+extern int
+opk_get_vmlmc_scaling(opk_vmlmc_t* opt);
+
+extern int
+opk_set_vmlmc_scaling(opk_vmlmc_t* opt, int scaling);
+
+extern double
+opk_get_vmlmc_gatol(opk_vmlmc_t* opt);
+
+extern int
+opk_set_vmlmc_gatol(opk_vmlmc_t* opt, double gatol);
+
+extern double
+opk_get_vmlmc_grtol(opk_vmlmc_t* opt);
+
+extern int
+opk_set_vmlmc_grtol(opk_vmlmc_t* opt, double grtol);
+
+extern double
+opk_get_vmlmc_step(opk_vmlmc_t* opt);
+
+extern double
+opk_get_vmlmc_stpmin(opk_vmlmc_t* opt);
+
+extern double
+opk_get_vmlmc_stpmax(opk_vmlmc_t* opt);
+
+extern int
+opk_set_vmlmc_stpmin_and_stpmax(opk_vmlmc_t* opt, double stpmin, double stpmax);
 
 /** @} */
 
