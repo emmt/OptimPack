@@ -61,7 +61,7 @@ extern opk_nlcg;
          opt.evaluations - number of function (and gradient) evaluations;
          opt.restarts    - number of restarts;
 
-   SEE ALSO: opk_iterate, opk_vmlm, opk_task, opk_start.
+   SEE ALSO: opk_iterate, opk_task, opk_start, opk_vmlm, opk_vmlmc.
  */
 
 extern opk_vmlm;
@@ -76,14 +76,55 @@ extern opk_vmlm;
      variables.  The default is to use double precision floating point
      variables.
 
+     The dot notation can be used to query some members of the optimizer
+     instance:
+         opt.method      - the name of the optimization method;
+         opt.size        - the size of the problem;
+         opt.single      - single precision?
+         opt.task        - current pending task;
+         opt.iterations  - number of iterations;
+         opt.evaluations - number of function (and gradient) evaluations;
+         opt.restarts    - number of restarts;
+
+   SEE ALSO: opk_iterate, opk_task, opk_start, opk_vmlmc, opk_nlcg.
  */
+
+extern opk_vmlmc;
+/* DOCUMENT opt = opk_vmlmc(n, m, scl);
+
+     The function opk_vmlmc() creates a new instance of OPKY reverse
+     communication optimizer implementing a limited memory variant of the BFGS
+     variable metric method for solving an optimization problem with convex
+     constraints.  N is the size of the problem, M is the number of previous
+     steps to memorize and SCL is a scaling parameter.  SCL is the Euclidean
+     norm of the search direction at first iterate or after a restart.
+
+     Keyword SINGLE may be set true to use single precision floating point
+     variables.  The default is to use double precision floating point
+     variables.
+
+     The dot notation can be used to query some members of the optimizer
+     instance:
+         opt.method      - the name of the optimization method;
+         opt.size        - the size of the problem;
+         opt.single      - single precision?
+         opt.task        - current pending task;
+         opt.iterations  - number of iterations;
+         opt.evaluations - number of function (and gradient) evaluations;
+         opt.restarts    - number of restarts;
+         opt.projections - number of projections;
+
+   SEE ALSO: opk_iterate, opk_task, opk_start, opk_vmlm, opk_nlcg.
+ */
+
 
 extern opk_iterate;
 /* DOCUMENT task = opk_iterate(opt, x, fx, gx);
+         or task = opk_iterate(opt, x, fx, gx, d);
      Proceed with next iteration for the optimizer OPT.  X stores the current
      variables, FX is the function value at X and GX is the gradient of the
-     function at X.  See opk_task() for the interpretaion of the returned
-     value.
+     function at X.  For constrained optimization, D is an additional work
+     array.  See opk_task() for the interpretation of the returned value.
 
    SEE ALSO: opk_nlcg, opk_vmlm, opk_task, opk_start.
  */
@@ -96,20 +137,21 @@ extern opk_start;
    SEE ALSO: opk_nlcg, opk_vmlm, opk_task, opk_iterate.
 */
 
-local OPK_TASK_ERROR;
+local OPK_TASK_ERROR, OPK_TASK_WARNING;
 local OPK_TASK_COMPUTE_FG;
-local OPK_TASK_NEW_X;
-local OPK_TASK_FINAL_X;
-local OPK_TASK_WARNING;
+local OPK_TASK_PROJECT_X, OPK_TASK_PROJECT_D;
+local OPK_TASK_NEW_X, OPK_TASK_FINAL_X;
 extern opk_task;
 /* DOCUMENT task = opk_task(opt);
      Query the current pending task for the reverse communication optimizer
      OPT.  The possible values for the returned value are:
 
         OPK_TASK_ERROR      - an error has occured;
+        OPK_TASK_PROJECT_X  - project the variables into the feasible set;
         OPK_TASK_COMPUTE_FG - caller must compute the function value and its
                               gradient for the current variable and call
                               opk_iterate again;
+        OPK_TASK_PROJECT_D  - project the direction D;
         OPK_TASK_NEW_X      - new improved variables are available for
                               examination before calling opk_iterate again;
         OPK_TASK_FINAL_X    - the method has converged;

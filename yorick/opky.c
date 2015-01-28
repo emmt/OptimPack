@@ -61,6 +61,7 @@ static long evaluations_index = -1L;
 static long iterations_index = -1L;
 static long method_index = -1L;
 static long restarts_index = -1L;
+static long projections_index = -1L;
 static long single_index = -1L;
 static long size_index = -1L;
 static long task_index = -1L;
@@ -77,11 +78,12 @@ struct _yopt_operations {
   const char* method;
   void (*start)(opk_object_t* optimizer);
   void (*iterate)(opk_object_t* optimizer, opk_vector_t* x,
-                  double fx, opk_vector_t* gx);
+                  double fx, opk_vector_t* gx, opk_vector_t* d);
   void (*get_task)(opk_object_t* optimizer);
   void (*get_iterations)(opk_object_t* optimizer);
   void (*get_evaluations)(opk_object_t* optimizer);
   void (*get_restarts)(opk_object_t* optimizer);
+  void (*get_projections)(opk_object_t* optimizer);
 };
 
 struct _yopt_instance {
@@ -90,6 +92,7 @@ struct _yopt_instance {
   opk_vspace_t* vspace;
   opk_vector_t* x;
   opk_vector_t* gx;
+  opk_vector_t* d;
   void (*rewrap)(opk_vector_t* vect, int iarg);
   int single;
 };
@@ -116,6 +119,7 @@ yopt_free(void* ptr)
   OPK_DROP(opt->vspace);
   OPK_DROP(opt->x);
   OPK_DROP(opt->gx);
+  OPK_DROP(opt->d);
 }
 
 static void
@@ -151,6 +155,8 @@ yopt_extract(void* ptr, char* member)
     opt->ops->get_evaluations(opt->optimizer);
   } else if (index == restarts_index) {
     opt->ops->get_restarts(opt->optimizer);
+  } else if (index == projections_index) {
+    opt->ops->get_projections(opt->optimizer);
   } else if (index == single_index) {
     ypush_int(opt->single);
   } else {
@@ -171,8 +177,8 @@ nlcg_start(opk_object_t* optimizer)
 }
 
 static void
-nlcg_iterate(opk_object_t* optimizer,
-             opk_vector_t* x, double fx, opk_vector_t* gx)
+nlcg_iterate(opk_object_t* optimizer, opk_vector_t* x,
+             double fx, opk_vector_t* gx, opk_vector_t* d)
 {
   ypush_int(opk_iterate_nlcg(NLCG(optimizer), x, fx, gx));
 }
@@ -201,6 +207,12 @@ nlcg_get_restarts(opk_object_t* optimizer)
   ypush_long(opk_get_nlcg_restarts(NLCG(optimizer)));
 }
 
+static void
+nlcg_get_projections(opk_object_t* optimizer)
+{
+  ypush_long(0);
+}
+
 static yopt_operations_t nlcg_ops = {
   "non-linear conjugate gradient (NLCG)",
   nlcg_start,
@@ -208,7 +220,8 @@ static yopt_operations_t nlcg_ops = {
   nlcg_get_task,
   nlcg_get_iterations,
   nlcg_get_evaluations,
-  nlcg_get_restarts
+  nlcg_get_restarts,
+  nlcg_get_projections
 };
 
 /*---------------------------------------------------------------------------*/
@@ -223,8 +236,8 @@ vmlm_start(opk_object_t* optimizer)
 }
 
 static void
-vmlm_iterate(opk_object_t* optimizer,
-             opk_vector_t* x, double fx, opk_vector_t* gx)
+vmlm_iterate(opk_object_t* optimizer, opk_vector_t* x,
+             double fx, opk_vector_t* gx, opk_vector_t* d)
 {
   ypush_int(opk_iterate_vmlm(VMLM(optimizer), x, fx, gx));
 }
@@ -253,14 +266,80 @@ vmlm_get_restarts(opk_object_t* optimizer)
   ypush_long(opk_get_vmlm_restarts(VMLM(optimizer)));
 }
 
+static void
+vmlm_get_projections(opk_object_t* optimizer)
+{
+  ypush_long(0);
+}
+
 static yopt_operations_t vmlm_ops = {
-  "non-linear conjugate gradient (VMLM)",
+  "limited memory quasi-Newton method (VMLM)",
   vmlm_start,
   vmlm_iterate,
   vmlm_get_task,
   vmlm_get_iterations,
   vmlm_get_evaluations,
-  vmlm_get_restarts
+  vmlm_get_restarts,
+  vmlm_get_projections
+};
+
+/*---------------------------------------------------------------------------*/
+/* LIMITED MEMORY VARIABLE METRIC (VMLM/LBFGS) METHOD */
+
+#define VMLMC(obj) ((opk_vmlmc_t*)(obj))
+
+static void
+vmlmc_start(opk_object_t* optimizer)
+{
+  ypush_int(opk_start_vmlmc(VMLMC(optimizer)));
+}
+
+static void
+vmlmc_iterate(opk_object_t* optimizer, opk_vector_t* x,
+              double fx, opk_vector_t* gx, opk_vector_t* d)
+{
+  ypush_int(opk_iterate_vmlmc(VMLMC(optimizer), x, fx, gx, d));
+}
+
+static void
+vmlmc_get_task(opk_object_t* optimizer)
+{
+  ypush_int(opk_get_vmlmc_task(VMLMC(optimizer)));
+}
+
+static void
+vmlmc_get_iterations(opk_object_t* optimizer)
+{
+  ypush_long(opk_get_vmlmc_iterations(VMLMC(optimizer)));
+}
+
+static void
+vmlmc_get_evaluations(opk_object_t* optimizer)
+{
+  ypush_long(opk_get_vmlmc_evaluations(VMLMC(optimizer)));
+}
+
+static void
+vmlmc_get_restarts(opk_object_t* optimizer)
+{
+  ypush_long(opk_get_vmlmc_restarts(VMLMC(optimizer)));
+}
+
+static void
+vmlmc_get_projections(opk_object_t* optimizer)
+{
+  ypush_long(opk_get_vmlmc_projections(VMLMC(optimizer)));
+}
+
+static yopt_operations_t vmlmc_ops = {
+  "limited memory quasi-Newton method with constraints (VMLMC)",
+  vmlmc_start,
+  vmlmc_iterate,
+  vmlmc_get_task,
+  vmlmc_get_iterations,
+  vmlmc_get_evaluations,
+  vmlmc_get_restarts,
+  vmlmc_get_projections
 };
 
 /*---------------------------------------------------------------------------*/
@@ -322,6 +401,7 @@ void Y_opk_init(int argc)
   GET_GLOBAL(iterations);
   GET_GLOBAL(method);
   GET_GLOBAL(restarts);
+  GET_GLOBAL(projections);
   GET_GLOBAL(single);
   GET_GLOBAL(size);
   GET_GLOBAL(task);
@@ -329,7 +409,9 @@ void Y_opk_init(int argc)
 
 #define SET_GLOBAL_INT(a) set_global_int(#a, a)
   SET_GLOBAL_INT(OPK_TASK_ERROR);
+  SET_GLOBAL_INT(OPK_TASK_PROJECT_X);
   SET_GLOBAL_INT(OPK_TASK_COMPUTE_FG);
+  SET_GLOBAL_INT(OPK_TASK_PROJECT_D);
   SET_GLOBAL_INT(OPK_TASK_NEW_X);
   SET_GLOBAL_INT(OPK_TASK_FINAL_X);
   SET_GLOBAL_INT(OPK_TASK_WARNING);
@@ -487,6 +569,84 @@ void Y_opk_vmlm(int argc)
   }
 }
 
+void Y_opk_vmlmc(int argc)
+{
+  yopt_instance_t* opt;
+  long n = 0, m = 5;
+  int iarg, position = 0, single = FALSE;
+  double scl = 0.0;
+  /*unsigned int rule = OPK_BARZILAI_BORWEIN_2;*/
+
+  for (iarg = argc - 1; iarg >= 0; --iarg) {
+    long index = yarg_key(iarg);
+    if (index < 0L) {
+      /* Non-keyword argument. */
+      switch (++position) {
+      case 1:
+        n = ygets_l(iarg);
+        if (n < 1L) {
+          y_error("illegal number of variables");
+        }
+        break;
+      case 2:
+        m = ygets_l(iarg);
+        if (m < 1L) {
+          y_error("illegal number of memorized steps");
+        }
+        break;
+      case 3:
+        scl = ygets_d(iarg);
+        if (scl <= 0.0) {
+          y_error("illegal variable small size value");
+        }
+        break;
+      default:
+        y_error("too many arguments");
+      }
+    } else {
+      /* Keyword argument. */
+      --iarg;
+      if (index == single_index) {
+        single = yarg_true(iarg);
+      } else {
+        y_error("unknown keyword");
+      }
+    }
+  }
+  if (scl <= 0.0) {
+    y_error("not enough arguments");
+  }
+  opt = (yopt_instance_t*)ypush_obj(&yopt_type, sizeof(yopt_instance_t));
+  opt->ops = &vmlmc_ops;
+  opt->single = single;
+  if (single) {
+    opt->vspace = opk_new_simple_float_vector_space(n);
+    opt->rewrap = rewrap_float;
+  } else {
+    opt->vspace = opk_new_simple_double_vector_space(n);
+    opt->rewrap = rewrap_double;
+  }
+  if (opt->vspace == NULL) {
+    y_error("failed to create vector space");
+  }
+  if (single) {
+    float dummy = 0.0f;
+    opt->x = opk_wrap_simple_float_vector(opt->vspace, &dummy, NULL, NULL);
+    opt->gx = opk_wrap_simple_float_vector(opt->vspace, &dummy, NULL, NULL);
+  } else {
+    double dummy = 0.0;
+    opt->x = opk_wrap_simple_double_vector(opt->vspace, &dummy, NULL, NULL);
+    opt->gx = opk_wrap_simple_double_vector(opt->vspace, &dummy, NULL, NULL);
+  }
+  if (opt->x == NULL || opt->gx == NULL) {
+    y_error("failed to create working vectors");
+  }
+  opt->optimizer = (opk_object_t*)opk_new_vmlmc_optimizer(opt->vspace, m, scl);
+  if (opt->optimizer == NULL) {
+    y_error("failed to create VMLMC optimizer");
+  }
+}
+
 void Y_opk_task(int argc)
 {
   yopt_instance_t* opt;
@@ -513,15 +673,31 @@ void Y_opk_iterate(int argc)
 {
   yopt_instance_t* opt;
   double fx;
+  int iarg;
 
-  if (argc != 4) {
-    y_error("expecting exactly 4 arguments");
+
+  if (argc < 4 || argc > 5) {
+    y_error("expecting 4 or 5 arguments");
   }
-  opt = yget_obj(3, &yopt_type);
-  opt->rewrap(opt->x, 2);
-  fx = ygets_d(1);
-  opt->rewrap(opt->gx, 0);
-  opt->ops->iterate(opt->optimizer, opt->x, fx, opt->gx);
+
+  iarg = argc;
+  opt = yget_obj(--iarg, &yopt_type);
+  if (opt->ops == &vmlmc_ops) {
+    if (argc != 5) {
+      y_error("expecting 5 arguments for this optimizer");
+    }
+  } else {
+    if (argc != 4) {
+      y_error("expecting 4 arguments for this optimizer");
+    }
+  }
+  opt->rewrap(opt->x, --iarg);
+  fx = ygets_d(--iarg);
+  opt->rewrap(opt->gx, --iarg);
+  if (opt->ops == &vmlmc_ops) {
+    opt->rewrap(opt->d, --iarg);
+  }
+  opt->ops->iterate(opt->optimizer, opt->x, fx, opt->gx, opt->d);
 }
 
 /*
