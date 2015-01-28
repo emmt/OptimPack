@@ -2,7 +2,10 @@ language: c
 
 compiler:
   - gcc
-  - clang
+#  - clang
+
+secure: "RI6rF9Mdc0YcA8tylhXp9JCvkSIPJQBnfcpqJ7Y5BkZoLedQ2hiR6G7ZmKSNUe7rwJ9brGAVHBWcbk/tYHEu2EJXZ5zsUKQQGng8v+QROqeJEbR5KDbbj3Rdu3XFJLOgXMV67RL4kC12DbEYlKYKESUzLoIaNIVXSQTJJKqhUf0="
 
 # apt-get install autoconf automake libtool
-script: mkdir -p m4 && autoreconf -fi && ./configure && make
+#script: mkdir -p m4 && autoreconf -fi && ./configure && make
+script: ./configure && make
