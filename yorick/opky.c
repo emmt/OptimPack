@@ -332,7 +332,7 @@ vmlmc_get_projections(opk_object_t* optimizer)
 }
 
 static yopt_operations_t vmlmc_ops = {
-  "limited memory quasi-Newton method with constraints (VMLMC)",
+  "limited memory quasi-Newton method with convex constraints (VMLMC)",
   vmlmc_start,
   vmlmc_iterate,
   vmlmc_get_task,
@@ -354,6 +354,18 @@ static void
 error_handler(const char* message)
 {
   y_error(message);
+}
+
+static opk_vector_t*
+create_wrapper(opk_vspace_t* vspace, int single)
+{
+  if (single) {
+    float dummy = 0.0f;
+    return opk_wrap_simple_float_vector(vspace, &dummy, NULL, NULL);
+  } else {
+    double dummy = 0.0;
+    return opk_wrap_simple_double_vector(vspace, &dummy, NULL, NULL);
+  }
 }
 
 static void
@@ -480,15 +492,8 @@ void Y_opk_nlcg(int argc)
   if (opt->vspace == NULL) {
     y_error("failed to create vector space");
   }
-  if (single) {
-    float dummy = 0.0f;
-    opt->x = opk_wrap_simple_float_vector(opt->vspace, &dummy, NULL, NULL);
-    opt->gx = opk_wrap_simple_float_vector(opt->vspace, &dummy, NULL, NULL);
-  } else {
-    double dummy = 0.0;
-    opt->x = opk_wrap_simple_double_vector(opt->vspace, &dummy, NULL, NULL);
-    opt->gx = opk_wrap_simple_double_vector(opt->vspace, &dummy, NULL, NULL);
-  }
+  opt->x = create_wrapper(opt->vspace, single);
+  opt->gx = create_wrapper(opt->vspace, single);
   if (opt->x == NULL || opt->gx == NULL) {
     y_error("failed to create working vectors");
   }
@@ -551,15 +556,8 @@ void Y_opk_vmlm(int argc)
   if (opt->vspace == NULL) {
     y_error("failed to create vector space");
   }
-  if (single) {
-    float dummy = 0.0f;
-    opt->x = opk_wrap_simple_float_vector(opt->vspace, &dummy, NULL, NULL);
-    opt->gx = opk_wrap_simple_float_vector(opt->vspace, &dummy, NULL, NULL);
-  } else {
-    double dummy = 0.0;
-    opt->x = opk_wrap_simple_double_vector(opt->vspace, &dummy, NULL, NULL);
-    opt->gx = opk_wrap_simple_double_vector(opt->vspace, &dummy, NULL, NULL);
-  }
+  opt->x = create_wrapper(opt->vspace, single);
+  opt->gx = create_wrapper(opt->vspace, single);
   if (opt->x == NULL || opt->gx == NULL) {
     y_error("failed to create working vectors");
   }
@@ -629,16 +627,10 @@ void Y_opk_vmlmc(int argc)
   if (opt->vspace == NULL) {
     y_error("failed to create vector space");
   }
-  if (single) {
-    float dummy = 0.0f;
-    opt->x = opk_wrap_simple_float_vector(opt->vspace, &dummy, NULL, NULL);
-    opt->gx = opk_wrap_simple_float_vector(opt->vspace, &dummy, NULL, NULL);
-  } else {
-    double dummy = 0.0;
-    opt->x = opk_wrap_simple_double_vector(opt->vspace, &dummy, NULL, NULL);
-    opt->gx = opk_wrap_simple_double_vector(opt->vspace, &dummy, NULL, NULL);
-  }
-  if (opt->x == NULL || opt->gx == NULL) {
+  opt->x = create_wrapper(opt->vspace, single);
+  opt->gx = create_wrapper(opt->vspace, single);
+  opt->d = create_wrapper(opt->vspace, single);
+  if (opt->x == NULL || opt->gx == NULL || opt->d == NULL) {
     y_error("failed to create working vectors");
   }
   opt->optimizer = (opk_object_t*)opk_new_vmlmc_optimizer(opt->vspace, m, scl);
