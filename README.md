@@ -118,7 +118,6 @@ steps:
    If you directly clone OptimPack from GitHub, you'll have to generate the
    `configure` script before:
 
-        mkdir -p m4
         autoreconf --install
 
 2. Compile the library:
