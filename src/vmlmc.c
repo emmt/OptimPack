@@ -441,6 +441,17 @@ optimizer_failure(opk_vmlmc_t* opt, opk_reason_t reason)
   return opt->task;
 }
 
+/* Make first line search step. */
+static opk_task_t
+first_step(opk_vmlmc_t* opt, opk_vector_t* x,
+           double stp, const opk_vector_t* d)
+{
+  opt->stp = fabs(stp);
+  opk_vaxpby(x, 1.0, opt->x0, stp, d);
+  opt->stage = 1;
+  return optimizer_success(opt, OPK_TASK_PROJECT_X);
+}
+
 static opk_task_t
 line_search_failure(opk_vmlmc_t* opt)
 {
@@ -522,8 +533,6 @@ opk_task_t
 opk_iterate_vmlmc(opk_vmlmc_t* opt, opk_vector_t* x, double f,
                   opk_vector_t* g, opk_vector_t* d)
 {
-  double dg;
-  opk_task_t next_task;
   int status;
 
   switch (opt->task) {
@@ -619,6 +628,7 @@ opk_iterate_vmlmc(opk_vmlmc_t* opt, opk_vector_t* x, double f,
     if (opt->stage < 3) {
       /* The vector d contains the projected gradient.  Check for global
          convergence. */
+      opk_task_t next_task;
       opk_vcopy(opt->pg, d);
       opt->pgnorm = opk_vnorm2(opt->pg);
       if (opt->evaluations == 1) {
@@ -629,18 +639,15 @@ opk_iterate_vmlmc(opk_vmlmc_t* opt, opk_vector_t* x, double f,
       } else {
         next_task = OPK_TASK_NEW_X;
       }
+      return optimizer_success(opt, next_task);
     } else {
       /* The caller has projected the vector d resulting from the first loop of
          the L-BFGS recursion.  Apply the 2nd loop of L-BFGS recursion and
          compute the first iterate of the next line search. */
       lbfgs_loop2(opt, d);
       save_iterate(opt, x, f, g);
-      opt->stp = 1.0;
-      opk_vaxpby(x, 1.0, opt->x0, -opt->stp, d);
-      opt->stage = 1;
-      next_task = OPK_TASK_PROJECT_X;
+      return first_step(opt, x, -1.0, d);
     }
-    return optimizer_success(opt, next_task);
 
   case OPK_TASK_FINAL_X:
   case OPK_TASK_NEW_X:
@@ -656,10 +663,7 @@ opk_iterate_vmlmc(opk_vmlmc_t* opt, opk_vector_t* x, double f,
     } else {
       /* Initial iterate or algorithm has been restarted.  The search direction
          is the scaled projected gradient. */
-      opt->stp = opt->xsmall/opt->pgnorm;
-      opk_vaxpby(x, 1.0, opt->x0, -opt->stp, opt->pg);
-      opt->stage = 1;
-      return optimizer_success(opt, OPK_TASK_PROJECT_X);
+      return first_step(opt, x, -(opt->xsmall/opt->pgnorm), opt->pg);
     }
 
   default:
