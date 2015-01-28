@@ -1,6 +1,8 @@
 # OptimPack
 # (version 2.0)
 
+![Travis build status](http://travis-ci.org/emmt/OptimPack.png)
+
 ***Although it can already be used, this version is a work in progress: not
    all routines have been tested or implemented yet.  The older version of
    OptimPack is available
@@ -112,10 +114,10 @@ steps:
 
    There are many options, so you may run `configure --help` first to
    figure out.
-   
+
    If you directly clone OptimPack from GitHub, you'll have to generate the
    `configure` script before:
-   
+
         autoreconf --install
 
 2. Compile the library:
