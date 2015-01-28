@@ -765,7 +765,7 @@ opk_set_error_handler(opk_error_handler* handler);
  * instance, when one attempts to compute the dot product of two vectors which
  * do not belong to the same vector space.
  *
- * @param resaon - The error message indicating the reason of the failure.
+ * @param reason - The error message indicating the reason of the failure.
  */
 extern void
 opk_error(const char* reason);
@@ -1377,6 +1377,9 @@ opk_get_vmlmc_evaluations(opk_vmlmc_t* opt);
 
 extern opk_index_t
 opk_get_vmlmc_restarts(opk_vmlmc_t* opt);
+
+extern opk_index_t
+opk_get_vmlmc_projections(opk_vmlmc_t* opt);
 
 extern int
 opk_get_vmlmc_scaling(opk_vmlmc_t* opt);
