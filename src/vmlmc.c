@@ -625,6 +625,7 @@ opk_iterate_vmlmc(opk_vmlmc_t* opt, opk_vector_t* x, double f,
 
   case OPK_TASK_PROJECT_D:
 
+    ++opt->projections;
     if (opt->stage < 3) {
       /* The vector d contains the projected gradient.  Check for global
          convergence. */
