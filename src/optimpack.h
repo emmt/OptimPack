@@ -1348,15 +1348,37 @@ opk_set_vmlm_stpmin_and_stpmax(opk_vmlm_t* opt, double stpmin, double stpmax);
 /** Opaque type for a variable metric optimizer. */
 typedef struct _opk_vmlmc opk_vmlmc_t;
 
+
+/**
+ * Create a reverse communication optimizer implementing a limited memory
+ * quasi-Newton method with convex constraints and nonmonotone line search.
+ *
+ * @param vspace - The space to which belong the variables.
+ * @param m      - The number of previous steps to memorize.
+ * @param stpsiz - The length of the first variable step at start or after a
+ *                 restart is the steepest descent scaled to have this
+ *                 length.
+ */
 extern opk_vmlmc_t*
 opk_new_vmlmc_optimizer(opk_vspace_t* vspace,
                         opk_index_t m,
-                        double xsmall);
+                        double stpsiz);
 
+/**
+ * Create a reverse communication optimizer implementing a limited memory
+ * quasi-Newton method with convex constraints and specific line search.
+ *
+ * @param vspace - The space to which belong the variables.
+ * @param m      - The number of previous steps to memorize.
+ * @param stpsiz - The length of the first variable step at start or after a
+ *                 restart is the steepest descent scaled to have this
+ *                 length.
+ * @param lnsrch - The line search method to use.
+ */
 extern opk_vmlmc_t*
 opk_new_vmlmc_optimizer_with_line_search(opk_vspace_t* vspace,
                                          opk_index_t m,
-                                         double xsmall,
+                                         double stpsiz,
                                          opk_lnsrch_t* lnsrch);
 
 extern opk_task_t
