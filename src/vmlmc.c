@@ -572,11 +572,12 @@ opk_iterate_vmlmc(opk_vmlmc_t* opt, opk_vector_t* x, double f,
         if (opt->mp == 0) {
           /* We were already using the steepest descent projected direction.
              Thus there must be an error. */
+          fprintf(stderr, "bad steepest descent projected direction\n");
           return optimizer_failure(opt, OPK_BAD_DIRECTION);
         }
         lbfgs_reset(opt);
         ++opt->restarts;
-        opt->stage = 0;
+        return first_step(opt, x, -(opt->stpsiz/opt->pgnorm), opt->pg);
       } else {
         /* Initial step is along a descent direction.  Initialize line search
            with safeguard bounds to only allow for bracktracking. */
