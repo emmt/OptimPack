@@ -118,7 +118,10 @@ steps:
    If you directly clone OptimPack from GitHub, you'll have to generate the
    `configure` script before:
 
-        autoreconf --install
+        ./autogen.sh
+
+   Note that this requires that you have installed a recent version of the
+   *autotools* (`autoconf`, `automake` and `libtool`).
 
 2. Compile the library:
 
