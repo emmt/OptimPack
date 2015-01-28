@@ -96,16 +96,12 @@ static const double GATOL = 0.0;
 /* Other default parameters. */
 static const double DELTA = 0.01;
 static const int    SCALING = OPK_SCALING_OREN_SPEDICATO;
-static const double XSMALL = 1.0;
+static const double STPSIZ = 1.0;
 
 struct _opk_vmlmc {
   opk_object_t base;       /**< Base type (must be the first member). */
   double gamma;            /**< Scale factor to approximate inverse Hessian. */
   double delta;            /**< Threshold to accept descent direction. */
-  double xsmall;           /**< Euclidean norm of a small change of variables,
-                                must be strictly positive.  The first step at
-                                start or after a restart is the steepest
-                                descent scaled to have this length. */
   double grtol;            /**< Relative threshold for the norm or the gradient
                                 (relative to PGINIT the norm of the initial
                                 projected gradient) for convergence. */
@@ -119,6 +115,10 @@ struct _opk_vmlmc {
   double stp;              /**< Current step length. */
   double stpmin;           /**< Maximum relative step length. */
   double stpmax;           /**< Minimum relative step length. */
+  double stpsiz;           /**< Euclidean norm of a small change of variables,
+                                must be strictly positive.  The first step at
+                                start or after a restart is the steepest
+                                descent scaled to have this length. */
   opk_vspace_t* vspace;    /**< Vector space for variables of the problem. */
   opk_lnsrch_t* lnsrch;    /**< Line search method. */
   opk_vector_t* x0;        /**< Variables at the start of the line search. */
@@ -327,7 +327,7 @@ finalize_vmlmc(opk_object_t* obj)
 opk_vmlmc_t*
 opk_new_vmlmc_optimizer_with_line_search(opk_vspace_t* vspace,
                                          opk_index_t m,
-                                         double xsmall,
+                                         double stpsiz,
                                          opk_lnsrch_t* lnsrch)
 {
   opk_vmlmc_t* opt;
@@ -339,7 +339,7 @@ opk_new_vmlmc_optimizer_with_line_search(opk_vspace_t* vspace,
     errno = EFAULT;
     return NULL;
   }
-  if (vspace->size < 1 || m < 1 || non_finite(xsmall) || xsmall <= 0.0) {
+  if (vspace->size < 1 || m < 1 || non_finite(stpsiz) || stpsiz <= 0.0) {
     errno = EINVAL;
     return NULL;
   }
@@ -362,13 +362,14 @@ opk_new_vmlmc_optimizer_with_line_search(opk_vspace_t* vspace,
   opt->rho =      (double*)(((unsigned char*)opt) + rho_offset);
   opt->gamma = 1.0;
   opt->delta = DELTA;
-  opt->xsmall = xsmall;
   opt->grtol = GRTOL;
   opt->gatol = GATOL;
   opt->stpmin = STPMIN;
   opt->stpmax = STPMAX;
+  opt->stpsiz = stpsiz;
   opt->vspace = OPK_HOLD_VSPACE(vspace);
   opt->lnsrch = OPK_HOLD_LNSRCH(lnsrch);
+  opt->m = m;
   opt->scaling = SCALING;
   opt->save_memory = TRUE;
 
@@ -409,7 +410,7 @@ opk_new_vmlmc_optimizer_with_line_search(opk_vspace_t* vspace,
 opk_vmlmc_t*
 opk_new_vmlmc_optimizer(opk_vspace_t* vspace,
                         opk_index_t m,
-                        double xsmall)
+                        double stpsiz)
 {
   opk_lnsrch_t* lnsrch;
   opk_vmlmc_t* opt;
@@ -420,7 +421,7 @@ opk_new_vmlmc_optimizer(opk_vspace_t* vspace,
   if (lnsrch == NULL) {
     return NULL;
   }
-  opt = opk_new_vmlmc_optimizer_with_line_search(vspace, m, xsmall, lnsrch);
+  opt = opk_new_vmlmc_optimizer_with_line_search(vspace, m, stpsiz, lnsrch);
   OPK_DROP(lnsrch); /* the line search is now owned by the optimizer */
   return opt;
 }
@@ -664,7 +665,7 @@ opk_iterate_vmlmc(opk_vmlmc_t* opt, opk_vector_t* x, double f,
     } else {
       /* Initial iterate or algorithm has been restarted.  The search direction
          is the scaled projected gradient. */
-      return first_step(opt, x, -(opt->xsmall/opt->pgnorm), opt->pg);
+      return first_step(opt, x, -(opt->stpsiz/opt->pgnorm), opt->pg);
     }
 
   default:
