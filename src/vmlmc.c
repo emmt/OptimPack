@@ -699,6 +699,12 @@ opk_get_vmlmc_restarts(opk_vmlmc_t* opt)
   return opt->restarts;
 }
 
+opk_index_t
+opk_get_vmlmc_projections(opk_vmlmc_t* opt)
+{
+  return opt->projections;
+}
+
 int
 opk_get_vmlmc_scaling(opk_vmlmc_t* opt)
 {
