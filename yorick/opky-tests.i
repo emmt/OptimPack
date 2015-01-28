@@ -62,6 +62,89 @@ func opkt_rosenbrock(n, single=, vmlm=) {
   x = opk_minimize(opkt_rosenbrock_fg, x0, vmlm=vmlm, verb=1n);
 }
 
+func opkt_nonnegative(m, n, mem=, single=, scale=, verb=, maxiter=, maxeval=)
+{
+  type = (single ? float : double);
+  H = type(random_n(m, n));
+  x0 = type(max(random_n(n), 0.0));
+  std = 0.1; // noise level
+  w = array(type(1.0/std^2), m);
+  y = H(,+)*x0(+) + type(std*random_n(m));
+  A = H(+,)*(w*H)(+,);
+  b = H(+,)*(w*y)(+);
+  opt = opk_vmlmc(n, 5, 0.1, single=single);
+  task = opk_start(opt);
+  x = array(type, n);
+  gx = array(type, n);
+  d = array(type, n);
+  fx = type(0.0);
+  for (;;) {
+    if (task == OPK_TASK_PROJECT_X) {
+      x = max(x, 0.0);
+    } else if (task == OPK_TASK_COMPUTE_FG) {
+      r = H(,+)*x(+) - y;
+      wr = w*r;
+      fx = 0.5*sum(wr*r);
+      gx = H(+,)*wr(+);
+      pause, 1;
+    } else if (task == OPK_TASK_PROJECT_D) {
+      d *= ((gx < 0.0)|(x > 0.0));
+      pause, 1;
+    } else if (task == OPK_TASK_NEW_X || task == OPK_TASK_FINAL_X) {
+      iter = opt.iterations;
+      eval = opt.evaluations;
+      if (task == OPK_TASK_FINAL_X) {
+        last = 1;
+      } else if (! is_void(maxiter) && iter >= maxiter) {
+        last = 2;
+      } else if (! is_void(maxeval) && eval >= maxeval) {
+        last = 3;
+      } else {
+        last = 0;
+      }
+      if (verb) {
+        if (iter == 0) {
+          write, format="%s\n%s\n",
+            "  ITER.  EVAL.  REST.  PROJ.          F(X)             ||PG(X)||",
+            "----------------------------------------------------------------";
+        }
+        if (last || (iter%verb) == 0) {
+          write, format="%6d %6d %6d %6d  %23.16E  %10.3E\n",
+            iter, eval, opt.restarts, opt.projections, fx,
+            sqrt(sum(d*d));
+        }
+      }
+      if (last != 0) {
+        if (last == 2) {
+          write,
+            format="WARNING: maximum number of iterations exceeded (%d)\n",
+            iter;
+        } else if (last == 3) {
+          write,
+            format="WARNING: maximum number of evaluations exceeded (%d)\n",
+            eval;
+        }
+        break;
+      }
+    } else if (task == OPK_TASK_WARNING) {
+      write, format="WARNING: %s\n", "some warning occured";
+      break;
+    } else if (task == OPK_TASK_ERROR) {
+      error, "some error occured";
+    } else {
+      error, "unexpected task";
+    }
+    task = opk_iterate(opt, x, fx, gx, d);
+  }
+  window, 20;
+  fma;
+  limits, square=0;
+  limits;
+  logxy, 0, 0;
+  plp, x0, color="blue", symbol='#';
+  plp, x, color="red", symbol='x';
+}
+
 /*
  * Local Variables:
  * mode: Yorick
