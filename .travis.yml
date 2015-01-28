@@ -1,0 +1,7 @@
+language: c
+
+compiler:
+  - gcc
+  - clang
+
+script: autoreconf -i && ./configure && make
