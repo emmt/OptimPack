@@ -9,7 +9,7 @@ AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 
 # Checks for programs.
-AC_PROG_CC
+AM_PROG_CC_C_O
 AM_PROG_AR
 
 # Use `libtool` for compiling libraries.
