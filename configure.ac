@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-AC_PREREQ([2.69])
+#AC_PREREQ([2.69])
 AC_INIT([OptimPack], [2.0.0a], [eric.thiebaut@univ-lyon1.fr])
 AC_CONFIG_SRCDIR([src/optimpack.h])
 AC_CONFIG_HEADERS([config.h])
@@ -9,7 +9,7 @@ AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 
 # Checks for programs.
-AC_PROG_CC
+AM_PROG_CC_C_O
 AM_PROG_AR
 
 # Use `libtool` for compiling libraries.
