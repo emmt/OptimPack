@@ -416,8 +416,9 @@ opk_new_vmlmc_optimizer(opk_vspace_t* vspace,
   opk_vmlmc_t* opt;
 
   /* Create nonmonotone line search with same parameters as in Birgin et
-     al. (2000). */
-  lnsrch = opk_lnsrch_new_nonmonotone(10, SFTOL, SIGMA1, SIGMA2);
+     al. (2000) but with a memory of 1 to mimic monotone line search with
+     backtracking and quadratic interpolation. */
+  lnsrch = opk_lnsrch_new_nonmonotone(1, SFTOL, SIGMA1, SIGMA2);
   if (lnsrch == NULL) {
     return NULL;
   }
