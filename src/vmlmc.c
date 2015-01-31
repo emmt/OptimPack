@@ -94,14 +94,12 @@ static const double GRTOL = 1E-6;
 static const double GATOL = 0.0;
 
 /* Other default parameters. */
-static const double DELTA = 0.01;
 static const int    SCALING = OPK_SCALING_OREN_SPEDICATO;
 static const double STPSIZ = 1.0;
 
 struct _opk_vmlmc {
   opk_object_t base;       /**< Base type (must be the first member). */
   double gamma;            /**< Scale factor to approximate inverse Hessian. */
-  double delta;            /**< Threshold to accept descent direction. */
   double grtol;            /**< Relative threshold for the norm or the gradient
                                 (relative to PGINIT the norm of the initial
                                 projected gradient) for convergence. */
@@ -158,7 +156,6 @@ static void
 lbfgs_reset(opk_vmlmc_t* opt)
 {
   opt->mp = 0;
-  opt->mark = -1;
 }
 
 /* Define a a bunch of macros to make the code easier to read. */
@@ -187,8 +184,7 @@ lbfgs_slot(opk_vmlmc_t* opt, opk_index_t k)
    described by Nocedal (1980) and due to Strang. */
 
 static void
-lbfgs_loop1(opk_vmlmc_t* opt,
-                  opk_vector_t* d)
+lbfgs_loop1(opk_vmlmc_t* opt, opk_vector_t* d)
 {
   opk_index_t j, k;
 
@@ -211,8 +207,7 @@ lbfgs_loop1(opk_vmlmc_t* opt,
 }
 
 static void
-lbfgs_loop2(opk_vmlmc_t* opt,
-            opk_vector_t* d)
+lbfgs_loop2(opk_vmlmc_t* opt, opk_vector_t* d)
 {
   double beta;
   opk_index_t j, k;
@@ -361,7 +356,6 @@ opk_new_vmlmc_optimizer_with_line_search(opk_vspace_t* vspace,
   opt->alpha =    (double*)(((unsigned char*)opt) + alpha_offset);
   opt->rho =      (double*)(((unsigned char*)opt) + rho_offset);
   opt->gamma = 1.0;
-  opt->delta = DELTA;
   opt->grtol = GRTOL;
   opt->gatol = GATOL;
   opt->stpmin = STPMIN;
@@ -543,27 +537,17 @@ opk_iterate_vmlmc(opk_vmlmc_t* opt, opk_vector_t* x, double f,
 
     /* Caller has projected the variables x to the feasible set. */
     ++opt->projections;
-    return optimizer_success(opt, OPK_TASK_COMPUTE_FG);
-
-  case OPK_TASK_COMPUTE_FG:
-
-    /* Caller has computed the function value and the gradient at the current
-       iterate. */
-    ++opt->evaluations;
-    if (opt->evaluations == 1) {
-      /* Save the initial iterate. */
-      save_iterate(opt, x, f, g);
-    }
 
     if (opt->stage == 1) {
       /* This is the first step along a new search direction.  Form actual
-         (anti-)search direction and check whether this is a descent
-         direction. */
+         search direction and check whether is is a descent direction.  See
+         Nocedal & Wright ("Numerical Optimization", 2006) for a justification
+         that just the sign of the directional derivative has to be checked
+         (i.e. not a threshold). */
       double dg0; /* initial directional derivative */
       opk_vaxpby(d, 1.0, x, -1.0, opt->x0);
-      opt->stp = 1.0;
-      dg0 = opk_vdot(d, opt->g0);
-      if (dg0 >= 0.0) /* FIXME: use tolerance? */ {
+      dg0 = opk_vdot(d, opt->pg);
+      if (dg0 >= 0.0) {
         /* Initial step is not along a descent direction.  If the search
            direction has been produced by the L-BFGS recursion, it means that
            this approximation is not positive definite in the local sub-space
@@ -582,6 +566,7 @@ opk_iterate_vmlmc(opk_vmlmc_t* opt, opk_vector_t* x, double f,
       } else {
         /* Initial step is along a descent direction.  Initialize line search
            with safeguard bounds to only allow for bracktracking. */
+        opt->stp = 1.0;
         status = opk_lnsrch_start(opt->lnsrch, opt->f0, dg0, opt->stp,
                                   opt->stpmin*opt->stp, opt->stp);
         if (status != OPK_LNSRCH_SEARCH) {
@@ -591,12 +576,26 @@ opk_iterate_vmlmc(opk_vmlmc_t* opt, opk_vector_t* x, double f,
       }
     }
 
+    /* Request caller to compute objective function and gradient at x. */
+    return optimizer_success(opt, OPK_TASK_COMPUTE_FG);
+
+
+  case OPK_TASK_COMPUTE_FG:
+
+    /* Caller has computed the function value and the gradient at the current
+       iterate. */
+    ++opt->evaluations;
+    if (opt->evaluations == 1) {
+      /* Save the initial iterate. */
+      save_iterate(opt, x, f, g);
+    }
+
     if (opt->stage == 2) {
       /* A line search is in progress.  Compute directional derivative and check
          whether line search has converged. */
       double dg; /* directional derivative */
       if (opk_lnsrch_use_deriv(opt->lnsrch)) {
-        dg = opk_vdot(d, g);
+        dg = opk_vdot(d, opt->pg);
       } else {
         dg = 0.0;
       }
@@ -633,7 +632,7 @@ opk_iterate_vmlmc(opk_vmlmc_t* opt, opk_vector_t* x, double f,
       /* The vector d contains the projected gradient.  Check for global
          convergence. */
       opk_task_t next_task;
-      opk_vcopy(opt->pg, d);
+      opk_vcopy(opt->pg, d); /* save the projected gradient */
       opt->pgnorm = opk_vnorm2(opt->pg);
       if (opt->evaluations == 1) {
         opt->pginit = opt->pgnorm;
