@@ -72,7 +72,8 @@ func opkt_nonnegative(m, n, mem=, single=, scale=, verb=, maxiter=, maxeval=)
   y = H(,+)*x0(+) + type(std*random_n(m));
   A = H(+,)*(w*H)(+,);
   b = H(+,)*(w*y)(+);
-  opt = opk_vmlmc(n, 5, 0.1, single=single);
+  mem = 5;
+  opt = opk_vmlmc(n, mem, 1.0 /*0.1*sqrt(n)*/, single=single);
   task = opk_start(opt);
   x = array(type, n);
   gx = array(type, n);
@@ -86,10 +87,10 @@ func opkt_nonnegative(m, n, mem=, single=, scale=, verb=, maxiter=, maxeval=)
       wr = w*r;
       fx = 0.5*sum(wr*r);
       gx = H(+,)*wr(+);
-      pause, 1;
+      free_vars = double((gx < 0.0)|(x > 0.0));
     } else if (task == OPK_TASK_PROJECT_D) {
-      d *= ((gx < 0.0)|(x > 0.0));
-      pause, 1;
+      d *= free_vars;
+      dnorm = sqrt(sum(d*d));
     } else if (task == OPK_TASK_NEW_X || task == OPK_TASK_FINAL_X) {
       iter = opt.iterations;
       eval = opt.evaluations;
@@ -109,9 +110,9 @@ func opkt_nonnegative(m, n, mem=, single=, scale=, verb=, maxiter=, maxeval=)
             "----------------------------------------------------------------";
         }
         if (last || (iter%verb) == 0) {
-          write, format="%6d %6d %6d %6d  %23.16E  %10.3E\n",
+          write, format="%6d %6d %6d %6d  %+24.15E  %10.3E  %10.3E\n",
             iter, eval, opt.restarts, opt.projections, fx,
-            sqrt(sum(d*d));
+            sqrt(sum(d*d)), dnorm;
         }
       }
       if (last != 0) {
@@ -143,6 +144,29 @@ func opkt_nonnegative(m, n, mem=, single=, scale=, verb=, maxiter=, maxeval=)
   logxy, 0, 0;
   plp, x0, color="blue", symbol='#';
   plp, x, color="red", symbol='x';
+  pause, 1;
+
+  if (! is_func(op_mnb)) {
+    // Try to load former version of OptimPack.
+    include, "OptimPack1.i", 3;
+  }
+  if (is_func(op_mnb)) {
+    // Use former version of OptimPack.
+    ws = h_save(H, y, w);
+    x1 = array(type, n);
+    x1 = op_mnb(_opkt_nonnegative, x1, extra=ws, xmin=type(0),
+                mem=mem, verb=1);
+    plp, x1, color="cyan", symbol='+';
+  }
+
+}
+
+func _opkt_nonnegative(x,&gx,ws)
+{
+  r = ws.H(,+)*x(+) - ws.y;
+  wr = ws.w*r;
+  gx = ws.H(+,)*wr(+);
+  return 0.5*sum(wr*r);
 }
 
 /*
