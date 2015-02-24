@@ -170,10 +170,16 @@
 #define OPK_ADDRESS(type, base, offset) ((type*)((char*)(base) + (offset)))
 
 /**
- * Macro `OPK_OFFSET(type, member)` yields the offset (in bytes) of member
- * `field` in structure of type `type`.
+ * Macro `OPK_OFFSET(type, field)` yields the offset (in bytes) of member
+ * `field` in structure/class `type`.
  */
-#define OPK_OFFSET(type, field) ((size_t)((char*)&((type*)0)->field))
+#ifdef offsetof
+#  define OPK_OFFSET(type, field)  offsetof(type, field)
+#elif 1
+#  define OPK_OFFSET(type, field)  ((size_t)((char*)&((type*)0)->field))
+#else
+#  define OPK_OFFSET(type, field)  ((char*)&((type*)0)->field - (char*)0)
+#endif
 
 /**
  * Macro `OPK_LOOP(var,cnt)` yields a simple loop over variable `var` from 0 to
@@ -213,12 +219,6 @@
  * Macro `OPK_FREE(ptr)` frees pointer `ptr` if non-null.
  */
 #define OPK_FREE(ptr)   if (! (ptr)) ; else free(ptr)
-
-/**
- * Macro `OPK_OFFSET(type,member)` yields offset (in bytes) of `member` in
- * structure/class `type`.
- */
-#define OPK_OFFSET(type, member)  ((char*)&((type*)0)->member - (char*)0)
 
 /*---------------------------------------------------------------------------*/
 
