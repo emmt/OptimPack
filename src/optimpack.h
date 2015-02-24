@@ -877,6 +877,18 @@ opk_lnsrch_new_nonmonotone(opk_index_t m, double ftol,
 #define OPK_LNSRCH_WARNING_STP_EQ_STPMIN                      5
 
 /**
+ * Get the description of a line search status.
+ *
+ * @param status - The status code (e.g., as returned by
+ *                 `opk_lnsrch_get_status()`).
+ *
+ * @return A pointer to a string describing the status or `NULL` if
+ *         the status does not correspond to any known status.
+ */
+extern const char*
+opk_lnsrch_message(int status);
+
+/**
  * Start a new linesearch.
  *
  * @param ls     - The linesearch object.

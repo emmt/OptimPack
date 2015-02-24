@@ -165,6 +165,51 @@ opk_lnsrch_get_status(const opk_lnsrch_t* ls)
   return (ls != NULL ? ls->status : OPK_LNSRCH_ERROR_ILLEGAL_ADDRESS);
 }
 
+const char*
+opk_lnsrch_message(int status)
+{
+  switch (status) {
+  case OPK_LNSRCH_ERROR_ILLEGAL_ADDRESS:
+    return "Illegal address in line search";
+  case OPK_LNSRCH_ERROR_CORRUPTED_WORKSPACE:
+    return "Corrupted line search workspace";
+  case OPK_LNSRCH_ERROR_BAD_WORKSPACE:
+    return "Bad line search workspace";
+  case OPK_LNSRCH_ERROR_STP_CHANGED:
+    return "Line search step modified by caller";
+  case OPK_LNSRCH_ERROR_STP_OUTSIDE_BRACKET:
+    return "Line search step outside bracket";
+  case OPK_LNSRCH_ERROR_NOT_A_DESCENT:
+    return "Line search direction is not a descent";
+  case OPK_LNSRCH_ERROR_STPMIN_GT_STPMAX:
+    return "Minimum line search step greater than maximum step";
+  case OPK_LNSRCH_ERROR_STPMIN_LT_ZERO:
+    return "Minimum line search step less than zero";
+  case OPK_LNSRCH_ERROR_STP_LT_STPMIN:
+    return "Line search step less than minimum step";
+  case OPK_LNSRCH_ERROR_STP_GT_STPMAX:
+    return "Line search step greater than maximum step";
+  case OPK_LNSRCH_ERROR_INITIAL_DERIVATIVE_GE_ZERO:
+    return "Initial derivative along line search greater or equal zero";
+  case OPK_LNSRCH_ERROR_NOT_STARTED:
+    return "Line search not started";
+  case OPK_LNSRCH_SEARCH:
+    return "Line search in progress";
+  case OPK_LNSRCH_CONVERGENCE:
+    return "Line search has converged";
+  case OPK_LNSRCH_WARNING_ROUNDING_ERRORS_PREVENT_PROGRESS:
+    return "Rounding errors prevent progress in line search";
+  case OPK_LNSRCH_WARNING_XTOL_TEST_SATISFIED:
+    return "OPK_LNSRCH_WARNING_XTOL_TEST_SATISFIED";
+  case OPK_LNSRCH_WARNING_STP_EQ_STPMAX:
+    return "Line search step at upper bound";
+  case OPK_LNSRCH_WARNING_STP_EQ_STPMIN:
+    return "Line search step at lower bound";
+  default:
+    return NULL;
+  }
+}
+
 opk_bool_t
 opk_lnsrch_has_errors(const opk_lnsrch_t* ls)
 {
