@@ -164,6 +164,18 @@
 #define OPK_ROUND_UP(a,b)  (OPK_HOW_MANY(a,b)*(b))
 
 /**
+ * Macro `OPK_ADDRESS(type,base,offset)` yields a `type*` address at `offset`
+ * (in bytes) from `base` address.
+ */
+#define OPK_ADDRESS(type, base, offset) ((type*)((char*)(base) + (offset)))
+
+/**
+ * Macro `OPK_OFFSET(type, member)` yields the offset (in bytes) of member
+ * `field` in structure of type `type`.
+ */
+#define OPK_OFFSET(type, field) ((size_t)((char*)&((type*)0)->field))
+
+/**
  * Macro `OPK_LOOP(var,cnt)` yields a simple loop over variable `var` from 0 to
  * `cnt` - 1.
  */
