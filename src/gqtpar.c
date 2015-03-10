@@ -219,7 +219,7 @@ OPK_GQT(const opk_index_t n, real_t a_[], const opk_index_t lda,
            produces a larger reduction than with z = 0. */
         rznorm *= FABS(alpha);
         temp1 = rznorm/delta;
-        temp1 *= temp1;	/* temp1 = (rznorm/delta)**2 */
+        temp1 *= temp1; /* temp1 = (rznorm/delta)**2 */
         temp2 = xnorm/delta;
         if (temp1 + par*temp2*temp2 <= par) rednc = TRUE;
 

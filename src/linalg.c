@@ -69,68 +69,68 @@
  *     M - integer variable
  *     N - number of elements (*must* be > 0)
  */
-#define UNROLL_4a(i,m,n)			\
-  do {						\
-    m = (n & 3);				\
-    for (i = 0; i < m; ++i) {			\
-      UNROLL_OP(i);				\
-    }						\
-    for (i = m; i < n; i += 4) {		\
-      UNROLL_OP(i);				\
-      UNROLL_OP(i + 1);				\
-      UNROLL_OP(i + 2);				\
-      UNROLL_OP(i + 3);				\
-    }						\
+#define UNROLL_4a(i,m,n)                        \
+  do {                                          \
+    m = (n & 3);                                \
+    for (i = 0; i < m; ++i) {                   \
+      UNROLL_OP(i);                             \
+    }                                           \
+    for (i = m; i < n; i += 4) {                \
+      UNROLL_OP(i);                             \
+      UNROLL_OP(i + 1);                         \
+      UNROLL_OP(i + 2);                         \
+      UNROLL_OP(i + 3);                         \
+    }                                           \
   } while (0)
 
-#define UNROLL_4b(i,m,n)			\
-  do {						\
-    m = (n & 3);				\
-    for (i = 0; i < m; ++i) {			\
-      UNROLL_OP(t0, i);				\
-    }						\
-    for (i = m; i < n; i += 4) {		\
-      UNROLL_OP(t0, i);				\
-      UNROLL_OP(t1, i + 1);			\
-      UNROLL_OP(t2, i + 2);			\
-      UNROLL_OP(t3, i + 3);			\
-    }						\
+#define UNROLL_4b(i,m,n)                        \
+  do {                                          \
+    m = (n & 3);                                \
+    for (i = 0; i < m; ++i) {                   \
+      UNROLL_OP(t0, i);                         \
+    }                                           \
+    for (i = m; i < n; i += 4) {                \
+      UNROLL_OP(t0, i);                         \
+      UNROLL_OP(t1, i + 1);                     \
+      UNROLL_OP(t2, i + 2);                     \
+      UNROLL_OP(t3, i + 3);                     \
+    }                                           \
   } while (0)
 
-#define UNROLL_8a(i,m,n)			\
-  do {						\
-    m = (n & 7);				\
-    for (i = 0; i < m; ++i) {			\
-      UNROLL_OP(i);				\
-    }						\
-    for (i = m; i < n; i += 8) {		\
-      UNROLL_OP(i);				\
-      UNROLL_OP(i + 1);				\
-      UNROLL_OP(i + 2);				\
-      UNROLL_OP(i + 3);				\
-      UNROLL_OP(i + 4);				\
-      UNROLL_OP(i + 5);				\
-      UNROLL_OP(i + 6);				\
-      UNROLL_OP(i + 7);				\
-    }						\
+#define UNROLL_8a(i,m,n)                        \
+  do {                                          \
+    m = (n & 7);                                \
+    for (i = 0; i < m; ++i) {                   \
+      UNROLL_OP(i);                             \
+    }                                           \
+    for (i = m; i < n; i += 8) {                \
+      UNROLL_OP(i);                             \
+      UNROLL_OP(i + 1);                         \
+      UNROLL_OP(i + 2);                         \
+      UNROLL_OP(i + 3);                         \
+      UNROLL_OP(i + 4);                         \
+      UNROLL_OP(i + 5);                         \
+      UNROLL_OP(i + 6);                         \
+      UNROLL_OP(i + 7);                         \
+    }                                           \
   } while (0)
 
-#define UNROLL_8b(i,m,n)			\
-  do {						\
-    m = (n & 7);				\
-    for (i = 0; i < m; ++i) {			\
-      UNROLL_OP(t0, i);				\
-    }						\
-    for (i = m; i < n; i += 8) {		\
-      UNROLL_OP(t0, i);				\
-      UNROLL_OP(t1, i + 1);			\
-      UNROLL_OP(t2, i + 2);			\
-      UNROLL_OP(t3, i + 3);			\
-      UNROLL_OP(t4, i + 4);			\
-      UNROLL_OP(t5, i + 5);			\
-      UNROLL_OP(t6, i + 6);			\
-      UNROLL_OP(t7, i + 7);			\
-    }						\
+#define UNROLL_8b(i,m,n)                        \
+  do {                                          \
+    m = (n & 7);                                \
+    for (i = 0; i < m; ++i) {                   \
+      UNROLL_OP(t0, i);                         \
+    }                                           \
+    for (i = m; i < n; i += 8) {                \
+      UNROLL_OP(t0, i);                         \
+      UNROLL_OP(t1, i + 1);                     \
+      UNROLL_OP(t2, i + 2);                     \
+      UNROLL_OP(t3, i + 3);                     \
+      UNROLL_OP(t4, i + 4);                     \
+      UNROLL_OP(t5, i + 5);                     \
+      UNROLL_OP(t6, i + 6);                     \
+      UNROLL_OP(t7, i + 7);                     \
+    }                                           \
   } while (0)
 
 /* First pass for single precision version of the
