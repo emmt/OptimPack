@@ -673,7 +673,7 @@ opk_lnsrch_new_csrch(double ftol, double gtol, double xtol)
  * sty. The interval is initially chosen so that it contains a minimizer of the
  * modified function
  *
- *           psi(stp) = f(stp) - f(0) - ftol*stp*f'(0).
+ *     psi(stp) = f(stp) - f(0) - ftol*stp*f'(0).
  *
  * If psi(stp) <= 0 and f'(stp) >= 0 for some step, then the interval is chosen
  * so that it contains a minimizer of f.
@@ -681,11 +681,11 @@ opk_lnsrch_new_csrch(double ftol, double gtol, double xtol)
  * The algorithm is designed to find a step that satisfies the sufficient
  * decrease condition
  *
- *           f(stp) <= f(0) + ftol*stp*f'(0),
+ *     f(stp) <= f(0) + ftol*stp*f'(0),
  *
  * and the curvature condition
  *
- *           abs(f'(stp)) <= gtol*abs(f'(0)).
+ *     abs(f'(stp)) <= gtol*abs(f'(0)).
  *
  * If ftol is less than gtol and if, for example, the function is bounded
  * below, then there is always a step which satisfies both conditions.
