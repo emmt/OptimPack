@@ -106,8 +106,8 @@ struct _opk_nlcg {
   opk_vspace_t* vspace;  /* Vector space of the variables of the problem. */
   opk_lnsrch_t* lnsrch;  /* Line search method. */
   opk_vector_t* x0;      /* Variables at start of line search. */
-  opk_vector_t* g0;	 /* Gradient at start of line search. */
-  opk_vector_t* p;	 /* (Anti-)search direction, new iterate is searched
+  opk_vector_t* g0;      /* Gradient at start of line search. */
+  opk_vector_t* p;       /* (Anti-)search direction, new iterate is searched
                             as: x1 = x0 - alpha*p, for alpha >= 0. */
   opk_vector_t* y;       /* Work vector (e.g., to store the gradient
                             difference: Y = G1 - G0). */
@@ -349,8 +349,8 @@ update_Hager_Zhang(opk_nlcg_t* opt,
  *        = -<p,y>/<y,y>
  *
  *     c2 = <g1,y>/<y,y> - 2*<s,g1>/<s,y>
- *	  = <g1,y>/<y,y> - 2*<d,g1>/<d,y>
- *	  = <g1,y>/<y,y> - 2*<p,g1>/<p,y>
+ *        = <g1,y>/<y,y> - 2*<d,g1>/<d,y>
+ *        = <g1,y>/<y,y> - 2*<p,g1>/<p,y>
  *
  *     c3 = -(1/alpha)*<s,g1>/<y,y>
  *        = -<d,g1>/<y,y>

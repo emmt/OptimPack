@@ -57,8 +57,8 @@
 #  define ABS(x)   fabs(x)
 #  define SQRT(x)  sqrt(x)
 #  define ALPHA    alpha
-#  define BETA	   beta
-#  define GAMMA	   gamma
+#  define BETA     beta
+#  define GAMMA    gamma
 #  define ZERO     0.0
 #  define ONE      1.0
 #endif

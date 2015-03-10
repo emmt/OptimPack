@@ -1182,7 +1182,7 @@ opk_get_nlcg_beta(opk_nlcg_t* opt);
 /* The rule can be combined (bitwise or'ed) with one of the following bits to
    compute the initial step size from the previous iteration: */
 #define OPK_NLCG_SHANNO_PHUA         (1<<9)
-#define OPK_NLCG_OREN_SPEDICATO	     (2<<9)
+#define OPK_NLCG_OREN_SPEDICATO      (2<<9)
 #define OPK_NLCG_BARZILAI_BORWEIN    (3<<9)
 
 /* For instance: (OPK_NLCG_POLAK_RIBIERE_POLYAK | OPK_NLCG_POWELL) merely

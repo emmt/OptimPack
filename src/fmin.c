@@ -278,9 +278,9 @@ int opk_fmin_next(opk_fmin_context_t* ctx, double* xptr, double fx)
 #define _EVAL_n(s, n, expr) _EVAL_o(s, *xptr = x = n = (expr), f##n = fx)
 #define _EVAL_o(s, init, final)                 \
      init;                                      \
-     ctx->stage = s;				\
+     ctx->stage = s;                            \
      return (ctx->status = OPK_FMIN_FX);        \
-   stage_##s:					\
+   stage_##s:                                   \
      ++ctx->nevals;                             \
      final
 #define EVAL(s, n, expr)   _EVAL_##n(s, expr)
