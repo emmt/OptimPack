@@ -712,7 +712,7 @@ opk_vaxpby(opk_vector_t* dst,
  * @param beta  - The factor for the vector `y`.
  * @param y     - Another vector.
  * @param gamma - The factor for the vector `z`.
- * @param y     - Yet another vector.
+ * @param z     - Yet another vector.
  */
 extern void
 opk_vaxpbypcz(opk_vector_t* dst,
