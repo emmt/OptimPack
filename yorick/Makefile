@@ -21,7 +21,7 @@ PKG_NAME=opky
 PKG_I=${srcdir}/opky.i
 
 OBJS=opky.o algebra.o fltvector.o dblvector.o error.o nlcg.o lnsrch.o \
-	 vmlm.o vmlmc.o
+	 vmlm.o vmlmc.o cobyla.o ycobyla.o newuoa.o ynewuoa.o
 
 # change to give the executable a name other than yorick
 PKG_EXENAME=yorick
@@ -120,6 +120,18 @@ vmlm.o: $(OPK_SRC)/vmlm.c $(OPK_HEADERS)
 	$(CC) $(OPK_CFLAGS) -o $@ -c $<
 
 vmlmc.o: $(OPK_SRC)/vmlmc.c $(OPK_HEADERS)
+	$(CC) $(OPK_CFLAGS) -o $@ -c $<
+
+cobyla.o: $(OPK_SRC)/cobyla.c $(OPK_SRC)/optimpack.h $(OPK_SRC)/cobyla.h
+	$(CC) $(OPK_CFLAGS) -o $@ -c $<
+
+ycobyla.o: $(srcdir)/ycobyla.c $(OPK_SRC)/optimpack.h $(OPK_SRC)/cobyla.h
+	$(CC) $(OPK_CFLAGS) -o $@ -c $<
+
+newuoa.o: $(OPK_SRC)/newuoa.c $(OPK_SRC)/optimpack.h $(OPK_SRC)/newuoa.h
+	$(CC) $(OPK_CFLAGS) -o $@ -c $<
+
+ynewuoa.o: $(srcdir)/ynewuoa.c $(OPK_SRC)/optimpack.h $(OPK_SRC)/newuoa.h
 	$(CC) $(OPK_CFLAGS) -o $@ -c $<
 
 release: $(RELEASE_NAME)
