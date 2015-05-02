@@ -11,10 +11,10 @@
 This is **OptimPack**, a library for solving optimization problems.  For
 problems of small to moderate size, **OptimPack** provides:
 
-- computation of a trust region step;
+- computation of a trust region step (see ref. [13]);
 
 - Mike Powell's **COBYLA** (see ref. [10]), **NEWUOA** (see ref. [11]), and
-  **BOBYQA** (see ref. [11]) algorithms for minimizing a function of many
+  **BOBYQA** (see ref. [12]) algorithms for minimizing a function of many
   variables.  These methods are *derivatives free* (only the function
   values are needed).  **COBYLA** accounts for general inequality
   constraints.  **BOBYQA** accounts for bound constraints on the variables.
@@ -120,6 +120,8 @@ programming languages:
     Applied Mathematics and Theoretical Physics, University of Cambridge
     (2009).
 
+13. J.J. Moré & D.C. Sorensen, "*Computing A Trust Region Step*," SIAM
+    J. Sci. Stat. Comp. **4**, 553-572 (1983).
 
 ## Installation
 
