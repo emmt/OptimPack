@@ -8,8 +8,19 @@
    OptimPack is available
    [here](http://cral.univ-lyon1.fr/labo/perso/eric.thiebaut/?Software/OptimPack)***
 
-This is OptimPack, a library for solving large scale optimization
-problems.  This version implements:
+This is **OptimPack**, a library for solving optimization problems.  For
+problems of small to moderate size, **OptimPack** provides:
+
+- computation of a trust region step;
+
+- Mike Powell's **COBYLA** (see ref. [10]), **NEWUOA** (see ref. [11]), and
+  **BOBYQA** (see ref. [11]) algorithms for minimizing a function of many
+  variables.  These methods are *derivatives free* (only the function
+  values are needed).  **COBYLA** accounts for general inequality
+  constraints.  **BOBYQA** accounts for bound constraints on the variables.
+
+For large scale problems involving millions of variables (or more),
+**OptimPack** provides:
 
 - several non-linear conjugate gradient (NLCG) methods (see refs. [1-3]);
 
@@ -20,8 +31,6 @@ problems.  This version implements:
 - spectral project gradient (SPG, see ref. [7]) method;
 
 - inexact monotone and nonmonotone line searches (see ref. [7,8]);
-
-- computation of a trust region step;
 
 - linear conjugate gradients [1] and trust region conjugate gradient [9].
 
@@ -95,6 +104,21 @@ programming languages:
 9. T. Steihaug, "*The conjugate gradient method and trust regions in large
    scale optimization*", SIAM Journal on Numerical Analysis, vol. **20**,
    pp. 626-637, 1983.
+
+10. M.J.D. Powell, "*A direct search optimization method that models the
+    objective and constraint functions by linear interpolation*," in
+    Advances in Optimization and Numerical Analysis Mathematics and Its
+    Applications, vol. **275** (eds. Susana Gomez and Jean-Pierre Hennart),
+    Kluwer Academic Publishers, pp. 51-67 (1994).
+
+11. M.J.D. Powell, "*The NEWUOA software for unconstrained minimization
+    without derivatives*", in Large-Scale Nonlinear Optimization, editors
+    G. Di Pillo and M. Roma, Springer (2006), pages 255-297.
+
+12. M.J.D. Powell, "*The BOBYQA Algorithm for Bound Constrained
+    Optimization Without Derivatives*."  Technical report, Department of
+    Applied Mathematics and Theoretical Physics, University of Cambridge
+    (2009).
 
 
 ## Installation
