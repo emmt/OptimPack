@@ -16,8 +16,9 @@ problems of small to moderate size, **OptimPack** provides:
 - Mike Powell's **COBYLA** (see ref. [10]), **NEWUOA** (see ref. [11]), and
   **BOBYQA** (see ref. [12]) algorithms for minimizing a function of many
   variables.  These methods are *derivatives free* (only the function
-  values are needed).  **COBYLA** accounts for general inequality
-  constraints.  **BOBYQA** accounts for bound constraints on the variables.
+  values are needed).  **NEWUOA** is for unconstrained optimization.
+  **COBYLA** accounts for general inequality constraints.  **BOBYQA** accounts
+  for bound constraints on the variables.
 
 For large scale problems involving millions of variables (or more),
 **OptimPack** provides:
