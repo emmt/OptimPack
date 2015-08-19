@@ -34,8 +34,9 @@ extern "C" {
    is the number of constraints, X are the current values of the variables and
    CON is to store the M constraints.  DATA is anything needed by the function
    (unused by COBYLA itself). */
-typedef double cobyla_calcfc(opk_index_t n, opk_index_t m, const double x[],
-                           double con[], void* data);
+typedef double
+cobyla_calcfc(opk_index_t n, opk_index_t m, const double x[],
+              double con[], void* data);
 
 /*
  * This subroutine minimizes an objective function F(X) subject to M inequality
@@ -92,48 +93,33 @@ typedef double cobyla_calcfc(opk_index_t n, opk_index_t m, const double x[],
  * Note that we are trying to adjust X so that F(X) is as small as possible
  * subject to the constraint functions being nonnegative.
  */
-extern int cobyla(opk_index_t n, opk_index_t m,
-                  cobyla_calcfc* calcfc, void* calcfc_data,
-                  double x[], double rhobeg, double rhoend,
-                  opk_index_t iprint, opk_index_t* maxfun, double w[], opk_index_t iact[]);
+extern int
+cobyla(opk_index_t n, opk_index_t m,
+       cobyla_calcfc* calcfc, void* calcfc_data,
+       double x[], double rhobeg, double rhoend,
+       opk_index_t iprint, opk_index_t* maxfun,
+       double w[], opk_index_t iact[]);
 
-/*
- * Subroutine variant designed to be callable from FORTRAN code.  Usage is
- * similar to that of `cobyla` except that everything is passed by address and
- * that, in order to define the objective and constraint functions, we require
- * a subroutine that has the name and arguments:
- *
- *            SUBROUTINE CALCFC (N,M,X,F,CON)
- *            DIMENSION X(*),CON(*)
- *
- * The values of N and M are fixed and have been defined already, while X is
- * now the current vector of variables.  The subroutine should return the
- * objective and constraint functions at X in F and CON(1),CON(2), ...,CON(M).
- * Note that we are trying to adjust X so that F(X) is as small as possible
- * subject to the constraint functions being nonnegative.
- */
-extern int cobyla_(opk_index_t* n, opk_index_t* m, double x[],
-                   double* rhobeg, double* rhoend, opk_index_t* iprint,
-                   opk_index_t* maxfun, double w[], opk_index_t iact[]);
-
-/* Possible values returned by COBYLA. */
+/* Possible values returned by `cobyla`, `cobyla_get_status` and
+   `cobyla_iterate`: */
 #define COBYLA_INITIAL_ITERATE         (2) /* only used internally */
 #define COBYLA_ITERATE                 (1) /* user requested to compute
                                               F(X) and C(X) */
 #define COBYLA_SUCCESS                 (0) /* algorithm converged */
-#define COBYLA_ROUNDING_ERRORS        (-1)
-#define COBYLA_TOO_MANY_EVALUATIONS   (-2)
-#define COBYLA_BAD_ADDRESS            (-3)
-#define COBYLA_CORRUPTED              (-4)
+#define COBYLA_ROUNDING_ERRORS        (-1) /* rounding errors prevent
+                                              progress */
+#define COBYLA_TOO_MANY_EVALUATIONS   (-2) /* too many evaluations */
+#define COBYLA_BAD_ADDRESS            (-3) /* illegal address */
+#define COBYLA_CORRUPTED              (-4) /* corrupted workspace */
 
 /* Opaque structure used by the reverse communication variant of COBYLA. */
 typedef struct _cobyla_context cobyla_context_t;
 
 /* Allocate a new reverse communication workspace for COBYLA algorithm.  The
-   returned address is `NULL` to indicate an error: either invalid parameters
-   (external variable `errno` set to `EINVAL`), or insufficient memory
-   (external variable `errno` set to `ENOMEM`).  When no longer needed, the
-   workspace must be deleted with `cobyla_delete`.
+   returned address is `NULL` to indicate an error due to either invalid
+   parameters (external variable `errno` set to `EINVAL`), or insufficient
+   memory (external variable `errno` set to `ENOMEM`).  When no longer needed,
+   the workspace must be deleted with `cobyla_delete`.
 
    A typical usage is:
    ```
@@ -158,7 +144,7 @@ extern cobyla_context_t*
 cobyla_create(opk_index_t n, opk_index_t m, double rhobeg, double rhoend,
               opk_index_t iprint, opk_index_t maxfun);
 
-/* Release ressource allocated for COBYLA reverse communication workspace.
+/* Release ressources allocated for COBYLA reverse communication workspace.
    Argument can be `NULL`. */
 extern void
 cobyla_delete(cobyla_context_t* ctx);
@@ -168,7 +154,7 @@ cobyla_delete(cobyla_context_t* ctx);
    `f` and `c` are the function value and the constraints at `x`.  On exit, the
    returned value (the new workspace status) is: `COBYLA_ITERATE` if a new
    trial point has been stored in `x` and if user is requested to compute the
-   function value and the constraints on the new point; `COBYLA_SUCCESS` if
+   function value and the constraints at the new point; `COBYLA_SUCCESS` if
    algorithm has converged and `x` has been set with the variables at the
    solution (the corresponding function value can be retrieved with
    `cobyla_get_last_f`); anything else indicates an error (see `cobyla_reason`
@@ -193,9 +179,9 @@ cobyla_get_status(const cobyla_context_t* ctx);
 extern opk_index_t
 cobyla_get_nevals(const cobyla_context_t* ctx);
 
-/* Get the current size of the trust region.  Result is 0 if algorithm not yet
-   started (before first iteration), -1 if something is wrong (e.g. CTX is
-   NULL), strictly positive otherwise. */
+/* Get the current size of the trust region.  Result is 0 if algorithm has not
+   yet been started (before first iteration), -1 if something is wrong
+   (e.g. CTX is NULL), strictly positive otherwise. */
 extern double
 cobyla_get_rho(const cobyla_context_t* ctx);
 
@@ -206,9 +192,74 @@ cobyla_get_rho(const cobyla_context_t* ctx);
 extern double
 cobyla_get_last_f(const cobyla_context_t* ctx);
 
-/* Get a textual explanation of the status returned by COBYLA. */
+/* Get a textual explanation of the status returned by `cobyla`,
+   `cobyla_get_status` and `cobyla_iterate`. */
 extern const char*
 cobyla_reason(int status);
+
+
+/*---------------------------------------------------------------------------*/
+/* FORTRAN SUPPORT */
+
+/* Depending on your FORTRAN compiler, the names of the compiled functions
+   may have to be modified.  The various possibilities can be chosen via the
+   macro FORTRAN_LINKAGE:
+
+     -UFORTRAN_LINKAGE  (or FORTRAN_LINKAGE undefined)
+           No support for FORTRAN will be compiled.
+
+     -DFORTRAN_LINKAGE=0   FORTRAN link name is the same as with the C
+                           compiler.
+
+     -DFORTRAN_LINKAGE=1   FORTRAN link name is is the function name in upper
+                           case letters (for instance, `foo` yields `FOO`).
+
+     -DFORTRAN_LINKAGE=2   FORTRAN link name is the function name suffixed
+                           with an underscore (for instance, `foo` yields
+                           `foo_`).
+
+     -DFORTRAN_LINKAGE=3   FORTRAN link name is the function name in upper
+                           case letters and suffixed with an underscore
+                           (for instance, `foo` yields `FOO_`).
+ */
+
+#ifdef FORTRAN_LINKAGE
+
+# if FORTRAN_LINKAGE == 0
+#   define FORTRAN_NAME(a,A) a
+#   error names will clash
+# elif FORTRAN_LINKAGE == 1
+#   define FORTRAN_NAME(a,A) A
+# elif FORTRAN_LINKAGE == 2
+#   define FORTRAN_NAME(a,A) a##_
+# elif FORTRAN_LINKAGE == 3
+#   define FORTRAN_NAME(a,A) A##_
+# else
+#   error unsupported FORTRAN linkage
+# endif
+
+/*
+ * Subroutine variant designed to be callable from FORTRAN code.  Usage is
+ * similar to that of `cobyla` except that everything is passed by address and
+ * that, in order to define the objective and constraint functions, we require
+ * a subroutine that has the name and arguments:
+ *
+ *            SUBROUTINE CALCFC (N,M,X,F,CON)
+ *            DIMENSION X(*),CON(*)
+ *
+ * The values of N and M are fixed and have been defined already, while X is
+ * now the current vector of variables.  The subroutine should return the
+ * objective and constraint functions at X in F and CON(1),CON(2), ...,CON(M).
+ * Note that we are trying to adjust X so that F(X) is as small as possible
+ * subject to the constraint functions being nonnegative.
+ */
+extern int
+FORTRAN_NAME(cobyla,COBYLA)(opk_index_t* n, opk_index_t* m, double x[],
+                            double* rhobeg, double* rhoend,
+                            opk_index_t* iprint, opk_index_t* maxfun,
+                            double w[], opk_index_t iact[]);
+
+#endif /* FORTRAN_LINKAGE */
 
 #ifdef __cplusplus
 }
