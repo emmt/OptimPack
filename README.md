@@ -173,8 +173,9 @@ distribution and follow instrutions there.
 ## Credits
 
 The development of OptimPack was supported by the
-[MiTiV](http://mitiv-univ-lyon1.fr) project funded by the French *Agence
-Nationale pour la Recherche* (ref. ANR-09-EMER-008).
+[MiTiV](http://mitiv-univ-lyon1.fr) project funded by the French
+[*Agence Nationale pour la Recherche*](http://www.agence-nationale-recherche.fr)
+(ref. ANR-09-EMER-008).
 
 
 ## License
