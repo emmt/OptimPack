@@ -167,12 +167,14 @@ main(int argc, char* argv[])
   return 0;
 }
 
+#ifdef FORTRAN_NAME
 int
-calfun_(const INTEGER* n, REAL* x, REAL* f)
+FORTRAN_NAME(calfun,CALFUN)(const INTEGER* n, REAL* x, REAL* f)
 {
   *f = objfun_test(*n, x, NULL);
   return 0;
 }
+#endif /* FORTRAN_NAME */
 
 #endif
 
@@ -344,25 +346,32 @@ bobyqa(const INTEGER n, const INTEGER npt,
                 &w[id], &w[ivl], &w[iw]);
 } /* bobyqa */
 
+/*---------------------------------------------------------------------------*/
+/* FORTRAN SUPPORT */
+
+#ifdef FORTRAN_NAME
+
 REAL
 bobyqa_calfun_wrapper(const INTEGER n, const REAL* x, void* data)
 {
   REAL f;
-  calfun_(&n, (REAL*)x, &f);
+  FORTRAN_NAME(calfun,CALFUN)(&n, (REAL*)x, &f);
   return f;
 }
 
 int
-bobyqa_(const INTEGER* n, const INTEGER* npt,
-        REAL* x, const REAL* xl, const REAL* xu,
-        const REAL* rhobeg, const REAL* rhoend,
-        const INTEGER* iprint, const INTEGER* maxfun,
-        REAL* w)
+FORTRAN_NAME(bobyqa,BOBYQA)(const INTEGER* n, const INTEGER* npt,
+                            REAL* x, const REAL* xl, const REAL* xu,
+                            const REAL* rhobeg, const REAL* rhoend,
+                            const INTEGER* iprint, const INTEGER* maxfun,
+                            REAL* w)
 {
   bobyqa(*n, *npt, bobyqa_calfun_wrapper, NULL, x, xl, xu,
          *rhobeg, *rhoend, *iprint, *maxfun, w);
   return 0;
 }
+
+#endif /* FORTRAN_NAME */
 
 /*---------------------------------------------------------------------------*/
 /* BOBYQA SUBROUTINES */
@@ -469,13 +478,14 @@ bobyqb(const INTEGER n, const INTEGER npt,
 #define BMAT(a1,a2) bmat[(a2)*ndim + a1]
 #define ZMAT(a1,a2) zmat[(a2)*npt + a1]
 
-  /* FIXME: Set uninitialized variables. */
+  /* Set uninitialized variables to avoid compiler warnings. */
   adelt = zero;
   alpha = zero;
   cauchy = zero;
   denom = zero;
   diff = zero;
   diffc = zero;
+  f = zero;
   knew = 0;
 
   /* Set some constants. */
