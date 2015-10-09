@@ -111,7 +111,8 @@ typedef struct _newuoa_context newuoa_context_t;
    (external variable `errno` set to `ENOMEM`).  The arguments correspond to
    those of `newuoa` (except that the variables X are omitted because they need
    not be specified until the first iteration with `newuoa_iterate` and that
-   the workspace W is automatically allocated).
+   the workspace W is automatically allocated).  The initial status of the
+   created workspace is guaranteed to be `NEWUOA_ITERATE`.
 
    When no longer needed, the workspace must be deleted with `newuoa_delete`.
 
@@ -171,12 +172,44 @@ extern opk_index_t newuoa_get_nevals(const newuoa_context_t* ctx);
 extern double newuoa_get_rho(const newuoa_context_t* ctx);
 
 /*---------------------------------------------------------------------------*/
-/* FORTRAN WRAPPER */
+/* FORTRAN SUPPORT */
 
-/* Remark: Depending on your FORTRAN compiler, you may have to change the
-           names of the compiled functions (it is assumed below that the
-           link name is the name of the FORTRAN subroutine converted to
-           lower case letters and with an underscore appended). */
+/* Depending on your FORTRAN compiler, the names of the compiled functions
+   may have to be modified.  The various possibilities can be chosen via the
+   macro FORTRAN_LINKAGE:
+
+     -UFORTRAN_LINKAGE  (or FORTRAN_LINKAGE undefined)
+           No support for FORTRAN will be compiled.
+
+     -DFORTRAN_LINKAGE=0   FORTRAN link name is the same as with the C
+                           compiler.
+
+     -DFORTRAN_LINKAGE=1   FORTRAN link name is is the function name in upper
+                           case letters (for instance, `foo` yields `FOO`).
+
+     -DFORTRAN_LINKAGE=2   FORTRAN link name is the function name suffixed
+                           with an underscore (for instance, `foo` yields
+                           `foo_`).
+
+     -DFORTRAN_LINKAGE=3   FORTRAN link name is the function name in upper
+                           case letters and suffixed with an underscore
+                           (for instance, `foo` yields `FOO_`).
+ */
+
+#ifdef FORTRAN_LINKAGE
+
+# if FORTRAN_LINKAGE == 0
+#   define FORTRAN_NAME(a,A) a
+#   error names will clash
+# elif FORTRAN_LINKAGE == 1
+#   define FORTRAN_NAME(a,A) A
+# elif FORTRAN_LINKAGE == 2
+#   define FORTRAN_NAME(a,A) a##_
+# elif FORTRAN_LINKAGE == 3
+#   define FORTRAN_NAME(a,A) A##_
+# else
+#   error unsupported FORTRAN linkage
+# endif
 
 /* This subroutine is a version of NEWUOA that is callable from FORTRAN code.
    The main difference with the C version is that the objective function
@@ -186,10 +219,11 @@ extern double newuoa_get_rho(const newuoa_context_t* ctx);
    to the value of the objective function for the current values of the
    variables X(1),X(2),...,X(N), which are generated automatically
    by NEWUOA. */
-extern int newuoa_(const opk_index_t* n, const opk_index_t* npt, double* x,
-                   const double* rhobeg, const double* rhoend,
-                   const opk_index_t* iprint, const opk_index_t* maxfun,
-                   double* w);
+extern int
+FORTRAN_NAME(newuoa,NEWUOA)(const opk_index_t* n, const opk_index_t* npt,
+                            double* x, const double* rhobeg,
+                            const double* rhoend, const opk_index_t* iprint,
+                            const opk_index_t* maxfun, double* w);
 
 /* Wrapper function to emulate `newuoa_calfun` function calling
    the user-defined `calfun_` subroutine. */
@@ -198,6 +232,11 @@ extern double newuoa_calfun_wrapper(const opk_index_t n, const double* x, void* 
 /* Subroutine that must be defined by the application to use the FORTRAN
    wrapper to NEWUOA. */
 extern int calfun_(const opk_index_t* n, double *x, double *f);
+
+#endif /* FORTRAN_LINKAGE */
+
+/*---------------------------------------------------------------------------*/
+/* TESTS */
 
 /* Test problem for NEWUOA,FIXME: the objective function being the sum of the
    reciprocals of all pairwise distances between the points P_I,

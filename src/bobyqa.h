@@ -115,12 +115,44 @@ extern int bobyqa(const opk_index_t n, const opk_index_t npt,
 extern void bobyqa_test(void);
 
 /*---------------------------------------------------------------------------*/
-/* FORTRAN WRAPPER */
+/* FORTRAN SUPPORT */
 
-/* Remark: Depending on your FORTRAN compiler, you may have to change the
-           names of the compiled functions (it is assumed below that the
-           link name is the name of the FORTRAN subroutine converted to
-           lower case letters and with an underscore appended). */
+/* Depending on your FORTRAN compiler, the names of the compiled functions
+   may have to be modified.  The various possibilities can be chosen via the
+   macro FORTRAN_LINKAGE:
+
+     -UFORTRAN_LINKAGE  (or FORTRAN_LINKAGE undefined)
+           No support for FORTRAN will be compiled.
+
+     -DFORTRAN_LINKAGE=0   FORTRAN link name is the same as with the C
+                           compiler.
+
+     -DFORTRAN_LINKAGE=1   FORTRAN link name is is the function name in upper
+                           case letters (for instance, `foo` yields `FOO`).
+
+     -DFORTRAN_LINKAGE=2   FORTRAN link name is the function name suffixed
+                           with an underscore (for instance, `foo` yields
+                           `foo_`).
+
+     -DFORTRAN_LINKAGE=3   FORTRAN link name is the function name in upper
+                           case letters and suffixed with an underscore
+                           (for instance, `foo` yields `FOO_`).
+ */
+
+#ifdef FORTRAN_LINKAGE
+
+# if FORTRAN_LINKAGE == 0
+#   define FORTRAN_NAME(a,A) a
+#   error names will clash
+# elif FORTRAN_LINKAGE == 1
+#   define FORTRAN_NAME(a,A) A
+# elif FORTRAN_LINKAGE == 2
+#   define FORTRAN_NAME(a,A) a##_
+# elif FORTRAN_LINKAGE == 3
+#   define FORTRAN_NAME(a,A) A##_
+# else
+#   error unsupported FORTRAN linkage
+# endif
 
 /* This subroutine is a version of BOBYQA that is callable from FORTRAN code.
    The main difference with the C version is that the objective function
@@ -131,19 +163,24 @@ extern void bobyqa_test(void);
    variables X(1),X(2),...,X(N), which are generated automatically in a way
    that satisfies the bounds given in XL and XU.
 */
-extern int bobyqa_(const opk_index_t* n, const opk_index_t* npt,
-                   double* x, const double* xl, const double* xu,
-                   const double* rhobeg, const double* rhoend,
-                   const opk_index_t* iprint, const opk_index_t* maxfun,
-                   double* w);
+extern int
+FORTRAN_NAME(bobyqa,BOBYQA)(const opk_index_t* n, const opk_index_t* npt,
+                            double* x, const double* xl, const double* xu,
+                            const double* rhobeg, const double* rhoend,
+                            const opk_index_t* iprint, const opk_index_t* maxfun,
+                            double* w);
 
 /* Wrapper function to emulate `newuoa_objfun` objective function calling the
    user-defined `calfun_` subroutine. */
-extern double bobyqa_calfun_wrapper(const opk_index_t n, const double* x, void* data);
+extern double
+bobyqa_calfun_wrapper(const opk_index_t n, const double* x, void* data);
 
 /* Subroutine that must be defined by the application to use the FORTRAN
    wrapper to BOBYQA. */
-extern int calfun_(const opk_index_t* n, double* x, double* f);
+extern int
+FORTRAN_NAME(calfun,CALFUN)(const opk_index_t* n, double* x, double* f);
+
+#endif /* FORTRAN_LINKAGE */
 
 #ifdef __cplusplus
 }
