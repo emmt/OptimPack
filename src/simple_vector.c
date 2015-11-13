@@ -32,6 +32,7 @@
 #include <string.h>
 #include <errno.h>
 #include <math.h>
+#include <float.h>
 #include <assert.h>
 
 #include "optimpack-private.h"
@@ -52,6 +53,7 @@
 #  define GAMMA    _gamma
 #  define ZERO     0.0f
 #  define ONE      1.0f
+#  define FLOAT_CHOICE(a,b) a
 #else
 #  define REAL     double
 #  define ABS(x)   fabs(x)
@@ -61,6 +63,7 @@
 #  define GAMMA    gamma
 #  define ZERO     0.0
 #  define ONE      1.0
+#  define FLOAT_CHOICE(a,b) b
 #endif
 
 typedef struct _simple_vector simple_vector_t;
@@ -334,6 +337,479 @@ axpbypcz(opk_vspace_t* vspace, opk_vector_t *vdst,
     dst[j] = ALPHA*x[j] + BETA*y[j] + GAMMA*z[j];
   }
 }
+#define MIN(a,b) ((a) <= (b) ? (a) : (b))
+#define MAX(a,b) ((a) >= (b) ? (a) : (b))
+
+static int
+boxprojvar(opk_vspace_t* space,
+           opk_vector_t* dstvec,
+           const opk_vector_t* srcvec,
+           const void* lower,
+           const void* upper,
+           int bound)
+{
+  REAL* dst = DATA(dstvec);
+  const REAL* x = DATA(srcvec);
+  const REAL* xl;
+  const REAL* xu;
+  REAL a, b, t;
+  opk_index_t i, n = space->size;
+
+#define VALUE(addr) (*((double*)(addr)))
+  switch (bound) {
+  case 0:
+    if (dst != x) {
+      memcpy(dst, x, n*sizeof(REAL));
+    }
+    break;
+  case 1:
+    a = VALUE(lower);
+    for (i = 0; i < n; ++i) {
+      t = x[i];
+      if (t < a) t = a;
+      dst[i] = t;
+    }
+    break;
+  case 2:
+    xl = DATA(lower);
+    for (i = 0; i < n; ++i) {
+      a = xl[i];
+      t = x[i];
+      if (t < a) t = a;
+      dst[i] = t;
+    }
+    break;
+  case 3:
+    b = VALUE(upper);
+    for (i = 0; i < n; ++i) {
+      t = x[i];
+      if (t > b) t = b;
+      dst[i] = t;
+    }
+    break;
+  case 4:
+    a = VALUE(lower);
+    b = VALUE(upper);
+    for (i = 0; i < n; ++i) {
+      t = x[i];
+      if (t < a) t = a;
+      if (t > b) t = b;
+      dst[i] = t;
+    }
+    break;
+  case 5:
+    xl = DATA(lower);
+    b = VALUE(upper);
+    for (i = 0; i < n; ++i) {
+      a = xl[i];
+      t = x[i];
+      if (t < a) t = a;
+      if (t > b) t = b;
+      dst[i] = t;
+    }
+    break;
+  case 6:
+    xu = DATA(upper);
+    for (i = 0; i < n; ++i) {
+      t = x[i];
+      b = xu[i];
+      if (t > b) t = b;
+      dst[i] = t;
+    }
+    break;
+  case 7:
+    a = VALUE(lower);
+    xu = DATA(upper);
+    for (i = 0; i < n; ++i) {
+      t = x[i];
+      b = xu[i];
+      if (t < a) t = a;
+      if (t > b) t = b;
+      dst[i] = t;
+    }
+    break;
+  case 8:
+    xl = DATA(lower);
+    xu = DATA(upper);
+    for (i = 0; i < n; ++i) {
+      a = xl[i];
+      t = x[i];
+      b = xu[i];
+      if (t < a) t = a;
+      if (t > b) t = b;
+      dst[i] = t;
+    }
+    break;
+  }
+#undef VALUE
+  return OPK_SUCCESS;
+}
+
+static int
+boxprojdir(opk_vspace_t* space, opk_vector_t* dstvec,
+           const opk_vector_t* srcvec,
+           const void* lower, const void* upper, int bound,
+           const opk_vector_t* dirvec, int orient)
+{
+  REAL* dst = DATA(dstvec);
+  const REAL* x = DATA(srcvec);
+  const REAL* d = DATA(dirvec);
+  const REAL* xl;
+  const REAL* xu;
+  REAL a, b;
+  opk_index_t i, n = space->size;
+
+#define VALUE(addr)  (*((double*)(addr)))
+
+#define BOXED(lo, hi)                                           \
+  if (orient > 0) {                                             \
+    for (i = 0; i < n; ++i) {                                   \
+      dst[i] = (d[i] < 0 ? (x[i] > lo ? d[i] : 0) :             \
+                (d[i] > 0 ? (x[i] < hi ? d[i] : 0) : 0));       \
+    }                                                           \
+  } else {                                                      \
+    for (i = 0; i < n; ++i) {                                   \
+      dst[i] = (d[i] > 0 ? (x[i] > lo ? d[i] : 0) :             \
+                (d[i] < 0 ? (x[i] < hi ? d[i] : 0) : 0));       \
+    }                                                           \
+  }
+
+#define LOWER(lo)                                               \
+  if (orient > 0) {                                             \
+    for (i = 0; i < n; ++i) {                                   \
+      dst[i] = (d[i] >= 0 || x[i] > lo ? d[i] : 0);             \
+    }                                                           \
+  } else {                                                      \
+    for (i = 0; i < n; ++i) {                                   \
+      dst[i] = (d[i] <= 0 || x[i] > lo ? d[i] : 0);             \
+    }                                                           \
+  }
+
+#define UPPER(hi)                                               \
+  if (orient > 0) {                                             \
+    for (i = 0; i < n; ++i) {                                   \
+      dst[i] = (d[i] <= 0 || x[i] < hi ? d[i] : 0);             \
+    }                                                           \
+  } else {                                                      \
+    for (i = 0; i < n; ++i) {                                   \
+      dst[i] = (d[i] >= 0 || x[i] < hi ? d[i] : 0);             \
+    }                                                           \
+  }
+
+  switch (bound) {
+  case 0:
+    if (dst != d) {
+      memcpy(dst, d, n*sizeof(REAL));
+    }
+    break;
+  case 1:
+    a = VALUE(lower);
+    LOWER(a);
+    break;
+  case 2:
+    xl = DATA(lower);
+    LOWER(xl[i]);
+    break;
+  case 3:
+    b = VALUE(upper);
+    UPPER(b);
+    break;
+  case 4:
+    a = VALUE(lower);
+    b = VALUE(upper);
+    BOXED(a, b);
+    break;
+  case 5:
+    xl = DATA(lower);
+    b = VALUE(upper);
+    BOXED(xl[i], b);
+    break;
+  case 6:
+    xu = DATA(upper);
+    UPPER(xu[i]);
+    break;
+  case 7:
+    a = VALUE(lower);
+    xu = DATA(upper);
+    BOXED(a, xu[i]);
+    break;
+  case 8:
+    xl = DATA(lower);
+    xu = DATA(upper);
+    BOXED(xl[i], xu[i]);
+    break;
+  }
+
+#undef LOWER
+#undef UPPER
+#undef BOXED
+#undef VALUE
+
+  return OPK_SUCCESS;
+}
+
+static int
+boxfreevar(opk_vspace_t* space, opk_vector_t* dstvec,
+           const opk_vector_t* srcvec,
+           const void* lower, const void* upper, int bound,
+           const opk_vector_t* dirvec, int orient)
+{
+  REAL* dst = DATA(dstvec);
+  const REAL* x = DATA(srcvec);
+  const REAL* d = DATA(dirvec);
+  const REAL* xl;
+  const REAL* xu;
+  REAL a, b;
+  opk_index_t i, n = space->size;
+
+#define VALUE(addr)    (*((double*)(addr)))
+
+#define BOXED(lo, hi)                                   \
+  if (orient > 0) {                                     \
+    for (i = 0; i < n; ++i) {                           \
+      dst[i] = d[i] < 0 ? (x[i] > lo ? 1 : 0) :         \
+        (      d[i] > 0 ? (x[i] < hi ? 1 : 0) : 0);     \
+    }                                                   \
+  } else {                                              \
+    for (i = 0; i < n; ++i) {                           \
+      dst[i] = d[i] > 0 ? (x[i] > lo ? 1 : 0) :         \
+        (      d[i] < 0 ? (x[i] < hi ? 1 : 0) : 0);     \
+    }                                                   \
+  }
+
+#define LOWER(lo)                                       \
+  if (orient > 0) {                                     \
+    for (i = 0; i < n; ++i) {                           \
+      dst[i] = d[i] < 0 ? (x[i] > lo ? 1 : 0) :         \
+        (      d[i] > 0 ? 1 : 0);                       \
+    }                                                   \
+  } else {                                              \
+    for (i = 0; i < n; ++i) {                           \
+      dst[i] = d[i] > 0 ? (x[i] > lo ? 1 : 0) :         \
+        (      d[i] < 0 ? 1 : 0);                       \
+    }                                                   \
+  }
+
+#define UPPER(hi)                                       \
+  if (orient > 0) {                                     \
+    for (i = 0; i < n; ++i) {                           \
+      dst[i] = d[i] < 0 ? 1 :                           \
+        (      d[i] > 0 ? (x[i] < hi ? 1 : 0) : 0);     \
+    }                                                   \
+  } else {                                              \
+    for (i = 0; i < n; ++i) {                           \
+      dst[i] = d[i] > 0 ? 1 :                           \
+        (      d[i] < 0 ? (x[i] < hi ? 1 : 0) : 0);     \
+    }                                                   \
+  }
+
+  switch (bound) {
+  case 0:
+    for (i = 0; i < n; ++i) {
+      dst[i] = 1;
+    }
+    break;
+  case 1:
+    a = VALUE(lower);
+    LOWER(a);
+    break;
+  case 2:
+    xl = DATA(lower);
+    LOWER(xl[i]);
+    break;
+  case 3:
+    b = VALUE(upper);
+    UPPER(b);
+    break;
+  case 4:
+    a = VALUE(lower);
+    b = VALUE(upper);
+    BOXED(a, b);
+    break;
+  case 5:
+    xl = DATA(lower);
+    b = VALUE(upper);
+    BOXED(xl[i], b);
+    break;
+  case 6:
+    xu = DATA(upper);
+    UPPER(xu[i]);
+    break;
+  case 7:
+    a = VALUE(lower);
+    xu = DATA(upper);
+    BOXED(a, xu[i]);
+    break;
+  case 8:
+    xl = DATA(lower);
+    xu = DATA(upper);
+    BOXED(xl[i], xu[i]);
+    break;
+  }
+
+#undef LOWER
+#undef UPPER
+#undef BOXED
+#undef VALUE
+
+  return OPK_SUCCESS;
+}
+
+static int
+boxsteplimits(opk_vspace_t* space,
+              double* smin, double* wolfe, double* smax,
+              const opk_vector_t* xvec,
+              const void* lower, const void* upper, int bound,
+              const opk_vector_t* dvec, int orient)
+{
+  const REAL* x = DATA(xvec);
+  const REAL* d = DATA(dvec);
+  const REAL* xl;
+  const REAL* xu;
+  const REAL inf = FLOAT_CHOICE(FLT_MAX, DBL_MAX);
+  REAL a, b;
+  REAL s, s1 = inf, s2 = inf, s3 = 0, p;
+  opk_index_t i, n = space->size;
+
+#define VALUE(addr)    (*((double*)(addr)))
+
+#define BOXED(lo, hi)                           \
+  if (orient > 0) {                             \
+    for (i = 0; i < n; ++i) {                   \
+      REAL p = d[i];                            \
+      if (p > 0) {                              \
+        s = (hi - x[i])/p;                      \
+      } else if (p < 0) {                       \
+        s = (lo - x[i])/p;                      \
+      } else {                                  \
+        continue;                               \
+      }                                         \
+      if (s < s1) s1 = s;                       \
+      if (s < s2 && s > 0) s2 = s;              \
+      if (s > s3) s3 = s;                       \
+    }                                           \
+  } else {                                      \
+    for (i = 0; i < n; ++i) {                   \
+      REAL p = d[i];                            \
+      if (p < 0) {                              \
+        s = (x[i] - hi)/p;                      \
+      } else if (p > 0) {                       \
+        s = (x[i] - lo)/p;                      \
+      } else {                                  \
+        continue;                               \
+      }                                         \
+      if (s < s1) s1 = s;                       \
+      if (s < s2 && s > 0) s2 = s;              \
+      if (s > s3) s3 = s;                       \
+    }                                           \
+  }
+
+#define LOWER(lo)                               \
+  if (orient > 0) {                             \
+    for (i = 0; i < n; ++i) {                   \
+      REAL p = d[i];                            \
+      if (p < 0) {                              \
+        s = (lo - x[i])/p;                      \
+        if (s < s1) s1 = s;                     \
+        if (s < s2 && s > 0) s2 = s;            \
+        if (s > s3) s3 = s;                     \
+      } else if (p > 0) {                       \
+        s3 = inf;                               \
+      }                                         \
+    }                                           \
+  } else {                                      \
+    for (i = 0; i < n; ++i) {                   \
+      REAL p = d[i];                            \
+      if (p > 0) {                              \
+        s = (x[i] - lo)/p;                      \
+        if (s < s1) s1 = s;                     \
+        if (s < s2 && s > 0) s2 = s;            \
+        if (s > s3) s3 = s;                     \
+      } else if (p > 0) {                       \
+        s3 = inf;                               \
+      }                                         \
+    }                                           \
+  }
+
+#define UPPER(hi)                               \
+  if (orient > 0) {                             \
+    for (i = 0; i < n; ++i) {                   \
+      REAL p = d[i];                            \
+      if (p > 0) {                              \
+        s = (hi - x[i])/p;                      \
+        if (s < s1) s1 = s;                     \
+        if (s < s2 && s > 0) s2 = s;            \
+        if (s > s3) s3 = s;                     \
+      } else if (p < 0) {                       \
+        s3 = inf;                               \
+      }                                         \
+    }                                           \
+  } else {                                      \
+    for (i = 0; i < n; ++i) {                   \
+      REAL p = d[i];                            \
+      if (p < 0) {                              \
+        s = (x[i] - hi)/p;                      \
+        if (s < s1) s1 = s;                     \
+        if (s < s2 && s > 0) s2 = s;            \
+        if (s > s3) s3 = s;                     \
+      } else if (p > 0) {                       \
+        s3 = inf;                               \
+      }                                         \
+    }                                           \
+  }
+
+  switch (bound) {
+  case 0:
+    s3 = inf;
+    break;
+  case 1:
+    a = VALUE(lower);
+    LOWER(a);
+    break;
+  case 2:
+    xl = DATA(lower);
+    LOWER(xl[i]);
+    break;
+  case 3:
+    b = VALUE(upper);
+    UPPER(b);
+    break;
+  case 4:
+    a = VALUE(lower);
+    b = VALUE(upper);
+    BOXED(a, b);
+    break;
+  case 5:
+    xl = DATA(lower);
+    b = VALUE(upper);
+    BOXED(xl[i], b);
+    break;
+  case 6:
+    xu = DATA(upper);
+    UPPER(xu[i]);
+    break;
+  case 7:
+    a = VALUE(lower);
+    xu = DATA(upper);
+    BOXED(a, xu[i]);
+    break;
+  case 8:
+    xl = DATA(lower);
+    xu = DATA(upper);
+    BOXED(xl[i], xu[i]);
+    break;
+  }
+
+#undef LOWER
+#undef UPPER
+#undef BOXED
+#undef VALUE
+
+  if (smin  != NULL) *smin  = s1;
+  if (wolfe != NULL) *wolfe = s2;
+  if (smin  != NULL) *smax  = s2;
+  return OPK_SUCCESS;
+}
 
 #define NEW_VECTOR_SPACE OPK_JOIN3(opk_new_simple_, REAL, _vector_space)
 #define WRAP_VECTOR OPK_JOIN3(opk_wrap_simple_, REAL, _vector)
@@ -364,7 +840,11 @@ static opk_vspace_operations_t operations = {
   scale,
   product,
   axpby,
-  axpbypcz
+  axpbypcz,
+  boxprojvar,
+  boxprojdir,
+  boxfreevar,
+  boxsteplimits
 };
 
 opk_vspace_t*

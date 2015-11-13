@@ -260,6 +260,27 @@ struct _opk_vspace_operations {
                    double beta,  const opk_vector_t* y,
                    double gamma, const opk_vector_t* z);
 
+  /* Project variables X such that DST = MAX(XL, MAX(X, XU)). */
+  int (*boxprojvar)(opk_vspace_t* space, opk_vector_t* dst,
+                    const opk_vector_t* x,
+                    const void* xl, const void* xu, int bound);
+
+  int (*boxprojdir)(opk_vspace_t* space, opk_vector_t* dst,
+                    const opk_vector_t* x,
+                    const void* xl, const void* xu, int bound,
+                    const opk_vector_t* d, int orient);
+
+  int (*boxfreevar)(opk_vspace_t* space, opk_vector_t* dst,
+                    const opk_vector_t* x,
+                    const void* xl, const void* xu, int bound,
+                    const opk_vector_t* d, int orient);
+
+  int (*boxsteplimits)(opk_vspace_t* space,
+                       double* smin, double* wolfe, double* smax,
+                       const opk_vector_t* x,
+                       const void* xl, const void* xu, int bound,
+                       const opk_vector_t* d, int orient);
+
 };
 
 /* `opk_allocate_vector_space()` allocates `nbytes` bytes of memory to store a

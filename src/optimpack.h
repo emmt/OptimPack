@@ -1362,6 +1362,74 @@ opk_set_vmlm_stpmin_and_stpmax(opk_vmlm_t* opt, double stpmin, double stpmax);
 /** @} */
 
 /*---------------------------------------------------------------------------*/
+/* SEPARABLE BOUND CONSTRAINTS */
+
+/**
+ * @addtogroup BoxConstraints
+ * @{
+ */
+
+typedef struct _opk_bound opk_bound_t;
+
+typedef enum {
+  OPK_BOUND_NONE = 0,
+  OPK_BOUND_SCALAR = 1,
+  OPK_BOUND_VECTOR = 2
+} opk_bound_type_t;
+
+extern opk_bound_t*
+opk_new_bound(opk_vspace_t* space, opk_bound_type_t type,
+              void* value);
+extern void
+opk_unset_bound(opk_bound_t* bnd);
+
+extern void
+opk_set_scalar_bound(opk_bound_t* bnd, double val);
+
+extern int
+opk_set_vector_bound(opk_bound_t* bnd, opk_vector_t* vec);
+
+extern opk_bound_type_t
+opk_get_bound_type(const opk_bound_t* bnd);
+
+extern int
+opk_box_project_variables(opk_vector_t* dst,
+                          const opk_vector_t* x,
+                          const opk_bound_t* xl,
+                          const opk_bound_t* xu);
+
+typedef enum {
+  OPK_ASCENT  = -1,
+  OPK_DESCENT =  1
+} opk_orientation_t;
+
+extern int
+opk_box_project_direction(opk_vector_t* dst,
+                          const opk_vector_t* x,
+                          const opk_bound_t* xl,
+                          const opk_bound_t* xu,
+                          const opk_vector_t* d,
+                          opk_orientation_t orientation);
+
+extern int
+opk_box_get_free_variables(opk_vector_t* dst,
+                           const opk_vector_t* x,
+                           const opk_bound_t* xl,
+                           const opk_bound_t* xu,
+                           const opk_vector_t* d,
+                           opk_orientation_t orientation);
+
+extern int
+opk_box_get_step_limits(double* smin, double* wolfe, double *smax,
+                        const opk_vector_t* x,
+                        const opk_bound_t* xl,
+                        const opk_bound_t* xu,
+                        const opk_vector_t* d,
+                        opk_orientation_t orient);
+
+/** @} */
+
+/*---------------------------------------------------------------------------*/
 /* VARIABLE METRIC OPTIMIZATION METHOD WITH CONVEX CONSTRAINTS */
 
 /**
