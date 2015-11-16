@@ -793,15 +793,12 @@ opk_error(const char* reason);
  */
 typedef enum {
   OPK_TASK_ERROR       = -1, /**< An error has ocurred. */
-  OPK_TASK_PROJECT_X   =  0, /**< Caller must project variables x. */
+  OPK_TASK_START       =  0, /**< Caller must call `start` method. */
   OPK_TASK_COMPUTE_FG  =  1, /**< Caller must compute f(x) and g(x). */
-  OPK_TASK_PROJECT_D   =  2, /**< Caller must project the direction d. */
-  OPK_TASK_FREE_VARS   =  3, /**< Caller must update the subspace of free
-                                  variables. */
-  OPK_TASK_NEW_X       =  4, /**< A new iterate is available. */
-  OPK_TASK_FINAL_X     =  5, /**< Algorithm has converged, solution is
+  OPK_TASK_NEW_X       =  2, /**< A new iterate is available. */
+  OPK_TASK_FINAL_X     =  3, /**< Algorithm has converged, solution is
                                   available. */
-  OPK_TASK_WARNING     =  6  /**< Algorithm terminated with a warning. */
+  OPK_TASK_WARNING     =  4  /**< Algorithm terminated with a warning. */
 } opk_task_t;
 
 
@@ -898,7 +895,8 @@ opk_lnsrch_message(int status);
  * @param stp1   - The length of the first step to try (must be between
  *                 `stpmin` and `stpmax`).
  * @param stpmin - The minimum allowed step length (must be nonnegative).
- * @param stpmax - The maximum allowed step length (must be greater than `stpmin`).
+ * @param stpmax - The maximum allowed step length (must be greater than
+ *                 `stpmin`).
  *
  * @return The linesearch task, which is normally `OPK_LNSRCH_SEARCH` (zero).
  *         A different value (strictly negative) indicate an error.
