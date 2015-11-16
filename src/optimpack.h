@@ -1428,7 +1428,7 @@ opk_box_get_step_limits(double* smin, double* wolfe, double *smax,
 /** @} */
 
 /*---------------------------------------------------------------------------*/
-/* VARIABLE METRIC OPTIMIZATION METHOD WITH CONVEX CONSTRAINTS */
+/* VARIABLE METRIC OPTIMIZATION METHOD WITH BOUND CONSTRAINTS */
 
 /**
  * @addtogroup ConstrainedVariableMetric
@@ -1436,92 +1436,81 @@ opk_box_get_step_limits(double* smin, double* wolfe, double *smax,
  */
 
 /** Opaque type for a variable metric optimizer. */
-typedef struct _opk_vmlmc opk_vmlmc_t;
+typedef struct _opk_vmlmb opk_vmlmb_t;
 
 
 /**
  * Create a reverse communication optimizer implementing a limited memory
- * quasi-Newton method with convex constraints and nonmonotone line search.
+ * quasi-Newton method with bound constraints and quadratic backtracking line
+ * search.
  *
  * @param vspace - The space to which belong the variables.
  * @param m      - The number of previous steps to memorize.
- * @param stpsiz - The length of the first variable step at start or after a
- *                 restart is the steepest descent scaled to have this
- *                 length.
  */
-extern opk_vmlmc_t*
-opk_new_vmlmc_optimizer(opk_vspace_t* vspace,
-                        opk_index_t m,
-                        double stpsiz);
+extern opk_vmlmb_t*
+opk_new_vmlmb_optimizer(opk_vspace_t* space, opk_index_t m);
+
 
 /**
  * Create a reverse communication optimizer implementing a limited memory
- * quasi-Newton method with convex constraints and specific line search.
+ * quasi-Newton method with bound constraints and specific line search.
  *
  * @param vspace - The space to which belong the variables.
  * @param m      - The number of previous steps to memorize.
- * @param stpsiz - The length of the first variable step at start or after a
  *                 restart is the steepest descent scaled to have this
  *                 length.
  * @param lnsrch - The line search method to use.
  */
-extern opk_vmlmc_t*
-opk_new_vmlmc_optimizer_with_line_search(opk_vspace_t* vspace,
+extern opk_vmlmb_t*
+opk_new_vmlmb_optimizer_with_line_search(opk_vspace_t* space,
                                          opk_index_t m,
-                                         double stpsiz,
                                          opk_lnsrch_t* lnsrch);
 
 extern opk_task_t
-opk_start_vmlmc(opk_vmlmc_t* opt);
+opk_start_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
+                const opk_bound_t* xl, const opk_bound_t* xu);
 
 extern opk_task_t
-opk_iterate_vmlmc(opk_vmlmc_t* opt, opk_vector_t* x,
-                  double f, opk_vector_t* g, opk_vector_t* d);
+opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
+                  double f, opk_vector_t* g,
+                  const opk_bound_t* xl, const opk_bound_t* xu);
 
 extern opk_task_t
-opk_get_vmlmc_task(opk_vmlmc_t* opt);
+opk_get_vmlmb_task(opk_vmlmb_t* opt);
 
 extern opk_index_t
-opk_get_vmlmc_iterations(opk_vmlmc_t* opt);
+opk_get_vmlmb_iterations(opk_vmlmb_t* opt);
 
 extern opk_index_t
-opk_get_vmlmc_evaluations(opk_vmlmc_t* opt);
+opk_get_vmlmb_evaluations(opk_vmlmb_t* opt);
 
 extern opk_index_t
-opk_get_vmlmc_restarts(opk_vmlmc_t* opt);
-
-extern opk_index_t
-opk_get_vmlmc_projections(opk_vmlmc_t* opt);
-
-extern int
-opk_get_vmlmc_scaling(opk_vmlmc_t* opt);
-
-extern int
-opk_set_vmlmc_scaling(opk_vmlmc_t* opt, int scaling);
+opk_get_vmlmb_restarts(opk_vmlmb_t* opt);
 
 extern double
-opk_get_vmlmc_gatol(opk_vmlmc_t* opt);
+opk_get_vmlmb_gatol(opk_vmlmb_t* opt);
 
 extern int
-opk_set_vmlmc_gatol(opk_vmlmc_t* opt, double gatol);
+opk_set_vmlmb_gatol(opk_vmlmb_t* opt, double gatol);
 
 extern double
-opk_get_vmlmc_grtol(opk_vmlmc_t* opt);
+opk_get_vmlmb_grtol(opk_vmlmb_t* opt);
 
 extern int
-opk_set_vmlmc_grtol(opk_vmlmc_t* opt, double grtol);
+opk_set_vmlmb_grtol(opk_vmlmb_t* opt, double grtol);
 
 extern double
-opk_get_vmlmc_step(opk_vmlmc_t* opt);
+opk_get_vmlmb_step(opk_vmlmb_t* opt);
 
 extern double
-opk_get_vmlmc_stpmin(opk_vmlmc_t* opt);
+opk_get_vmlmb_stpmin(opk_vmlmb_t* opt);
 
 extern double
-opk_get_vmlmc_stpmax(opk_vmlmc_t* opt);
+opk_get_vmlmb_stpmax(opk_vmlmb_t* opt);
 
 extern int
-opk_set_vmlmc_stpmin_and_stpmax(opk_vmlmc_t* opt, double stpmin, double stpmax);
+opk_set_vmlmb_stpmin_and_stpmax(opk_vmlmb_t* opt,
+                                double stpmin, double stpmax);
 
 /** @} */
 
