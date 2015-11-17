@@ -239,11 +239,11 @@ double
 opk_vdot3(const opk_vector_t* w, const opk_vector_t* x, const opk_vector_t* y)
 {
   opk_vspace_t* vspace = w->owner;
-  if (x->owner != vspace || y->owner != vspace) {
+  if (w->owner != vspace || x->owner != vspace || y->owner != vspace) {
     BAD_VECTORS("vdot3");
     return 0.0;
   } else {
-    return vspace->ops->dot3(vspace, x, x, y);
+    return vspace->ops->dot3(vspace, w, x, y);
   }
 }
 /* Compute L2 norm. */
