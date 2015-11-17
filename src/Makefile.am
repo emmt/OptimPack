@@ -1,5 +1,5 @@
 # Specific compilation flags.
-#AM_CFLAGS = -Wpedantic -Wall -std=c99 -O2
+AM_CFLAGS = -Wpedantic -Wall
 #AM_LDFLAGS =
 
 # Additional files to clean.
