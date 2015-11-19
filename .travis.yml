@@ -3,6 +3,13 @@ language: c
 
 os: linux
 
+addons:
+  apt:
+    packages:
+    - autoconf
+    - automake
+    - libtool
+
 compiler:
   - gcc
 #  - clang
@@ -11,11 +18,5 @@ secure: "RI6rF9Mdc0YcA8tylhXp9JCvkSIPJQBnfcpqJ7Y5BkZoLedQ2hiR6G7ZmKSNUe7rwJ9brGA
 
 # apt-get install autoconf automake libtool
 #script: mkdir -p m4 && autoreconf -fi && ./configure && make
-
-before_install:
-  - if [ `uname` = "Linux" ]; then
-      sudo apt-get update -qq -y;
-      sudo apt-get install autoconf automake libtool;
-    fi
 
 script: ./autogen.sh && ./configure && make
