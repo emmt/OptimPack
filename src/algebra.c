@@ -353,6 +353,269 @@ opk_vaxpbypcz(opk_vector_t* dst,
 }
 
 /*---------------------------------------------------------------------------*/
+/* BOUNDS AND BOXED SETS */
+
+static void
+finalize_bound(opk_object_t* obj)
+{
+  opk_bound_t* bnd = (opk_bound_t*)obj;
+  opk_unset_bound(bnd);
+  OPK_DROP(bnd->owner);
+}
+
+opk_bound_t*
+opk_new_bound(opk_vspace_t* space, opk_bound_type_t type,
+              void* value)
+{
+  opk_bound_t* bnd;
+
+  /* Check arguments. */
+  if (space == NULL || (type != OPK_BOUND_NONE && value == NULL)) {
+    errno = EFAULT;
+    return NULL;
+  }
+  if (space->size < 1 || type < 0 || type > 2 ||
+      (type == OPK_BOUND_VECTOR && ((opk_vector_t*)value)->owner != space)) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  /* Allocate enough memory for the object and instanciate it. */
+  bnd = (opk_bound_t*)opk_allocate_object(finalize_bound, sizeof(opk_bound_t));
+  if (bnd == NULL) {
+    return NULL;
+  }
+  bnd->owner = (opk_vspace_t*)OPK_HOLD(space);
+  bnd->type = type;
+  if (type == OPK_BOUND_VECTOR) {
+    bnd->value.vector = (opk_vector_t*)OPK_HOLD(value);
+  } else if (type == OPK_BOUND_SCALAR) {
+    bnd->value.scalar = *(double*)value;
+  }
+  return bnd;
+}
+
+opk_bound_type_t
+opk_get_bound_type(const opk_bound_t* bnd)
+{
+  return (bnd == NULL ? OPK_BOUND_NONE : bnd->type);
+}
+
+void
+opk_unset_bound(opk_bound_t* bnd)
+{
+  opk_vector_t* vec;
+  if (bnd != NULL) {
+    vec = (bnd->type == OPK_BOUND_VECTOR ? bnd->value.vector : NULL);
+    bnd->type = OPK_BOUND_NONE;
+    bnd->value.vector = NULL;
+    if (vec != NULL) {
+      OPK_DROP(vec);
+    }
+  }
+}
+
+void
+opk_set_scalar_bound(opk_bound_t* bnd, double val)
+{
+  if (bnd != NULL) {
+    opk_unset_bound(bnd);
+    bnd->value.scalar = val;
+    bnd->type = OPK_BOUND_SCALAR;
+  }
+}
+
+int
+opk_set_vector_bound(opk_bound_t* bnd, opk_vector_t* vec)
+{
+  if (bnd != NULL) {
+    if (vec != NULL && bnd->owner != vec->owner) {
+      errno = EINVAL;
+      return OPK_FAILURE;
+    }
+    opk_unset_bound(bnd);
+    if (vec != NULL) {
+      bnd->value.vector = (opk_vector_t*)OPK_HOLD(vec);
+      bnd->type = OPK_BOUND_VECTOR;
+    }
+  }
+  return OPK_SUCCESS;
+}
+
+double opk_box_shortcut_step(double alpha,
+                             const opk_vector_t* x,
+                             const opk_bound_t* xl,
+                             const opk_bound_t* xu,
+                             const opk_vector_t* d,
+                             opk_orientation_t orient)
+{
+  double stpmax;
+  if (opk_box_get_step_limits(NULL, NULL, &stpmax, x, xl, xu,
+                              d, orient) != OPK_SUCCESS) {
+    return 0;
+  }
+  return OPK_MIN(alpha, stpmax);
+}
+
+static int
+get_bound(const void** lower, const opk_bound_t* xl,
+          const void** upper, const opk_bound_t* xu)
+{
+  int type;
+
+  if (xl != NULL && xl->type == OPK_BOUND_SCALAR) {
+    type = 1;
+    *lower = &(xl->value.scalar);
+  } else if (xl != NULL && xl->type == OPK_BOUND_VECTOR) {
+    type = 2;
+    *lower = xl->value.vector;
+  } else {
+    type = 0;
+    *lower = NULL;
+  }
+  if (xu != NULL && xu->type == OPK_BOUND_SCALAR) {
+    type += 3;
+    *upper = &(xu->value.scalar);
+  } else if (xu != NULL && xu->type == OPK_BOUND_VECTOR) {
+    type += 6;
+    *upper = xu->value.vector;
+  } else {
+    *upper = NULL;
+  }
+  return type;
+}
+
+int
+opk_box_project_variables(opk_vector_t* dst,
+                          const opk_vector_t* x,
+                          const opk_bound_t* xl,
+                          const opk_bound_t* xu)
+{
+  opk_vspace_t* space;
+  const void* lower;
+  const void* upper;
+  int type;
+
+  if (dst == NULL || x == NULL) {
+    errno = EFAULT;
+    return OPK_FAILURE;
+  }
+  space = dst->owner;
+  if (x->owner != space
+      || (xl != NULL && xl->owner != space)
+      || (xu != NULL && xu->owner != space)) {
+    errno = EINVAL;
+    return OPK_FAILURE;
+  }
+  type = get_bound(&lower, xl, &upper, xu);
+  if (space->ops->boxprojvar == NULL) {
+    errno = ENOSYS;
+    return OPK_FAILURE;
+  }
+  return space->ops->boxprojvar(space, dst, x, lower, upper, type);
+}
+
+int
+opk_box_project_direction(opk_vector_t* dst,
+                          const opk_vector_t* x,
+                          const opk_bound_t* xl,
+                          const opk_bound_t* xu,
+                          const opk_vector_t* d,
+                          opk_orientation_t orient)
+{
+  opk_vspace_t* space;
+  const void* lower;
+  const void* upper;
+  int type;
+
+  if (dst == NULL || x == NULL || d == NULL) {
+    errno = EFAULT;
+    return OPK_FAILURE;
+  }
+  space = dst->owner;
+  if (x->owner != space || d->owner != space
+      || (xl != NULL && xl->owner != space)
+      || (xu != NULL && xu->owner != space)) {
+    errno = EINVAL;
+    return OPK_FAILURE;
+  }
+  type = get_bound(&lower, xl, &upper, xu);
+  if (space->ops->boxprojdir == NULL) {
+    errno = ENOSYS;
+    return OPK_FAILURE;
+  }
+  return space->ops->boxprojdir(space, dst, x, lower, upper, type,
+                                d, orient);
+}
+
+int
+opk_box_get_free_variables(opk_vector_t* dst,
+                           const opk_vector_t* x,
+                           const opk_bound_t* xl,
+                           const opk_bound_t* xu,
+                           const opk_vector_t* d,
+                           opk_orientation_t orient)
+{
+  opk_vspace_t* space;
+  const void* lower;
+  const void* upper;
+  int type;
+
+  if (dst == NULL || x == NULL || d == NULL) {
+    errno = EFAULT;
+    return OPK_FAILURE;
+  }
+  space = dst->owner;
+  if (x->owner != space || d->owner != space
+      || (xl != NULL && xl->owner != space)
+      || (xu != NULL && xu->owner != space)) {
+    errno = EINVAL;
+    return OPK_FAILURE;
+  }
+  type = get_bound(&lower, xl, &upper, xu);
+  if (space->ops->boxfreevar == NULL) {
+    errno = ENOSYS;
+    return OPK_FAILURE;
+  }
+  return space->ops->boxfreevar(space, dst, x, lower, upper, type,
+                                d, orient);
+}
+
+extern int
+opk_box_get_step_limits(double* smin, double* wolfe, double *smax,
+                        const opk_vector_t* x,
+                        const opk_bound_t* xl,
+                        const opk_bound_t* xu,
+                        const opk_vector_t* d,
+                        opk_orientation_t orient)
+{
+  opk_vspace_t* space;
+  const void* lower;
+  const void* upper;
+  int type;
+
+  if (x == NULL || d == NULL) {
+    errno = EFAULT;
+    return OPK_FAILURE;
+  }
+  space = x->owner;
+  if (d->owner != space
+      || (xl != NULL && xl->owner != space)
+      || (xu != NULL && xu->owner != space)) {
+    errno = EINVAL;
+    return OPK_FAILURE;
+  }
+  type = get_bound(&lower, xl, &upper, xu);
+  if (space->ops->boxsteplimits == NULL) {
+    errno = ENOSYS;
+    return OPK_FAILURE;
+  }
+  return space->ops->boxsteplimits(space, smin, wolfe, smax,
+                                   x, lower, upper, type, d, orient);
+}
+
+
+/*---------------------------------------------------------------------------*/
 /* OPERATORS */
 
 static void

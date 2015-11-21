@@ -1396,6 +1396,20 @@ opk_box_project_variables(opk_vector_t* dst,
                           const opk_bound_t* xl,
                           const opk_bound_t* xu);
 
+/**
+ * Orientation of search direction.
+ *
+ * If orientation is `OPK_DESCENT` (or strictly positive), the search
+ * direction `d` is a descent direction and the variables are updated as:
+ * ~~~~~~~~~~{.c}
+ *     x[i] + alpha*d[i]
+ * ~~~~~~~~~~
+ * otherwise, `d` is considered as an ascent disrection and the variables
+ * are updated as:
+ * ~~~~~~~~~~{.c}
+ *     x[i] - alpha*d[i]
+ * ~~~~~~~~~~
+ */
 typedef enum {
   OPK_ASCENT  = -1,
   OPK_DESCENT =  1
@@ -1477,6 +1491,9 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
 
 extern opk_task_t
 opk_get_vmlmb_task(opk_vmlmb_t* opt);
+
+extern int
+opk_get_vmlmb_reason(opk_vmlmb_t* opt);
 
 extern opk_index_t
 opk_get_vmlmb_iterations(opk_vmlmb_t* opt);

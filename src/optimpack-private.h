@@ -321,6 +321,27 @@ opk_allocate_vector(opk_vspace_t* vspace, size_t nbytes);
 /** @} */
 
 /*---------------------------------------------------------------------------*/
+/* LOW LEVEL API FOR SEPARABLE BOUND CONSTRAINTS */
+
+/**
+ * @defgroup LowBoxConstraints  Implementing bound constraints.
+ * @ingroup LowLevel
+ * @{
+ */
+
+struct _opk_bound {
+  opk_object_t base;      /**< Base type (must be the first member). */
+  opk_vspace_t* owner;    /**< Vector space of the bounded variables. */
+  opk_bound_type_t type;  /**< Type of bound. */
+  union {
+    opk_vector_t* vector; /**< Value for a vectorial bound. */
+    double        scalar; /**< Value for a scalar bound. */
+  } value;
+};
+
+/** @} */
+
+/*---------------------------------------------------------------------------*/
 /* LOW LEVEL API FOR LINE SEARCH AND DERIVED TYPES */
 
 /**
