@@ -1,0 +1,45 @@
+                   *********************************
+                   *                               *
+                   *  USING OPTIMPACK WITH CUTEst  *
+                   *                               *
+                   *********************************
+
+              ( Last modified on November 12th, 2015 )
+
+
+WHAT IS OPTIMPACK?
+------------------
+
+OptimPack is a library of optimization algorithms mainly targeted at large
+scale problems (with typically millions or trillions of variables) designed
+by Éric Thiébaut (Univ. Lyon, France).
+
+HOW DO I GET OPTIMPACK?
+-----------------------
+
+See
+
+  https://github.com/emmt/OptimPack
+
+COMPILING THE OBJECT MODULE FOR OPTIMPACK
+------------------------------------------
+
+The OptimPack library libopk.a should be compiled, and the resulting
+file optimpack.o should be placed in either the user-defined directory
+$OPTIMPACK or in $CUTEST/objects/(architecture)/double/ for the architecture
+you intend to use. This is done automatically by the script cg_cutest_install
+in the optimpack distribution.
+
+OptimPack can deal with any type of variable but the tests are only implemented
+for double-precision floating point.
+
+USING THE OPTIMPACK INTERFACE TOOL
+-----------------------------------
+
+The command to solve a problem in SIF format contained in the file
+probname.SIF is
+
+runcutest -p optimpack -D probname.SIF
+
+See the man page for runcutest for more details or other options.
+

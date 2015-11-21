@@ -1,0 +1,37 @@
+#! /bin/sh
+
+SRCDIR=$(dirname "$0")
+success="yes"
+package="optimpack"
+precision="double"
+CC=gcc
+CFLAGS="-O2"
+
+if test "x$CUTEST" = "x"; then
+    echo >&2 "Environment variable CUTEST must be set with the path to CUTEst software"
+    success="no"
+elif test ! -d "$CUTEST/packages"; then
+    echo >&2 "\"\$CUTEST/packages\" is not a directory"
+    success="no"
+elif test ! -d "$CUTEST/src"; then
+    echo >&2 "\"\$CUTEST/src\" is not a directory"
+    success="no"
+fi
+if test "x$MYARCH" = "x"; then
+    echo >&2 "Environment variable MYARCH must be set with the architecture for CUTEst software"
+    success="no"
+fi
+if test "$success" != "yes"; then
+    exit 1
+fi
+
+mkdir -p "$CUTEST/packages/defaults"
+cp -p "$SRCDIR/$package" "$CUTEST/packages/defaults/."
+rm -f "$CUTEST/src/$package/*"
+mkdir -p "$CUTEST/src/$package"
+for file in OPTIMPACK.SPC optimpack_main.c README.optimpack makemaster; do
+    cp -p "$SRCDIR/$file" "$CUTEST/src/$package/."
+done
+"$CC" -I"$SRCDIR/../src" -I"$CUTEST/include" $CFLAGS -c \
+    "$SRCDIR/optimpack_main.c" \
+    -o "$CUTEST/objects/$MYARCH/$precision/optimpack_main.o"
