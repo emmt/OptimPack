@@ -351,7 +351,7 @@ typedef enum {
   OPK_NO_PROBLEMS = 0,
   OPK_BAD_PRECONDITIONER,  /**< Preconditioner is not positive definite. */
   OPK_LINE_SEARCH_WARNING, /**< Warning in line search. */
-  OPK_LINE_SEARCH_ERROR,   /**< Error in line search. */
+  OPK_LINE_SEARCH_ERROR    /**< Error in line search. */
 } opk_reason_t;
 
 static double
