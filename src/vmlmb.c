@@ -38,6 +38,8 @@
 
 #include "optimpack-private.h"
 
+#define SAVE_MEMORY 1 /* save memory to use 2 + 2m vectors instead of 4 + 2m */
+
 #define TRUE                          OPK_TRUE
 #define FALSE                         OPK_FALSE
 #define MAX(a, b)                     OPK_MAX(a, b)
@@ -61,7 +63,7 @@ static const double GATOL = 0.0;
 
 /* Other default parameters. */
 static const double EPSILON = 1e-2;
-static const double DELTA   = 1e-3;
+static const double DELTA   = 5e-2;
 
 struct _opk_vmlmb {
   opk_object_t base; /**< Base type (must be the first member). */
@@ -148,6 +150,10 @@ finalize_vmlmb(opk_object_t* obj)
      references to specific vectors in opt->s and opt->y). */
   OPK_DROP(opt->space);
   OPK_DROP(opt->lnsrch);
+#if ! SAVE_MEMORY
+  OPK_DROP(opt->x0);
+  OPK_DROP(opt->g0);
+#endif
   OPK_DROP(opt->d);
   OPK_DROP(opt->w);
   OPK_DROP(opt->tmp);
@@ -263,6 +269,16 @@ opk_new_vmlmb_optimizer_with_line_search(opk_vspace_t* space,
   }
   opt->space = OPK_HOLD_VSPACE(space);
   opt->lnsrch = OPK_HOLD_LNSRCH(lnsrch);
+#if ! SAVE_MEMORY
+  opt->x0 = opk_vcreate(space);
+  if (opt->x0 == NULL) {
+    goto error;
+  }
+  opt->g0 = opk_vcreate(space);
+  if (opt->g0 == NULL) {
+    goto error;
+  }
+#endif
   opt->d = opk_vcreate(space);
   if (opt->d == NULL) {
     goto error;
@@ -344,6 +360,7 @@ opk_start_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
 #define RHO(k)   opt->rho[k]
 #define UPDATE(dst, alpha, x)            opk_vaxpby(dst, 1, dst, alpha, x)
 #define COMBINE(dst, alpha, x, beta, y)  opk_vaxpby(dst, alpha, x, beta, y)
+#define COPY(dst, src)                   opk_vcopy(dst, src)
 #define SCALE(x, alpha)                  opk_vscale(x, alpha, x)
 #define DOT(x, y)                        opk_vdot(x, y)
 #define WDOT(x, y)                       opk_vdot3(opt->w, x, y)
@@ -355,7 +372,7 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
 {
   double gtd, yty, sty, alphamax;
   opk_index_t j, k;
-  int status, reject;
+  int status;
 
   switch (opt->task) {
 
@@ -430,6 +447,7 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
        X. */
 
     opt->gamma = 0;
+    gtd = 0;
     if (opt->mp >= 1) {
       /* Apply the L-BFGS Strang's two-loop recursion to compute a search
          direction. */
@@ -469,25 +487,23 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
            variables. */
         opk_vproduct(opt->d, opt->w, opt->d);
 
-        /* Check whether the algorithm has produced a descent direction. */
+        /* Check whether the algorithm has produced a sufficient descent
+           direction. */
         gtd = -DOT(opt->d, g);
-        if (opt->epsilon > 0) {
-          reject = (-gtd < opt->epsilon*opt->gpnorm*opk_vnorm2(opt->d));
+        if (opt->epsilon > 0 &&
+            opt->epsilon*opt->gpnorm*opk_vnorm2(opt->d) > -gtd) {
+          /* Set GTD to zero to indicate that D is not a sufficient descent
+             direction. */
+          gtd = 0;
         } else {
-          reject = (gtd >= 0);
-        }
-        if (reject) {
-          /* Not a descent direction. */
-          ++opt->restarts;
-          opt->mp = 0;
-        } else {
-          opt->alpha = 1;
+          opt->alpha = 1.0;
         }
       }
     }
-    if (opt->gamma <= 0) {
+    if (gtd >= 0) {
       /* Use (projected) steepest projected ascent. */
       if (opt->mp > 0) {
+        /* BFGS recursion did not produce a sufficient descent direction. */
         ++opt->restarts;
         opt->mp = 0;
       }
@@ -508,22 +524,23 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
 
     /* Shortcut the step length. */
     status = opk_box_get_step_limits(NULL, NULL, &alphamax,
-                                     x, xl, xu,
-                                     opt->d, OPK_ASCENT);
+                                     x, xl, xu, opt->d, OPK_ASCENT);
     if (status != OPK_SUCCESS) {
       return optimizer_failure(opt, OPK_STEP_LIMITS_NOT_IMPLEMENTED);
     }
     if (opt->alpha > alphamax) {
-      opt->alpha > alphamax;
+      opt->alpha = alphamax;
     }
     if (opt->alpha <= 0) {
       return optimizer_failure(opt, OPK_WOULD_BLOCK);
     }
 
     /* Save current point. */
+#if SAVE_MEMORY
     k = slot(opt, 0);
     opt->x0 = S(k); /* weak reference */
     opt->g0 = Y(k); /* weak reference */
+#endif
     opt->f0 = f;
     COPY(opt->x0, x);
     COPY(opt->g0, g);
@@ -544,7 +561,7 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
   }
 
  next_step:
-  opk_vaxbpy(x, 1, opt->x0, -opt->alpha, opt->d);
+  opk_vaxpby(x, 1, opt->x0, -opt->alpha, opt->d);
   return project_variables(opt, x, xl, xu);
 }
 
@@ -552,6 +569,12 @@ opk_task_t
 opk_get_vmlmb_task(opk_vmlmb_t* opt)
 {
   return opt->task;
+}
+
+int
+opk_get_vmlmb_reason(opk_vmlmb_t* opt)
+{
+  return opt->reason;
 }
 
 opk_index_t
