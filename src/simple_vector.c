@@ -668,7 +668,7 @@ boxsteplimits(opk_vspace_t* space,
   const REAL* xu;
   const REAL inf = FLOAT_CHOICE(FLT_MAX, DBL_MAX);
   REAL a, b;
-  REAL s, s1 = inf, s2 = inf, s3 = 0, p;
+  REAL s, s1 = inf, s2 = inf, s3 = 0;
   opk_index_t i, n = space->size;
 
 #define VALUE(addr)    (*((double*)(addr)))
@@ -807,7 +807,7 @@ boxsteplimits(opk_vspace_t* space,
 
   if (smin  != NULL) *smin  = s1;
   if (wolfe != NULL) *wolfe = s2;
-  if (smin  != NULL) *smax  = s2;
+  if (smax  != NULL) *smax  = s3;
   return OPK_SUCCESS;
 }
 
