@@ -109,20 +109,9 @@ struct _opk_vmlmb {
   opk_index_t iterations;  /**< Number of iterations (successful steps
                                 taken). */
   opk_index_t restarts;    /**< Number of LBFGS recurrence restarts. */
+  opk_status_t reason;     /**< some details about the error */
   opk_task_t task;
-  int reason; /**< some details about the error */
 };
-
-typedef enum {
-  OPK_NO_PROBLEMS = 0,
-  OPK_BAD_PRECONDITIONER,  /**< Preconditioner is not positive definite. */
-  OPK_LINE_SEARCH_WARNING, /**< Warning in line search. */
-  OPK_LINE_SEARCH_ERROR,   /**< Error in line search. */
-  OPK_INFEASIBLE_BOUNDS,   /**< Bad bounds. */
-  OPK_STEP_LIMITS_NOT_IMPLEMENTED,
-  OPK_WOULD_BLOCK,
-  OPK_INSUFICIENT_MEMORY
-} opk_reason_t;
 
 static double
 max3(double a1, double a2, double a3)
@@ -193,31 +182,19 @@ opk_get_vmlmb_y(opk_vmlmb_t* opt, opk_index_t k)
 }
 
 static opk_task_t
-optimizer_success(opk_vmlmb_t* opt, opk_task_t task)
+success(opk_vmlmb_t* opt, opk_task_t task)
 {
-  opt->reason = OPK_NO_PROBLEMS;
+  opt->reason = OPK_SUCCESS;
   opt->task = task;
   return task;
 }
 
 static opk_task_t
-optimizer_failure(opk_vmlmb_t* opt, opk_reason_t reason)
+failure(opk_vmlmb_t* opt, opk_status_t status)
 {
-  opt->reason = reason;
+  opt->reason = status;
   opt->task = OPK_TASK_ERROR;
   return opt->task;
-}
-
-static opk_task_t
-line_search_failure(opk_vmlmb_t* opt)
-{
-  opk_reason_t reason;
-  if (opk_lnsrch_has_errors(opt->lnsrch)) {
-    reason = OPK_LINE_SEARCH_ERROR;
-  } else {
-    reason = OPK_LINE_SEARCH_WARNING;
-  }
-  return optimizer_failure(opt, reason);
 }
 
 opk_vmlmb_t*
@@ -322,11 +299,11 @@ project_variables(opk_vmlmb_t* opt,
                   const opk_bound_t* xl,
                   const opk_bound_t* xu)
 {
-  int status = opk_box_project_variables(x, x, xl, xu);
+  opk_status_t status = opk_box_project_variables(x, x, xl, xu);
   if (status != OPK_SUCCESS) {
-    return optimizer_failure(opt, OPK_INFEASIBLE_BOUNDS);
+    return failure(opt, status);
   } else {
-    return optimizer_success(opt, OPK_TASK_COMPUTE_FG);
+    return success(opt, OPK_TASK_COMPUTE_FG);
   }
 }
 
@@ -361,7 +338,8 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
 {
   double gtd, yty, sty, alphamax;
   opk_index_t j, k;
-  int status;
+  opk_status_t status;
+  opk_lnsrch_status_t lnsrch_status;
 
   switch (opt->task) {
 
@@ -375,7 +353,7 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
        variables, -1 in case of error). */
     status = opk_box_get_free_variables(opt->w, x, xl, xu, g, OPK_ASCENT);
     if (status != OPK_SUCCESS) {
-      return optimizer_failure(opt, OPK_INFEASIBLE_BOUNDS);
+      return failure(opt, status);
     }
 
     /* Check for global convergence. */
@@ -384,7 +362,7 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
       opt->ginit = opt->gpnorm;
     }
     if (opt->gpnorm <= max3(0.0, opt->gatol, opt->grtol*opt->ginit)) {
-      return optimizer_success(opt, OPK_TASK_FINAL_X);
+      return success(opt, OPK_TASK_FINAL_X);
     }
 
     if (opt->evaluations > 1) {
@@ -394,7 +372,7 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
         if (opt->tmp == NULL) {
           opt->tmp = opk_vcreate(opt->space);
           if (opt->tmp == NULL) {
-            return optimizer_failure(opt, OPK_INSUFICIENT_MEMORY);
+            return failure(opt, OPK_INSUFFICIENT_MEMORY);
           }
         }
         opk_vaxpby(opt->tmp, 1, x, -1, opt->x0);
@@ -402,18 +380,20 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
       } else {
         gtd = 0;
       }
-      status = opk_lnsrch_iterate(opt->lnsrch, &opt->alpha, f, gtd);
-      if (status == OPK_LNSRCH_SEARCH) {
+      lnsrch_status = opk_lnsrch_iterate(opt->lnsrch, &opt->alpha, f, gtd);
+      if (lnsrch_status == OPK_LNSRCH_SEARCH) {
         /* Line search has not yet converged. */
         goto next_step;
       }
-      if (status != OPK_LNSRCH_CONVERGENCE &&
-          status != OPK_LNSRCH_WARNING_ROUNDING_ERRORS_PREVENT_PROGRESS) {
-        return line_search_failure(opt);
+      if (lnsrch_status != OPK_LNSRCH_CONVERGENCE) {
+        status = opk_lnsrch_get_reason(opt->lnsrch);
+        if (status != OPK_ROUNDING_ERRORS_PREVENT_PROGRESS) {
+          return failure(opt, status);
+        }
       }
       ++opt->iterations;
     }
-    return optimizer_success(opt, OPK_TASK_NEW_X);
+    return success(opt, OPK_TASK_NEW_X);
 
 
   case OPK_TASK_NEW_X:
@@ -515,13 +495,13 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
     status = opk_box_get_step_limits(NULL, NULL, &alphamax,
                                      x, xl, xu, opt->d, OPK_ASCENT);
     if (status != OPK_SUCCESS) {
-      return optimizer_failure(opt, OPK_STEP_LIMITS_NOT_IMPLEMENTED);
+      return failure(opt, status);
     }
     if (opt->alpha > alphamax) {
       opt->alpha = alphamax;
     }
     if (opt->alpha <= 0) {
-      return optimizer_failure(opt, OPK_WOULD_BLOCK);
+      return failure(opt, OPK_WOULD_BLOCK);
     }
 
     /* Save current point. */
@@ -535,10 +515,10 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
     COPY(opt->g0, g);
 
     /* Start line search. */
-    status = opk_lnsrch_start(opt->lnsrch, f, gtd, opt->alpha,
-                              opt->stpmin, opt->stpmax);
-    if (status != OPK_LNSRCH_SEARCH) {
-      return line_search_failure(opt);
+    lnsrch_status = opk_lnsrch_start(opt->lnsrch, f, gtd, opt->alpha,
+                                     opt->stpmin, opt->stpmax);
+    if (lnsrch_status != OPK_LNSRCH_SEARCH) {
+      return failure(opt, opk_lnsrch_get_reason(opt->lnsrch));
     }
     goto next_step;
 
@@ -560,7 +540,7 @@ opk_get_vmlmb_task(opk_vmlmb_t* opt)
   return opt->task;
 }
 
-int
+opk_status_t
 opk_get_vmlmb_reason(opk_vmlmb_t* opt)
 {
   return opt->reason;
@@ -590,16 +570,14 @@ opk_get_vmlmb_gatol(opk_vmlmb_t* opt)
   return (opt == NULL ? GATOL : opt->gatol);
 }
 
-int
+opk_status_t
 opk_set_vmlmb_gatol(opk_vmlmb_t* opt, double gatol)
 {
   if (opt == NULL) {
-    errno = EFAULT;
-    return OPK_FAILURE;
+    return OPK_ILLEGAL_ADDRESS;
   }
-  if (non_finite(gatol) || gatol < 0.0) {
-    errno = EINVAL;
-    return OPK_FAILURE;
+  if (non_finite(gatol) || gatol < 0) {
+    return OPK_INVALID_ARGUMENT;
   }
   opt->gatol = gatol;
   return OPK_SUCCESS;
@@ -611,16 +589,14 @@ opk_get_vmlmb_grtol(opk_vmlmb_t* opt)
   return (opt == NULL ? GRTOL : opt->grtol);
 }
 
-int
+opk_status_t
 opk_set_vmlmb_grtol(opk_vmlmb_t* opt, double grtol)
 {
   if (opt == NULL) {
-    errno = EFAULT;
-    return OPK_FAILURE;
+    return OPK_ILLEGAL_ADDRESS;
   }
-  if (non_finite(grtol) || grtol < 0.0) {
-    errno = EINVAL;
-    return OPK_FAILURE;
+  if (non_finite(grtol) || grtol < 0) {
+    return OPK_INVALID_ARGUMENT;
   }
   opt->grtol = grtol;
   return OPK_SUCCESS;
@@ -644,18 +620,16 @@ opk_get_vmlmb_stpmax(opk_vmlmb_t* opt)
   return (opt == NULL ? STPMAX : opt->stpmax);
 }
 
-int
+opk_status_t
 opk_set_vmlmb_stpmin_and_stpmax(opk_vmlmb_t* opt,
                                 double stpmin, double stpmax)
 {
   if (opt == NULL) {
-    errno = EFAULT;
-    return OPK_FAILURE;
+    return OPK_ILLEGAL_ADDRESS;
   }
   if (non_finite(stpmin) || non_finite(stpmax) ||
-      stpmin < 0.0 || stpmax <= stpmin) {
-    errno = EINVAL;
-    return OPK_FAILURE;
+      stpmin < 0 || stpmax <= stpmin) {
+    return OPK_INVALID_ARGUMENT;
   }
   opt->stpmin = stpmin;
   opt->stpmax = stpmax;

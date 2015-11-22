@@ -30,6 +30,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
 
 #include "optimpack.h"
 
@@ -60,4 +61,32 @@ void
 opk_error(const char* reason)
 {
   error_handler(reason);
+}
+
+const char*
+opk_get_reason(opk_status_t status)
+{
+#define _OPK_STATUS(a,b,c) case b: return c;
+  switch (status) {
+    _OPK_STATUS_LIST
+  default: return "";
+  }
+#undef _OPK_STATUS
+}
+
+opk_status_t
+opk_guess_status()
+{
+  switch (errno) {
+#ifdef ENOMEM
+  case ENOMEM: return OPK_INSUFFICIENT_MEMORY;
+#endif
+#ifdef EFAULT
+  case EFAULT: return OPK_ILLEGAL_ADDRESS;
+#endif
+#ifdef EINVAL
+  case EINVAL: return OPK_INVALID_ARGUMENT;
+#endif
+  default: return -1;
+  }
 }

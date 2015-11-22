@@ -57,6 +57,30 @@ non_finite(double x)
   return (isnan(x) || isinf(x));
 }
 
+static opk_lnsrch_status_t
+failure(opk_lnsrch_t* ls, opk_status_t reason)
+{
+  ls->reason = reason;
+  ls->status = OPK_LNSRCH_ERROR;
+  return ls->status;
+}
+
+static opk_lnsrch_status_t
+warning(opk_lnsrch_t* ls, opk_status_t reason)
+{
+  ls->reason = reason;
+  ls->status = OPK_LNSRCH_WARNING;
+  return ls->status;
+}
+
+static opk_lnsrch_status_t
+success(opk_lnsrch_t* ls, opk_lnsrch_status_t status)
+{
+  ls->reason = OPK_SUCCESS;
+  ls->status = status;
+  return ls->status;
+}
+
 /*---------------------------------------------------------------------------*/
 /* UNIFIED INTERFACE FOR LINE SEARCH */
 
@@ -87,69 +111,70 @@ opk_allocate_line_search(opk_lnsrch_operations_t *ops,
   ls = (opk_lnsrch_t*)opk_allocate_object(finalize_line_search, size);
   if (ls != NULL) {
     ls->ops = ops;
-    ls->status = OPK_LNSRCH_ERROR_NOT_STARTED;
+    ls->reason = OPK_NOT_STARTED;
+    ls->status = OPK_LNSRCH_ERROR;
   }
   return ls;
 }
 
 /* after an error or convergence, you must call opk_lnsrch_start */
 
-int
+opk_lnsrch_status_t
 opk_lnsrch_start(opk_lnsrch_t* ls, double f0, double g0,
                  double stp, double stpmin, double stpmax)
 {
   if (ls == NULL) {
-    return OPK_LNSRCH_ERROR_ILLEGAL_ADDRESS;
+    return OPK_ILLEGAL_ADDRESS;
   }
-  if (stpmin < 0.0) {
-    ls->status = OPK_LNSRCH_ERROR_STPMIN_LT_ZERO;
-  } else if (stpmin > stpmax) {
-    ls->status = OPK_LNSRCH_ERROR_STPMIN_GT_STPMAX;
-  } else if (stp < stpmin) {
-    ls->status = OPK_LNSRCH_ERROR_STP_LT_STPMIN;
-  } else if (stp > stpmax) {
-    ls->status = OPK_LNSRCH_ERROR_STP_GT_STPMAX;
-  } else if (g0 >= 0.0) {
-    ls->status = OPK_LNSRCH_ERROR_INITIAL_DERIVATIVE_GE_ZERO;
-  } else {
-    ls->stp = stp;
-    ls->stpmin = stpmin;
-    ls->stpmax = stpmax;
-    ls->finit = f0;
-    ls->ginit = g0;
-    ls->status = ls->ops->start(ls);
+  if (stpmin < 0) {
+    return failure(ls, OPK_STPMIN_LT_ZERO);
   }
-  return ls->status;
+  if (stpmin > stpmax) {
+    return failure(ls, OPK_STPMIN_GT_STPMAX);
+  }
+  if (stp < stpmin) {
+    return failure(ls, OPK_STEP_LT_STPMIN);
+  }
+  if (stp > stpmax) {
+    return failure(ls, OPK_STEP_GT_STPMAX);
+  }
+  if (g0 >= 0) {
+    return failure(ls, OPK_NOT_A_DESCENT);
+  }
+  ls->stp = stp;
+  ls->stpmin = stpmin;
+  ls->stpmax = stpmax;
+  ls->finit = f0;
+  ls->ginit = g0;
+  return ls->ops->start(ls);
 }
 
-int
+opk_lnsrch_status_t
 opk_lnsrch_iterate(opk_lnsrch_t* ls, double* stp_ptr,
                    double f1, double g1)
 {
   if (ls == NULL || stp_ptr == NULL) {
-    return OPK_LNSRCH_ERROR_ILLEGAL_ADDRESS;
+    return OPK_ILLEGAL_ADDRESS;
   }
-  if (ls->status == OPK_LNSRCH_SEARCH) {
-    if (*stp_ptr != ls->stp) {
-      ls->status = OPK_LNSRCH_ERROR_STP_CHANGED;
-    } else {
-      ls->status = ls->ops->iterate(ls, stp_ptr, f1, g1);
-      if (*stp_ptr > ls->stpmax) {
-        if (ls->stp >= ls->stpmax) {
-          ls->status = OPK_LNSRCH_WARNING_STP_EQ_STPMAX;
-        }
-        *stp_ptr = ls->stpmax;
-      } else if (*stp_ptr < ls->stpmin) {
-        if (ls->stp <= ls->stpmin) {
-          ls->status = OPK_LNSRCH_WARNING_STP_EQ_STPMIN;
-        }
-        *stp_ptr = ls->stpmin;
-      }
-      ls->stp = *stp_ptr;
+  if (ls->status != OPK_LNSRCH_SEARCH) {
+    return failure(ls, OPK_NOT_STARTED);
+  }
+  if (*stp_ptr != ls->stp) {
+    return failure(ls, OPK_STEP_CHANGED);
+  }
+  ls->status = ls->ops->iterate(ls, stp_ptr, f1, g1);
+  if (*stp_ptr > ls->stpmax) {
+    if (ls->stp >= ls->stpmax) {
+      warning(ls, OPK_STEP_EQ_STPMAX);
     }
-  } else {
-    ls->status = OPK_LNSRCH_ERROR_NOT_STARTED;
+    *stp_ptr = ls->stpmax;
+  } else if (*stp_ptr < ls->stpmin) {
+    if (ls->stp <= ls->stpmin) {
+      warning(ls, OPK_STEP_EQ_STPMIN);
+    }
+    *stp_ptr = ls->stpmin;
   }
+  ls->stp = *stp_ptr;
   return ls->status;
 }
 
@@ -159,67 +184,28 @@ opk_lnsrch_get_step(const opk_lnsrch_t* ls)
   return (ls != NULL && ls->status == OPK_LNSRCH_SEARCH ? ls->stp : -1.0);
 }
 
-int
+opk_lnsrch_status_t
 opk_lnsrch_get_status(const opk_lnsrch_t* ls)
 {
-  return (ls != NULL ? ls->status : OPK_LNSRCH_ERROR_ILLEGAL_ADDRESS);
+  return (ls != NULL ? ls->status : OPK_LNSRCH_ERROR);
 }
 
-const char*
-opk_lnsrch_message(int status)
+opk_status_t
+opk_lnsrch_get_reason(const opk_lnsrch_t* ls)
 {
-  switch (status) {
-  case OPK_LNSRCH_ERROR_ILLEGAL_ADDRESS:
-    return "Illegal address in line search";
-  case OPK_LNSRCH_ERROR_CORRUPTED_WORKSPACE:
-    return "Corrupted line search workspace";
-  case OPK_LNSRCH_ERROR_BAD_WORKSPACE:
-    return "Bad line search workspace";
-  case OPK_LNSRCH_ERROR_STP_CHANGED:
-    return "Line search step modified by caller";
-  case OPK_LNSRCH_ERROR_STP_OUTSIDE_BRACKET:
-    return "Line search step outside bracket";
-  case OPK_LNSRCH_ERROR_NOT_A_DESCENT:
-    return "Line search direction is not a descent";
-  case OPK_LNSRCH_ERROR_STPMIN_GT_STPMAX:
-    return "Minimum line search step greater than maximum step";
-  case OPK_LNSRCH_ERROR_STPMIN_LT_ZERO:
-    return "Minimum line search step less than zero";
-  case OPK_LNSRCH_ERROR_STP_LT_STPMIN:
-    return "Line search step less than minimum step";
-  case OPK_LNSRCH_ERROR_STP_GT_STPMAX:
-    return "Line search step greater than maximum step";
-  case OPK_LNSRCH_ERROR_INITIAL_DERIVATIVE_GE_ZERO:
-    return "Initial derivative along line search greater or equal zero";
-  case OPK_LNSRCH_ERROR_NOT_STARTED:
-    return "Line search not started";
-  case OPK_LNSRCH_SEARCH:
-    return "Line search in progress";
-  case OPK_LNSRCH_CONVERGENCE:
-    return "Line search has converged";
-  case OPK_LNSRCH_WARNING_ROUNDING_ERRORS_PREVENT_PROGRESS:
-    return "Rounding errors prevent progress in line search";
-  case OPK_LNSRCH_WARNING_XTOL_TEST_SATISFIED:
-    return "OPK_LNSRCH_WARNING_XTOL_TEST_SATISFIED";
-  case OPK_LNSRCH_WARNING_STP_EQ_STPMAX:
-    return "Line search step at upper bound";
-  case OPK_LNSRCH_WARNING_STP_EQ_STPMIN:
-    return "Line search step at lower bound";
-  default:
-    return NULL;
-  }
+  return (ls != NULL ? ls->reason : OPK_ILLEGAL_ADDRESS);
 }
 
 opk_bool_t
 opk_lnsrch_has_errors(const opk_lnsrch_t* ls)
 {
-  return (opk_lnsrch_get_status(ls) < 0);
+  return (opk_lnsrch_get_status(ls) == OPK_LNSRCH_ERROR);
 }
 
 opk_bool_t
 opk_lnsrch_has_warnings(const opk_lnsrch_t* ls)
 {
-  return (opk_lnsrch_get_status(ls) > OPK_LNSRCH_CONVERGENCE);
+  return (opk_lnsrch_get_status(ls) == OPK_LNSRCH_WARNING);
 }
 
 opk_bool_t
@@ -250,35 +236,34 @@ struct _backtrack_lnsrch {
   double ftol;
 };
 
-static int
-backtrack_start(opk_lnsrch_t* _ws)
+static opk_lnsrch_status_t
+backtrack_start(opk_lnsrch_t* ls)
 {
-  return OPK_LNSRCH_SEARCH;
+  return success(ls, OPK_LNSRCH_SEARCH);
 }
 
-static int
+static opk_lnsrch_status_t
 backtrack_iterate(opk_lnsrch_t* ls,
                   double* stp_ptr, double f, double g)
 {
   backtrack_lnsrch_t* bls = (backtrack_lnsrch_t*)ls;
-  int status = OPK_LNSRCH_SEARCH;
 
+  /* Check for convergence otherwise take a (safeguarded) bisection step unless
+     already at the lower bound. */
   if (f <= ls->finit + bls->ftol*(*stp_ptr)*ls->ginit) {
     /* First Wolfe conditions satisfied. */
-    status = OPK_LNSRCH_CONVERGENCE;
-  } else {
-    /* Take a bisection step unless already at the lower bound. */
-    if (*stp_ptr <= ls->stpmin) {
-      status = OPK_LNSRCH_WARNING_STP_EQ_STPMIN;
-    } else {
-      *stp_ptr = (*stp_ptr + ls->stpmin)*0.5;
-    }
-    /* Safeguard the step. */
-    if (*stp_ptr < ls->stpmin) {
-      *stp_ptr = ls->stpmin;
-    }
+    return success(ls, OPK_LNSRCH_CONVERGENCE);
   }
-  return status;
+  if (*stp_ptr <= ls->stpmin) {
+    *stp_ptr = ls->stpmin;
+    return warning(ls, OPK_STEP_EQ_STPMIN);
+  }
+  *stp_ptr = (*stp_ptr + ls->stpmin)*0.5;
+  if (*stp_ptr < ls->stpmin) {
+    /* Safeguard the step. */
+    *stp_ptr = ls->stpmin;
+  }
+  return success(ls, OPK_LNSRCH_SEARCH);
 }
 
 static opk_lnsrch_operations_t backtrack_operations = {
@@ -293,7 +278,7 @@ opk_lnsrch_new_backtrack(double ftol)
 {
   opk_lnsrch_t* ls;
 
-  if (ftol <= 0.0) {
+  if (ftol <= 0) {
     errno = EINVAL;
     return NULL;
   }
@@ -322,7 +307,7 @@ struct _nonmonotone_lnsrch {
   opk_index_t mp;    /**< Number of steps since starting. */
 };
 
-static int
+static opk_lnsrch_status_t
 nonmonotone_start(opk_lnsrch_t* ls)
 {
   nonmonotone_lnsrch_t* nmls = (nonmonotone_lnsrch_t*)ls;
@@ -341,7 +326,7 @@ nonmonotone_start(opk_lnsrch_t* ls)
     }
   }
 
-  return OPK_LNSRCH_SEARCH;
+  return success(ls, OPK_LNSRCH_SEARCH);
 }
 
 #if 0
@@ -353,7 +338,7 @@ nonmonotone_reset(opk_lnsrch_t* ls)
 }
 #endif
 
-static int
+static opk_lnsrch_status_t
 nonmonotone_iterate(opk_lnsrch_t* ls,
                     double* stp_ptr, double f, double g)
 {
@@ -365,13 +350,13 @@ nonmonotone_iterate(opk_lnsrch_t* ls,
   delta = ls->ginit;  /* directional derivative at alpha=0 */
   if (f <= nmls->fmax + nmls->ftol*alpha*delta) {
     /* Convergence criterion satisfied. */
-    return OPK_LNSRCH_CONVERGENCE;
+    return success(ls, OPK_LNSRCH_CONVERGENCE);
   }
 
   /* Check whether step is already at the lower bound. */
   if (alpha <= ls->stpmin) {
     *stp_ptr = ls->stpmin;
-    return OPK_LNSRCH_WARNING_STP_EQ_STPMIN;
+    return warning(ls, OPK_STEP_EQ_STPMIN);
   }
 
   /* Attempt to use safeguarded quadratic interpolation to find a better step.
@@ -391,7 +376,10 @@ nonmonotone_iterate(opk_lnsrch_t* ls,
   /* Safeguard the step. */
   alpha = MAX(alpha, ls->stpmin);
   *stp_ptr = alpha;
-  return (alpha > 0.0 ? OPK_LNSRCH_SEARCH : OPK_LNSRCH_WARNING_STP_EQ_STPMIN);
+  if (alpha <= 0) {
+    return warning(ls, OPK_STEP_EQ_STPMIN);
+  }
+  return success(ls, OPK_LNSRCH_SEARCH);
 }
 
 static opk_lnsrch_operations_t nonmonotone_operations = {
@@ -467,14 +455,14 @@ struct _csrch_lnsrch {
 static csrch_lnsrch_t*
 csrch_get_workspace(opk_lnsrch_t* ls);
 
-static int
+static opk_lnsrch_status_t
 csrch_start(opk_lnsrch_t* ls)
 {
   csrch_lnsrch_t* cls;
 
   cls = csrch_get_workspace(ls);
   if (cls == NULL) {
-    return OPK_LNSRCH_ERROR_CORRUPTED_WORKSPACE;
+    return failure(ls, OPK_CORRUPTED_WORKSPACE);
   }
 
   /* Convergence threshold for this step. */
@@ -500,41 +488,41 @@ csrch_start(opk_lnsrch_t* ls)
   cls->gy = cls->base.ginit;
 
   cls->stage = 1;
-  return OPK_LNSRCH_SEARCH;
+  return success(ls, OPK_LNSRCH_SEARCH);
 }
 
-static int
-csrch_iterate(opk_lnsrch_t* _ws,
+static opk_lnsrch_status_t
+csrch_iterate(opk_lnsrch_t* ls,
               double* stp_ptr, double f1, double g1)
 {
   double ftest;
   csrch_lnsrch_t* cls;
   int result;
 
-  cls = csrch_get_workspace(_ws);
+  cls = csrch_get_workspace(ls);
   if (cls == NULL) {
-    return OPK_LNSRCH_ERROR_CORRUPTED_WORKSPACE;
+    return failure(ls, OPK_CORRUPTED_WORKSPACE);
   }
 
   /* Test for convergence. */
   ftest = cls->base.finit + (*stp_ptr)*cls->gtest;
   if (f1 <= ftest && fabs(g1) <= -cls->gtol*cls->base.ginit) {
     /* Strong Wolfe conditions satisfied. */
-    return OPK_LNSRCH_CONVERGENCE;
+    return success(ls, OPK_LNSRCH_CONVERGENCE);
   }
 
   /* Test for warnings. */
   if (*stp_ptr == cls->base.stpmin && (f1 > ftest || g1 >= cls->gtest)) {
-    return OPK_LNSRCH_WARNING_STP_EQ_STPMIN;
+    return warning(ls, OPK_STEP_EQ_STPMIN);
   }
   if (*stp_ptr == cls->base.stpmax && f1 <= ftest && g1 <= cls->gtest) {
-    return OPK_LNSRCH_WARNING_STP_EQ_STPMAX;
+    return warning(ls, OPK_STEP_EQ_STPMAX);
   }
   if (cls->brackt && cls->stmax - cls->stmin <= cls->xtol * cls->stmax) {
-    return OPK_LNSRCH_WARNING_XTOL_TEST_SATISFIED;
+    return warning(ls, OPK_XTOL_TEST_SATISFIED);
   }
   if (cls->brackt && (*stp_ptr <= cls->stmin || *stp_ptr >= cls->stmax)) {
-    return OPK_LNSRCH_WARNING_ROUNDING_ERRORS_PREVENT_PROGRESS;
+    return warning(ls, OPK_ROUNDING_ERRORS_PREVENT_PROGRESS);
   }
 
   /* If psi(stp) <= 0 and f'(stp) >= 0 for some step, then the
@@ -560,8 +548,8 @@ csrch_iterate(opk_lnsrch_t* _ws,
                        &cls->sty, &fym, &gym,
                        stp_ptr, fm, gm,
                        &cls->brackt, cls->stmin, cls->stmax);
-    if (result < 0) {
-      return result;
+    if (result != OPK_SUCCESS) {
+      return failure(ls, result);
     }
     cls->fx = fxm + cls->stx * cls->gtest;
     cls->fy = fym + cls->sty * cls->gtest;
@@ -573,8 +561,8 @@ csrch_iterate(opk_lnsrch_t* _ws,
                        &cls->sty, &cls->fy, &cls->gy,
                        stp_ptr, f1, g1,
                        &cls->brackt, cls->stmin, cls->stmax);
-    if (result < 0) {
-      return result;
+    if (result != OPK_SUCCESS) {
+      return failure(ls, result);
     }
   }
 
@@ -609,7 +597,7 @@ csrch_iterate(opk_lnsrch_t* _ws,
   }
 
   /* Obtain another function and derivative. */
-  return OPK_LNSRCH_SEARCH;
+  return success(ls, OPK_LNSRCH_SEARCH);
 }
 
 static opk_lnsrch_operations_t csrch_operations = {
@@ -633,33 +621,30 @@ csrch_get_workspace(opk_lnsrch_t* ls)
 opk_lnsrch_t*
 opk_lnsrch_new_csrch(double ftol, double gtol, double xtol)
 {
-  opk_lnsrch_t* _ws;
+  opk_lnsrch_t* ls;
 
-  if (ftol < 0.0) {
-    /* ERROR: FTOL .LT. ZERO */
+  if (ftol < 0) {
     errno = EINVAL;
     return NULL;
   }
-  if (gtol < 0.0) {
-    /* ERROR: GTOL .LT. ZERO */
+  if (gtol < 0) {
     errno = EINVAL;
     return NULL;
   }
-  if (xtol < 0.0) {
-    /* ERROR: XTOL .LT. ZERO */
+  if (xtol < 0) {
     errno = EINVAL;
     return NULL;
   }
-  _ws = opk_allocate_line_search(&csrch_operations,
+  ls = opk_allocate_line_search(&csrch_operations,
                                  sizeof(csrch_lnsrch_t));
-  if (_ws != NULL) {
-    csrch_lnsrch_t* ws = (csrch_lnsrch_t*)_ws;
-    ws->ftol = ftol;
-    ws->gtol = gtol;
-    ws->xtol = xtol;
-    ws->stage = 0;
+  if (ls != NULL) {
+    csrch_lnsrch_t* cls = (csrch_lnsrch_t*)ls;
+    cls->ftol = ftol;
+    cls->gtol = gtol;
+    cls->xtol = xtol;
+    cls->stage = 0;
   }
-  return _ws;
+  return ls;
 }
 
 /**
@@ -875,18 +860,10 @@ static double max3(double val1, double val2, double val3)
  *        be set to false On exit, brackt specifies if a minimizer has been
  *        bracketed.  When a minimizer is bracketed brackt is set to true.
  *
- * @return A strictly negative value on error, a strictly positive value on
- * success.  The value returned on success is between 1 and 4 and corresponds
- * to one of the four possible cases.  The value returned on error is one of:
- *
- *    OPK_LNSRCH_ERROR_STP_OUTSIDE_BRACKET
- *    if brackt is true but the step is outside the bracket endpoints.
- *
- *    OPK_LNSRCH_ERROR_NOT_A_DESCENT
- *    if the descent condition is violated.
- *
- *    OPK_LNSRCH_ERROR_STPMIN_GT_STPMAX
- *    if stpmin > stpmax.
+ * @return `OPK_SUCCESS` on success; `OPK_SETP_OUTSIDE_BRACKET` if `brackt` is
+ *    true but the step is outside the bracket endpoints; `OPK_NOT_A_DESCENT`
+ *    if the descent condition is violated; `OPK_STPMIN_GT_STPMAX` if `stpmin`
+ *    is greater than `stpmax`.
  *
  * @history
  * MINPACK-1 Project. June 1983
@@ -897,10 +874,11 @@ static double max3(double val1, double val2, double val3)
  * Argonne National Laboratory and University of Minnesota.
  * Brett M. Averick and Jorge J. Moré.
  */
-int opk_cstep(double* stx_ptr, double* fx_ptr, double* dx_ptr,
-              double* sty_ptr, double* fy_ptr, double* dy_ptr,
-              double* stp_ptr, double  fp,     double  dp,
-              int* brackt_ptr, double stpmin, double stpmax)
+opk_status_t
+opk_cstep(double* stx_ptr, double* fx_ptr, double* dx_ptr,
+          double* sty_ptr, double* fy_ptr, double* dy_ptr,
+          double* stp_ptr, double  fp,     double  dp,
+          int* brackt_ptr, double stpmin, double stpmax)
 {
   /* Constants. */
   const double ZERO = 0.0;
@@ -917,16 +895,16 @@ int opk_cstep(double* stx_ptr, double* fx_ptr, double* dx_ptr,
   double stpc; /* cubic step */
   double stpq; /* quadratic step */
   double stpf;
-  int opposite, result;
+  int opposite;
 
   /* Check the input parameters for errors. */
   if ((*brackt_ptr) && (stx < sty ? (stp <= stx || stp >= sty)
                                   : (stp <= sty || stp >= stx))) {
-    return OPK_LNSRCH_ERROR_STP_OUTSIDE_BRACKET;
+    return OPK_STEP_OUTSIDE_BRACKET;
   } else if (dx*(stp - stx) >= ZERO) {
-    return OPK_LNSRCH_ERROR_NOT_A_DESCENT;
+    return OPK_NOT_A_DESCENT;
   } else if (stpmin > stpmax) {
-    return OPK_LNSRCH_ERROR_STPMIN_GT_STPMAX;
+    return OPK_STPMIN_GT_STPMAX;
   }
 
   /* Determine if the derivatives have opposite signs. */
@@ -937,7 +915,6 @@ int opk_cstep(double* stx_ptr, double* fx_ptr, double* dx_ptr,
        the cubic step is closer to STX than the quadratic step, the cubic step
        is taken, otherwise the average of the cubic and quadratic steps is
        taken. */
-    result = 1;
     *brackt_ptr = TRUE;
     theta = THREE*(fx - fp)/(stp - stx) + dx + dp;
     s = max3(fabs(theta), fabs(dx), fabs(dp));
@@ -959,7 +936,6 @@ int opk_cstep(double* stx_ptr, double* fx_ptr, double* dx_ptr,
        The minimum is bracketed.  If the cubic step is farther from STP than
        the secant (quadratic) step, the cubic step is taken, otherwise the
        secant step is taken. */
-    result = 2;
     *brackt_ptr = TRUE;
     theta = THREE*(fx - fp)/(stp - stx) + dx + dp;
     s = max3(fabs(theta), fabs(dx), fabs(dp));
@@ -983,7 +959,6 @@ int opk_cstep(double* stx_ptr, double* fx_ptr, double* dx_ptr,
        the minimum of the cubic is beyond STP.  Otherwise the cubic step is
        defined to be the secant step.  The case GAMMA = 0 only arises if the
        cubic does not tend to infinity in the direction of the step. */
-    result = 3;
     theta = THREE*(fx - fp)/(stp - stx) + dx + dp;
     s = max3(fabs(theta), fabs(dx), fabs(dp));
     temp = theta/s;
@@ -1036,7 +1011,6 @@ int opk_cstep(double* stx_ptr, double* fx_ptr, double* dx_ptr,
        the magnitude of the derivative does not decrease.  If the minimum is
        not bracketed, the step is either STPMIN or STPMAX, otherwise the cubic
        step is taken. */
-    result = 4;
     if (*brackt_ptr) {
       theta = THREE*(fp - fy)/(sty - stp) + dy + dp;
       s = max3(fabs(theta), fabs(dy), fabs(dp));
@@ -1073,5 +1047,5 @@ int opk_cstep(double* stx_ptr, double* fx_ptr, double* dx_ptr,
 
   /* Store the new safeguarded step. */
   *stp_ptr = stpf;
-  return result;
+  return OPK_SUCCESS;
 }

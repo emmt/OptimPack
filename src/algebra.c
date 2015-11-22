@@ -425,13 +425,12 @@ opk_set_scalar_bound(opk_bound_t* bnd, double val)
   }
 }
 
-int
+opk_status_t
 opk_set_vector_bound(opk_bound_t* bnd, opk_vector_t* vec)
 {
   if (bnd != NULL) {
     if (vec != NULL && bnd->owner != vec->owner) {
-      errno = EINVAL;
-      return OPK_FAILURE;
+      return OPK_BAD_SPACE;
     }
     opk_unset_bound(bnd);
     if (vec != NULL) {
@@ -485,7 +484,7 @@ get_bound(const void** lower, const opk_bound_t* xl,
   return type;
 }
 
-int
+opk_status_t
 opk_box_project_variables(opk_vector_t* dst,
                           const opk_vector_t* x,
                           const opk_bound_t* xl,
@@ -497,25 +496,22 @@ opk_box_project_variables(opk_vector_t* dst,
   int type;
 
   if (dst == NULL || x == NULL) {
-    errno = EFAULT;
-    return OPK_FAILURE;
+    return OPK_ILLEGAL_ADDRESS;
   }
   space = dst->owner;
   if (x->owner != space
       || (xl != NULL && xl->owner != space)
       || (xu != NULL && xu->owner != space)) {
-    errno = EINVAL;
-    return OPK_FAILURE;
+    return OPK_BAD_SPACE;
   }
   type = get_bound(&lower, xl, &upper, xu);
   if (space->ops->boxprojvar == NULL) {
-    errno = ENOSYS;
-    return OPK_FAILURE;
+    return OPK_NOT_IMPLEMENTED;
   }
   return space->ops->boxprojvar(space, dst, x, lower, upper, type);
 }
 
-int
+opk_status_t
 opk_box_project_direction(opk_vector_t* dst,
                           const opk_vector_t* x,
                           const opk_bound_t* xl,
@@ -529,26 +525,23 @@ opk_box_project_direction(opk_vector_t* dst,
   int type;
 
   if (dst == NULL || x == NULL || d == NULL) {
-    errno = EFAULT;
-    return OPK_FAILURE;
+    return OPK_ILLEGAL_ADDRESS;
   }
   space = dst->owner;
   if (x->owner != space || d->owner != space
       || (xl != NULL && xl->owner != space)
       || (xu != NULL && xu->owner != space)) {
-    errno = EINVAL;
-    return OPK_FAILURE;
+    return OPK_BAD_SPACE;
   }
   type = get_bound(&lower, xl, &upper, xu);
   if (space->ops->boxprojdir == NULL) {
-    errno = ENOSYS;
-    return OPK_FAILURE;
+    return OPK_NOT_IMPLEMENTED;
   }
   return space->ops->boxprojdir(space, dst, x, lower, upper, type,
                                 d, orient);
 }
 
-int
+opk_status_t
 opk_box_get_free_variables(opk_vector_t* dst,
                            const opk_vector_t* x,
                            const opk_bound_t* xl,
@@ -562,26 +555,23 @@ opk_box_get_free_variables(opk_vector_t* dst,
   int type;
 
   if (dst == NULL || x == NULL || d == NULL) {
-    errno = EFAULT;
-    return OPK_FAILURE;
+    return OPK_ILLEGAL_ADDRESS;
   }
   space = dst->owner;
   if (x->owner != space || d->owner != space
       || (xl != NULL && xl->owner != space)
       || (xu != NULL && xu->owner != space)) {
-    errno = EINVAL;
-    return OPK_FAILURE;
+    return OPK_BAD_SPACE;
   }
   type = get_bound(&lower, xl, &upper, xu);
   if (space->ops->boxfreevar == NULL) {
-    errno = ENOSYS;
-    return OPK_FAILURE;
+    return OPK_NOT_IMPLEMENTED;
   }
   return space->ops->boxfreevar(space, dst, x, lower, upper, type,
                                 d, orient);
 }
 
-extern int
+extern opk_status_t
 opk_box_get_step_limits(double* smin, double* wolfe, double *smax,
                         const opk_vector_t* x,
                         const opk_bound_t* xl,
@@ -595,20 +585,17 @@ opk_box_get_step_limits(double* smin, double* wolfe, double *smax,
   int type;
 
   if (x == NULL || d == NULL) {
-    errno = EFAULT;
-    return OPK_FAILURE;
+    return OPK_ILLEGAL_ADDRESS;
   }
   space = x->owner;
   if (d->owner != space
       || (xl != NULL && xl->owner != space)
       || (xu != NULL && xu->owner != space)) {
-    errno = EINVAL;
-    return OPK_FAILURE;
+    return OPK_BAD_SPACE;
   }
   type = get_bound(&lower, xl, &upper, xu);
   if (space->ops->boxsteplimits == NULL) {
-    errno = ENOSYS;
-    return OPK_FAILURE;
+    return OPK_NOT_IMPLEMENTED;
   }
   return space->ops->boxsteplimits(space, smin, wolfe, smax,
                                    x, lower, upper, type, d, orient);
@@ -654,59 +641,50 @@ opk_allocate_operator(const opk_operator_operations_t* ops,
   return op;
 }
 
-int
+opk_status_t
 opk_apply_direct(opk_operator_t* op, opk_vector_t* dst,
                  const opk_vector_t* src)
 {
   if (op == NULL || dst == NULL || src == NULL) {
-    errno = EFAULT;
-    return OPK_FAILURE;
+    return OPK_ILLEGAL_ADDRESS;
   }
   if (dst->owner != op->outspace || src->owner != op->inpspace) {
-    errno = EINVAL;
-    return OPK_FAILURE;
+    return OPK_BAD_SPACE;
   }
   if (op->ops->apply_direct == NULL) {
-    errno = EPERM; /* Operation not permitted */
-    return OPK_FAILURE;
+    return OPK_NOT_IMPLEMENTED;
   }
   return op->ops->apply_direct(op, dst, src);
 }
 
-int
+opk_status_t
 opk_apply_adjoint(opk_operator_t* op, opk_vector_t* dst,
                  const opk_vector_t* src)
 {
   if (op == NULL || dst == NULL || src == NULL) {
-    errno = EFAULT;
-    return OPK_FAILURE;
+    return OPK_ILLEGAL_ADDRESS;
   }
   if (dst->owner != op->inpspace || src->owner != op->outspace) {
-    errno = EINVAL;
-    return OPK_FAILURE;
+    return OPK_BAD_SPACE;
   }
   if (op->ops->apply_adjoint == NULL) {
-    errno = EPERM; /* Operation not permitted */
-    return OPK_FAILURE;
+    return OPK_NOT_IMPLEMENTED;
   }
   return op->ops->apply_adjoint(op, dst, src);
 }
 
-int
+opk_status_t
 opk_apply_inverse(opk_operator_t* op, opk_vector_t* dst,
                  const opk_vector_t* src)
 {
   if (op == NULL || dst == NULL || src == NULL) {
-    errno = EFAULT;
-    return OPK_FAILURE;
+    return OPK_ILLEGAL_ADDRESS;
   }
   if (dst->owner != op->inpspace || src->owner != op->outspace) {
-    errno = EINVAL;
-    return OPK_FAILURE;
+    return OPK_BAD_SPACE;
   }
   if (op->ops->apply_inverse == NULL) {
-    errno = EPERM; /* Operation not permitted */
-    return OPK_FAILURE;
+    return OPK_NOT_IMPLEMENTED;
   }
   return op->ops->apply_inverse(op, dst, src);
 }

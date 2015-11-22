@@ -96,9 +96,9 @@ struct _opk_nlcg {
                             (for information). */
   double stpmin;         /* Relative lower bound for the step length. */
   double stpmax;         /* Relative upper bound for the step length. */
-  int (*update)(opk_nlcg_t* opt,
-                const opk_vector_t* x1,
-                const opk_vector_t* g1);
+  opk_status_t (*update)(opk_nlcg_t* opt,
+                         const opk_vector_t* x1,
+                         const opk_vector_t* g1);
                          /* The update "method" is called to update the search
                             direction.  The returned value indicates whether
                             the updating rule has been successful, otherwise a
@@ -115,6 +115,7 @@ struct _opk_nlcg {
   opk_index_t nrestarts; /* Number of algorithm restarts. */
   opk_index_t nevals;    /* Number of function and gradient evaluations. */
   unsigned int method;   /* Conjugate gradient method. */
+  opk_status_t status;   /* Current error status. */
   opk_task_t task;       /* Current caller task. */
   opk_bool_t start;      /* Indicate whether algorithm is starting */
   opk_bool_t fmin_given; /* Indicate whether FMIN is specified. */
@@ -135,6 +136,22 @@ static int
 non_finite(double x)
 {
   return (isnan(x) || isinf(x));
+}
+
+static opk_task_t
+success(opk_nlcg_t* opt, opk_task_t task)
+{
+  opt->status = OPK_SUCCESS;
+  opt->task = task;
+  return opt->task;
+}
+
+static opk_task_t
+failure(opk_nlcg_t* opt, opk_status_t status)
+{
+  opt->status = status;
+  opt->task = OPK_TASK_ERROR;
+  return opt->task;
 }
 
 /*
@@ -158,36 +175,34 @@ non_finite(double x)
  */
 
 /* Helper function to compute search direction as: p' = g1 + beta*p. */
-static int
+static opk_status_t
 update0(opk_nlcg_t* opt,
         const opk_vector_t* g1,
         double beta)
 {
-  if ((opt->beta = beta) != 0.0) {
-    opk_vaxpby(opt->p, 1.0, g1, beta, opt->p);
-    return OPK_SUCCESS;
-  } else {
-    return OPK_FAILURE;
+  if ((opt->beta = beta) == 0) {
+    return OPK_INVALID_ARGUMENT;
   }
+  opk_vaxpby(opt->p, 1, g1, beta, opt->p);
+  return OPK_SUCCESS;
 }
 
 /* Helper function to compute search direction as: p' = g1 + beta*p
    possibly with the constraint that beta > 0. */
-static int
+static opk_status_t
 update1(opk_nlcg_t* opt,
         const opk_vector_t* g1,
         double beta)
 {
-  if ((opt->method & OPK_NLCG_POWELL) != 0 && beta < 0.0) {
+  if ((opt->method & OPK_NLCG_POWELL) != 0 && beta < 0) {
     ++opt->nrestarts;
-    beta = 0.0;
+    beta = 0;
   }
-  if ((opt->beta = beta) != 0.0) {
-    opk_vaxpby(opt->p, 1.0, g1, beta, opt->p);
-    return OPK_SUCCESS;
-  } else {
-    return OPK_FAILURE;
+  if ((opt->beta = beta) == 0) {
+    return OPK_INVALID_ARGUMENT;
   }
+  opk_vaxpby(opt->p, 1, g1, beta, opt->p);
+  return OPK_SUCCESS;
 }
 
 /* Form: Y = G1 - G0 */
@@ -205,7 +220,7 @@ form_y(opk_nlcg_t* opt,
  *
  * with y = g1 - g0.
  */
-static int
+static opk_status_t
 update_Hestenes_Stiefel(opk_nlcg_t* opt,
                         const opk_vector_t* x1,
                         const opk_vector_t* g1)
@@ -225,7 +240,7 @@ update_Hestenes_Stiefel(opk_nlcg_t* opt,
  *
  * (this value is always >= 0 and can only be zero at a stationary point).
  */
-static int
+static opk_status_t
 update_Fletcher_Reeves(opk_nlcg_t* opt,
                        const opk_vector_t* x1,
                        const opk_vector_t* g1)
@@ -239,7 +254,7 @@ update_Fletcher_Reeves(opk_nlcg_t* opt,
  *
  *     beta = <g1,y>/<g0,g0>
  */
-static int
+static opk_status_t
 update_Polak_Ribiere_Polyak(opk_nlcg_t* opt,
                             const opk_vector_t* x1,
                             const opk_vector_t* g1)
@@ -257,7 +272,7 @@ update_Polak_Ribiere_Polyak(opk_nlcg_t* opt,
  *
  * (this value is always >= 0 and can only be zero at a stationnary point).
  */
-static int
+static opk_status_t
 update_Fletcher(opk_nlcg_t* opt,
                 const opk_vector_t* x1,
                 const opk_vector_t* g1)
@@ -271,7 +286,7 @@ update_Fletcher(opk_nlcg_t* opt,
  *
  *     beta = <g1,y>/(-<d,g0>)
  */
-static int
+static opk_status_t
 update_Liu_Storey(opk_nlcg_t* opt,
                   const opk_vector_t* x1,
                   const opk_vector_t* g1)
@@ -288,7 +303,7 @@ update_Liu_Storey(opk_nlcg_t* opt,
  *
  *     beta = <g1,g1>/<d,y>
  */
-static int
+static opk_status_t
 update_Dai_Yuan(opk_nlcg_t* opt,
                 const opk_vector_t* x1,
                 const opk_vector_t* g1)
@@ -306,7 +321,7 @@ update_Dai_Yuan(opk_nlcg_t* opt,
  *     beta = <y - (2*<y,y>/<d,y>)*d,g1>
  *          = (<g1,y> - 2*<y,y>*<d,g1>/<d,y>)/<d,y>
  */
-static int
+static opk_status_t
 update_Hager_Zhang(opk_nlcg_t* opt,
                    const opk_vector_t* x1,
                    const opk_vector_t* g1)
@@ -359,7 +374,7 @@ update_Hager_Zhang(opk_nlcg_t* opt,
  * with alpha the step length, s = x1 - x0 = alpha*d = -alpha*p.  For this
  * method, beta = c2/c1.
  */
-static int
+static opk_status_t
 update_Perry_Shanno(opk_nlcg_t* opt,
                     const opk_vector_t* x1,
                     const opk_vector_t* g1)
@@ -367,9 +382,13 @@ update_Perry_Shanno(opk_nlcg_t* opt,
   double yy, dy, g1y, dg1, c1, c2, c3;
   form_y(opt, g1);
   yy = opk_vdot(opt->y, opt->y);
-  if (yy <= 0.0) return OPK_FAILURE;
+  if (yy <= 0) {
+    return OPK_INVALID_ARGUMENT;
+  }
   dy = -opk_vdot(opt->p, opt->y);
-  if (dy == 0.0) return OPK_FAILURE;
+  if (dy == 0) {
+    return OPK_INVALID_ARGUMENT;
+  }
   g1y = opk_vdot(g1, opt->y);
   dg1 = opt->dg1;
   c1 = dy/yy;
@@ -402,9 +421,9 @@ opk_new_nlcg_optimizer_with_line_search(opk_vspace_t* vspace,
 {
   opk_nlcg_t* opt;
   opk_bool_t g0_needed, y_needed;
-  int (*update)(opk_nlcg_t* opt,
-                const opk_vector_t* x1,
-                const opk_vector_t* g1);
+  opk_status_t (*update)(opk_nlcg_t* opt,
+                         const opk_vector_t* x1,
+                         const opk_vector_t* g1);
 
   /* Check the input arguments for errors. */
   if (vspace == NULL || lnsrch == NULL) {
@@ -524,16 +543,14 @@ opk_get_nlcg_gatol(opk_nlcg_t* opt)
   return (opt == NULL ? GATOL : opt->gatol);
 }
 
-int
+opk_status_t
 opk_set_nlcg_gatol(opk_nlcg_t* opt, double gatol)
 {
   if (opt == NULL) {
-    errno = EFAULT;
-    return OPK_FAILURE;
+    return OPK_ILLEGAL_ADDRESS;
   }
-  if (non_finite(gatol) || gatol < 0.0) {
-    errno = EINVAL;
-    return OPK_FAILURE;
+  if (non_finite(gatol) || gatol < 0) {
+    return OPK_INVALID_ARGUMENT;
   }
   opt->gatol = gatol;
   return OPK_SUCCESS;
@@ -545,16 +562,14 @@ opk_get_nlcg_grtol(opk_nlcg_t* opt)
   return (opt == NULL ? GRTOL : opt->grtol);
 }
 
-int
+opk_status_t
 opk_set_nlcg_grtol(opk_nlcg_t* opt, double grtol)
 {
   if (opt == NULL) {
-    errno = EFAULT;
-    return OPK_FAILURE;
+    return OPK_ILLEGAL_ADDRESS;
   }
-  if (non_finite(grtol) || grtol < 0.0) {
-    errno = EINVAL;
-    return OPK_FAILURE;
+  if (non_finite(grtol) || grtol < 0) {
+    return OPK_INVALID_ARGUMENT;
   }
   opt->grtol = grtol;
   return OPK_SUCCESS;
@@ -578,29 +593,26 @@ opk_get_nlcg_stpmax(opk_nlcg_t* opt)
   return (opt == NULL ? STPMAX : opt->stpmax);
 }
 
-int
+opk_status_t
 opk_set_nlcg_stpmin_and_stpmax(opk_nlcg_t* opt, double stpmin, double stpmax)
 {
   if (opt == NULL) {
-    errno = EFAULT;
-    return OPK_FAILURE;
+    return OPK_ILLEGAL_ADDRESS;
   }
   if (non_finite(stpmin) || non_finite(stpmax) ||
-      stpmin < 0.0 || stpmax <= stpmin) {
-    errno = EINVAL;
-    return OPK_FAILURE;
+      stpmin < 0 || stpmax <= stpmin) {
+    return OPK_INVALID_ARGUMENT;
   }
   opt->stpmin = stpmin;
   opt->stpmax = stpmax;
   return OPK_SUCCESS;
 }
 
-int
+opk_status_t
 opk_get_nlcg_fmin(opk_nlcg_t* opt, double* fmin)
 {
   if (opt == NULL) {
-    errno = EFAULT;
-    return OPK_FAILURE;
+    return OPK_ILLEGAL_ADDRESS;
   }
   if (opt->fmin_given) {
     if (fmin != NULL) {
@@ -608,32 +620,29 @@ opk_get_nlcg_fmin(opk_nlcg_t* opt, double* fmin)
     }
     return OPK_SUCCESS;
   } else {
-    return OPK_FAILURE;
+    return OPK_UNDEFINED_VALUE;
   }
 }
 
-int
+opk_status_t
 opk_set_nlcg_fmin(opk_nlcg_t* opt, double fmin)
 {
   if (opt == NULL) {
-    errno = EFAULT;
-    return OPK_FAILURE;
+    return OPK_ILLEGAL_ADDRESS;
   }
   if (isnan(fmin) || isinf(fmin)) {
-    errno = EINVAL;
-    return OPK_FAILURE;
+    return OPK_INVALID_ARGUMENT;
   }
   opt->fmin = fmin;
   opt->fmin_given = TRUE;
   return OPK_SUCCESS;
 }
 
-int
+opk_status_t
 opk_unset_nlcg_fmin(opk_nlcg_t* opt)
 {
   if (opt == NULL) {
-    errno = EFAULT;
-    return OPK_FAILURE;
+    return OPK_ILLEGAL_ADDRESS;
   }
   opt->fmin_given = FALSE;
   return OPK_SUCCESS;
@@ -687,9 +696,8 @@ opk_start_nlcg(opk_nlcg_t* opt)
   opt->iter = 0;
   opt->nevals = 0;
   opt->nrestarts = 0;
-  opt->task = OPK_TASK_COMPUTE_FG;
   opt->start = TRUE;
-  return opt->task;
+  return success(opt, OPK_TASK_COMPUTE_FG);
 }
 
 opk_task_t
@@ -702,7 +710,8 @@ opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x1,
    *            = x_{k} - \alpha_{k} p_{k}
    * as we consider the anti-search direction p = -d here.
    */
-  int status = 0;
+  opk_status_t status = 0;
+  opk_lnsrch_status_t lnsrch_status = 0;
 
   if (opt->task == OPK_TASK_COMPUTE_FG) {
     opk_bool_t accept;
@@ -715,12 +724,14 @@ opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x1,
       /* Compute directional derivative and check whether line search has
          converged. */
       opt->dg1 = -opk_vdot(opt->p, g1);
-      status = opk_lnsrch_iterate(opt->lnsrch, &opt->alpha, f1, opt->dg1);
-      if (status != 0) {
-        /* Line search is finished, hopefully because of convergence
-           (FIXME: check for warnings). */
-        if (status < 0) {
-          goto line_search_error;
+      lnsrch_status = opk_lnsrch_iterate(opt->lnsrch, &opt->alpha, f1, opt->dg1);
+      if (lnsrch_status != OPK_LNSRCH_SEARCH) {
+        /* Line search is finished, hopefully because of convergence. */
+        if (lnsrch_status != OPK_LNSRCH_CONVERGENCE) {
+          status = opk_lnsrch_get_reason(opt->lnsrch);
+          if (status != OPK_ROUNDING_ERRORS_PREVENT_PROGRESS) {
+            return failure(opt, status);
+          }
         }
         ++opt->iter;
         opt->g1norm = opk_vnorm2(g1);
@@ -800,11 +811,11 @@ opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x1,
 
     /* Start the line search. */
     opt->dg1 = opt->dg0;
-    status = opk_lnsrch_start(opt->lnsrch, opt->f0, opt->dg0, opt->alpha,
-                              opt->stpmin*opt->alpha,
-                              opt->stpmax*opt->alpha);
-    if (status < 0) {
-      goto line_search_error;
+    lnsrch_status = opk_lnsrch_start(opt->lnsrch, opt->f0, opt->dg0, opt->alpha,
+                                     opt->stpmin*opt->alpha,
+                                     opt->stpmax*opt->alpha);
+    if (lnsrch_status != OPK_LNSRCH_SEARCH) {
+      return failure(opt, opk_lnsrch_get_reason(opt->lnsrch));
     }
   } else {
     return opt->task;
@@ -814,12 +825,5 @@ opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x1,
   opk_vaxpby(x1, 1.0, opt->x0, -opt->alpha, opt->p);
   opt->start = FALSE;
   opt->task = OPK_TASK_COMPUTE_FG;
-  return opt->task;
-
-  /* Some errors occurred in line search. */
- line_search_error:
-  fprintf(stderr, "opk_lnsrch_start error: %d\n", status);
-  /* FIXME: add line search error state */
-  opt->task = OPK_TASK_ERROR;
   return opt->task;
 }

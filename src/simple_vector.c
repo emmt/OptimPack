@@ -340,7 +340,7 @@ axpbypcz(opk_vspace_t* vspace, opk_vector_t *vdst,
 #define MIN(a,b) ((a) <= (b) ? (a) : (b))
 #define MAX(a,b) ((a) >= (b) ? (a) : (b))
 
-static int
+static opk_status_t
 boxprojvar(opk_vspace_t* space,
            opk_vector_t* dstvec,
            const opk_vector_t* srcvec,
@@ -445,7 +445,7 @@ boxprojvar(opk_vspace_t* space,
   return OPK_SUCCESS;
 }
 
-static int
+static opk_status_t
 boxprojdir(opk_vspace_t* space, opk_vector_t* dstvec,
            const opk_vector_t* srcvec,
            const void* lower, const void* upper, int bound,
@@ -548,7 +548,7 @@ boxprojdir(opk_vspace_t* space, opk_vector_t* dstvec,
   return OPK_SUCCESS;
 }
 
-static int
+static opk_status_t
 boxfreevar(opk_vspace_t* space, opk_vector_t* dstvec,
            const opk_vector_t* srcvec,
            const void* lower, const void* upper, int bound,
@@ -655,7 +655,7 @@ boxfreevar(opk_vspace_t* space, opk_vector_t* dstvec,
   return OPK_SUCCESS;
 }
 
-static int
+static opk_status_t
 boxsteplimits(opk_vspace_t* space,
               double* smin, double* wolfe, double* smax,
               const opk_vector_t* xvec,
@@ -929,16 +929,13 @@ REWRAP_VECTOR(opk_vector_t* v, REAL new_data[],
 
   /* Check arguments. */
   if (v == NULL) {
-    errno = EFAULT;
-    return OPK_FAILURE;
+    return OPK_ILLEGAL_ADDRESS;
   }
   if (v->owner->ops != &operations) {
-    errno = EINVAL;
-    return OPK_FAILURE;
+    return OPK_BAD_SPACE;
   }
   if (new_data == NULL) {
-    errno = EFAULT;
-    return OPK_FAILURE;
+    return OPK_ILLEGAL_ADDRESS;
   }
 
   /* Get old members and make sure to not apply free_client_data again. */

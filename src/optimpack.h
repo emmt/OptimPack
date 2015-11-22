@@ -224,16 +224,75 @@
 
 OPK_BEGIN_C_DECLS
 
+#define _OPK_STATUS_LIST                                                \
+  _OPK_STATUS( 0, OPK_SUCCESS, "Success")                               \
+  _OPK_STATUS( 1, OPK_INVALID_ARGUMENT, "Invalid argument")             \
+  _OPK_STATUS( 2, OPK_INSUFFICIENT_MEMORY, "Insufficient memory")       \
+  _OPK_STATUS( 3, OPK_ILLEGAL_ADDRESS, "Illegal address")               \
+  _OPK_STATUS( 4, OPK_NOT_IMPLEMENTED, "Not implemented")               \
+  _OPK_STATUS( 5, OPK_CORRUPTED_WORKSPACE, "Corrupted workspace")       \
+  _OPK_STATUS( 6, OPK_BAD_SPACE, "Bad variable space")                  \
+  _OPK_STATUS( 7, OPK_NOT_STARTED, "Line search not started")           \
+  _OPK_STATUS( 8, OPK_NOT_A_DESCENT, "Not a descent direction")         \
+  _OPK_STATUS( 9, OPK_STEP_CHANGED, "Step changed")                     \
+  _OPK_STATUS(10, OPK_STEP_OUTSIDE_BRACKET, "Step outside bracket")     \
+  _OPK_STATUS(11, OPK_STPMIN_GT_STPMAX,                                 \
+               "Lower step bound larger than upper bound")              \
+  _OPK_STATUS(12, OPK_STPMIN_LT_ZERO,                                   \
+              "Minimal step length less than zero")                     \
+  _OPK_STATUS(13, OPK_STEP_LT_STPMIN, "Step lesser than lower bound")   \
+  _OPK_STATUS(14, OPK_STEP_GT_STPMAX, "Step greater than upper bound")  \
+  _OPK_STATUS(15, OPK_FTOL_TEST_SATISFIED,                              \
+              "Convergence within variable tolerance")                  \
+  _OPK_STATUS(16, OPK_GTOL_TEST_SATISFIED,                              \
+                "Convergence within function tolerance")                \
+  _OPK_STATUS(17, OPK_XTOL_TEST_SATISFIED,                              \
+                "Convergence within gradient tolerance")                \
+  _OPK_STATUS(18, OPK_STEP_EQ_STPMAX, "Step blocked at upper bound")    \
+  _OPK_STATUS(19, OPK_STEP_EQ_STPMIN, "Step blocked at lower bound")    \
+  _OPK_STATUS(20, OPK_ROUNDING_ERRORS_PREVENT_PROGRESS,                 \
+              "Rounding errors prevent progress")                       \
+  _OPK_STATUS(21, OPK_BAD_PRECONDITIONER,                               \
+              "Preconditioner is not positive definite")                \
+  _OPK_STATUS(22, OPK_INFEASIBLE_BOUNDS, "Box set is infeasible")       \
+  _OPK_STATUS(23, OPK_WOULD_BLOCK,                                      \
+              "Variables cannot be improved (would block)")             \
+  _OPK_STATUS(24, OPK_UNDEFINED_VALUE, "Undefined value")
+
+
 /**
  *  Values returned by OptimPack routines.
  *
- *  OPK_FAILURE   - Status value returned upon success.
- *  OPK_SUCCESS   - Status value returned upon failure.
+ *  `OPK_SUCCESS` indicates that the routine was successfull, any other value
+ *  indicate a failure or a warning.
  */
 typedef enum {
-  OPK_FAILURE = -1,
-  OPK_SUCCESS = 0
+#define _OPK_STATUS(a,b,c) b = a,
+  _OPK_STATUS_LIST
+#undef _OPK_STATUS
+  OPK_MAX_STATUS
 } opk_status_t;
+
+/**
+ * Retrieve a textual description for a given status.
+ *
+ * @param status - The status code.
+ *
+ * @return A pointer to a string describing the status or an empty string, "",
+ *         if the status does not correspond to any known status.
+ */
+extern const char*
+opk_get_reason(opk_status_t status);
+
+/**
+ * Retrieve OptimPack status from `errno`.
+ *
+ * This function is needed to figure out the kind of errors for the few
+ * routines which do not return a status (mostly the ones which create
+ * objects).
+ */
+extern opk_status_t
+opk_guess_status();
 
 /*---------------------------------------------------------------------------*/
 /* DATA TYPES */
@@ -733,15 +792,15 @@ opk_vaxpbypcz(opk_vector_t* dst,
 /** Opaque operator type.  This sub-type inherits from `opk_object_t`. */
 typedef struct _opk_operator opk_operator_t;
 
-extern int
+extern opk_status_t
 opk_apply_direct(opk_operator_t* op, opk_vector_t* dst,
                  const opk_vector_t* src);
 
-extern int
+extern opk_status_t
 opk_apply_adjoint(opk_operator_t* op, opk_vector_t* dst,
                   const opk_vector_t* src);
 
-extern int
+extern opk_status_t
 opk_apply_inverse(opk_operator_t* op, opk_vector_t* dst,
                   const opk_vector_t* src);
 
@@ -853,37 +912,15 @@ extern opk_lnsrch_t*
 opk_lnsrch_new_nonmonotone(opk_index_t m, double ftol,
                            double sigma1, double sigma2);
 
-/* Possible values returned by opk_lnsrch_start and opk_lnsrch_iterate. */
-#define OPK_LNSRCH_ERROR_ILLEGAL_ADDRESS                    -12
-#define OPK_LNSRCH_ERROR_CORRUPTED_WORKSPACE                -11
-#define OPK_LNSRCH_ERROR_BAD_WORKSPACE                      -10
-#define OPK_LNSRCH_ERROR_STP_CHANGED                         -9
-#define OPK_LNSRCH_ERROR_STP_OUTSIDE_BRACKET                 -8
-#define OPK_LNSRCH_ERROR_NOT_A_DESCENT                       -7
-#define OPK_LNSRCH_ERROR_STPMIN_GT_STPMAX                    -6
-#define OPK_LNSRCH_ERROR_STPMIN_LT_ZERO                      -5
-#define OPK_LNSRCH_ERROR_STP_LT_STPMIN                       -4
-#define OPK_LNSRCH_ERROR_STP_GT_STPMAX                       -3
-#define OPK_LNSRCH_ERROR_INITIAL_DERIVATIVE_GE_ZERO          -2
-#define OPK_LNSRCH_ERROR_NOT_STARTED                         -1
-#define OPK_LNSRCH_SEARCH                                     0
-#define OPK_LNSRCH_CONVERGENCE                                1
-#define OPK_LNSRCH_WARNING_ROUNDING_ERRORS_PREVENT_PROGRESS   2
-#define OPK_LNSRCH_WARNING_XTOL_TEST_SATISFIED                3
-#define OPK_LNSRCH_WARNING_STP_EQ_STPMAX                      4
-#define OPK_LNSRCH_WARNING_STP_EQ_STPMIN                      5
-
 /**
- * Get the description of a line search status.
- *
- * @param status - The status code (e.g., as returned by
- *                 `opk_lnsrch_get_status()`).
- *
- * @return A pointer to a string describing the status or `NULL` if
- *         the status does not correspond to any known status.
+ * Possible values returned by opk_lnsrch_start and opk_lnsrch_iterate.
  */
-extern const char*
-opk_lnsrch_message(int status);
+typedef enum {
+  OPK_LNSRCH_ERROR       = -1,
+  OPK_LNSRCH_SEARCH      =  0,
+  OPK_LNSRCH_CONVERGENCE =  1,
+  OPK_LNSRCH_WARNING     =  2
+} opk_lnsrch_status_t;
 
 /**
  * Start a new linesearch.
@@ -929,8 +966,11 @@ opk_lnsrch_iterate(opk_lnsrch_t* ls, double* stp_ptr,
 extern double
 opk_lnsrch_get_step(const opk_lnsrch_t* ls);
 
-extern int
+extern opk_lnsrch_status_t
 opk_lnsrch_get_status(const opk_lnsrch_t* ls);
+
+extern opk_status_t
+opk_lnsrch_get_reason(const opk_lnsrch_t* ls);
 
 extern opk_bool_t
 opk_lnsrch_has_errors(const opk_lnsrch_t* ls);
@@ -948,7 +988,7 @@ extern opk_bool_t
 opk_lnsrch_use_deriv(const opk_lnsrch_t* ls);
 
 /** Moré & Thuente method to perform a cubic safeguarded step. */
-extern int
+extern opk_status_t
 opk_cstep(double *stx_ptr, double *fx_ptr, double *dx_ptr,
           double *sty_ptr, double *fy_ptr, double *dy_ptr,
           double *stp_ptr, double  fp,     double  dp,
@@ -1028,13 +1068,11 @@ opk_get_nlcg_gatol(opk_nlcg_t* opt);
  * @param opt - The NLCG optimizer.
  * @param gatol - The new value of the absolute threshold.
  *
- * @return `OPK_SUCCESS`, or `OPK_FAILURE` on error with global variable
- * `errno` set to `EFAULT` if `opt` is `NULL` and to `EINVAL` if the value of
- * `gatol` is not valid.
+ * @return `OPK_SUCCESS`, or a status indicating the error.
  *
  * @see opk_get_nlcg_gatol()
  */
-extern int
+extern opk_status_t
 opk_set_nlcg_gatol(opk_nlcg_t* opt, double gatol);
 
 /**
@@ -1056,13 +1094,11 @@ opk_get_nlcg_grtol(opk_nlcg_t* opt);
  * @param opt - The NLCG optimizer.
  * @param grtol - The new value of the relative threshold.
  *
- * @return `OPK_SUCCESS`, or `OPK_FAILURE` on error with global variable
- * `errno` set to `EFAULT` if `opt` is `NULL` and to `EINVAL` if the value of
- * `grtol` is not valid.
+ * @return `OPK_SUCCESS`, or a status indicating the error.
  *
  * @see opk_get_nlcg_grtol()
  */
-extern int
+extern opk_status_t
 opk_set_nlcg_grtol(opk_nlcg_t* opt, double grtol);
 
 /**
@@ -1124,22 +1160,20 @@ opk_get_nlcg_stpmax(opk_nlcg_t* opt);
  * @param stpmin - The minimum relative step size.
  * @param stpmax - The maximum relative step size.
  *
- * @return `OPK_SUCCESS`, or `OPK_FAILURE` on error with global variable
- * `errno` set to `EFAULT` if `opt` is `NULL` and to `EINVAL` if the values of
- * `stpmin` or `stpmax` are not valid.
+ * @return `OPK_SUCCESS`, or a status indicating the error.
  *
  * @see opk_get_nlcg_stpmin(), opk_get_nlcg_stpmax().
  */
-extern int
+extern opk_status_t
 opk_set_nlcg_stpmin_and_stpmax(opk_nlcg_t* opt, double stpmin, double stpmax);
 
-extern int
+extern opk_status_t
 opk_get_nlcg_fmin(opk_nlcg_t* opt, double* fmin);
 
-extern int
+extern opk_status_t
 opk_set_nlcg_fmin(opk_nlcg_t* opt, double fmin);
 
-extern int
+extern opk_status_t
 opk_unset_nlcg_fmin(opk_nlcg_t* opt);
 
 extern opk_index_t
@@ -1330,19 +1364,19 @@ opk_get_vmlm_restarts(opk_vmlm_t* opt);
 extern int
 opk_get_vmlm_scaling(opk_vmlm_t* opt);
 
-extern int
+extern opk_status_t
 opk_set_vmlm_scaling(opk_vmlm_t* opt, int scaling);
 
 extern double
 opk_get_vmlm_gatol(opk_vmlm_t* opt);
 
-extern int
+extern opk_status_t
 opk_set_vmlm_gatol(opk_vmlm_t* opt, double gatol);
 
 extern double
 opk_get_vmlm_grtol(opk_vmlm_t* opt);
 
-extern int
+extern opk_status_t
 opk_set_vmlm_grtol(opk_vmlm_t* opt, double grtol);
 
 extern double
@@ -1354,7 +1388,7 @@ opk_get_vmlm_stpmin(opk_vmlm_t* opt);
 extern double
 opk_get_vmlm_stpmax(opk_vmlm_t* opt);
 
-extern int
+extern opk_status_t
 opk_set_vmlm_stpmin_and_stpmax(opk_vmlm_t* opt, double stpmin, double stpmax);
 
 /** @} */
@@ -1384,13 +1418,13 @@ opk_unset_bound(opk_bound_t* bnd);
 extern void
 opk_set_scalar_bound(opk_bound_t* bnd, double val);
 
-extern int
+extern opk_status_t
 opk_set_vector_bound(opk_bound_t* bnd, opk_vector_t* vec);
 
 extern opk_bound_type_t
 opk_get_bound_type(const opk_bound_t* bnd);
 
-extern int
+extern opk_status_t
 opk_box_project_variables(opk_vector_t* dst,
                           const opk_vector_t* x,
                           const opk_bound_t* xl,
@@ -1415,7 +1449,7 @@ typedef enum {
   OPK_DESCENT =  1
 } opk_orientation_t;
 
-extern int
+extern opk_status_t
 opk_box_project_direction(opk_vector_t* dst,
                           const opk_vector_t* x,
                           const opk_bound_t* xl,
@@ -1423,7 +1457,7 @@ opk_box_project_direction(opk_vector_t* dst,
                           const opk_vector_t* d,
                           opk_orientation_t orientation);
 
-extern int
+extern opk_status_t
 opk_box_get_free_variables(opk_vector_t* dst,
                            const opk_vector_t* x,
                            const opk_bound_t* xl,
@@ -1431,7 +1465,7 @@ opk_box_get_free_variables(opk_vector_t* dst,
                            const opk_vector_t* d,
                            opk_orientation_t orientation);
 
-extern int
+extern opk_status_t
 opk_box_get_step_limits(double* smin, double* wolfe, double *smax,
                         const opk_vector_t* x,
                         const opk_bound_t* xl,
@@ -1492,7 +1526,7 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
 extern opk_task_t
 opk_get_vmlmb_task(opk_vmlmb_t* opt);
 
-extern int
+extern opk_status_t
 opk_get_vmlmb_reason(opk_vmlmb_t* opt);
 
 extern opk_index_t
@@ -1507,13 +1541,13 @@ opk_get_vmlmb_restarts(opk_vmlmb_t* opt);
 extern double
 opk_get_vmlmb_gatol(opk_vmlmb_t* opt);
 
-extern int
+extern opk_status_t
 opk_set_vmlmb_gatol(opk_vmlmb_t* opt, double gatol);
 
 extern double
 opk_get_vmlmb_grtol(opk_vmlmb_t* opt);
 
-extern int
+extern opk_status_t
 opk_set_vmlmb_grtol(opk_vmlmb_t* opt, double grtol);
 
 extern double
@@ -1525,7 +1559,7 @@ opk_get_vmlmb_stpmin(opk_vmlmb_t* opt);
 extern double
 opk_get_vmlmb_stpmax(opk_vmlmb_t* opt);
 
-extern int
+extern opk_status_t
 opk_set_vmlmb_stpmin_and_stpmax(opk_vmlmb_t* opt,
                                 double stpmin, double stpmax);
 

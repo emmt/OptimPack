@@ -261,25 +261,26 @@ struct _opk_vspace_operations {
                    double gamma, const opk_vector_t* z);
 
   /* Project variables X such that DST = MAX(XL, MAX(X, XU)). */
-  int (*boxprojvar)(opk_vspace_t* space, opk_vector_t* dst,
-                    const opk_vector_t* x,
-                    const void* xl, const void* xu, int bound);
+  opk_status_t (*boxprojvar)(opk_vspace_t* space, opk_vector_t* dst,
+                             const opk_vector_t* x,
+                             const void* xl, const void* xu, int bound);
 
-  int (*boxprojdir)(opk_vspace_t* space, opk_vector_t* dst,
-                    const opk_vector_t* x,
-                    const void* xl, const void* xu, int bound,
-                    const opk_vector_t* d, int orient);
+  opk_status_t (*boxprojdir)(opk_vspace_t* space, opk_vector_t* dst,
+                             const opk_vector_t* x,
+                             const void* xl, const void* xu, int bound,
+                             const opk_vector_t* d, opk_orientation_t orient);
 
-  int (*boxfreevar)(opk_vspace_t* space, opk_vector_t* dst,
-                    const opk_vector_t* x,
-                    const void* xl, const void* xu, int bound,
-                    const opk_vector_t* d, int orient);
+  opk_status_t (*boxfreevar)(opk_vspace_t* space, opk_vector_t* dst,
+                             const opk_vector_t* x,
+                             const void* xl, const void* xu, int bound,
+                             const opk_vector_t* d, opk_orientation_t orient);
 
-  int (*boxsteplimits)(opk_vspace_t* space,
-                       double* smin, double* wolfe, double* smax,
-                       const opk_vector_t* x,
-                       const void* xl, const void* xu, int bound,
-                       const opk_vector_t* d, int orient);
+  opk_status_t (*boxsteplimits)(opk_vspace_t* space,
+                                double* smin, double* wolfe, double* smax,
+                                const opk_vector_t* x,
+                                const void* xl, const void* xu, int bound,
+                                const opk_vector_t* d,
+                                opk_orientation_t orient);
 
 };
 
@@ -364,7 +365,8 @@ struct _opk_lnsrch {
                                      search. */
   double ginit;                 /**< Directional derivative value at the start
                                      of the search. */
-  int status;                   /**< Last value returned by line search
+  opk_status_t reason;          /**< More detailed reason of the status. */
+  opk_lnsrch_status_t status;   /**< Last value returned by line search
                                      methods. */
   int searching;                /**< True if search is in progress. */
 };
@@ -380,7 +382,7 @@ struct _opk_lnsrch_operations {
      of the step length, members FINIT and GINIT with the function value and
      the derivative the function along the search direction at the start of the
      search. */
-  int (*start)(opk_lnsrch_t* self);
+  opk_lnsrch_status_t (*start)(opk_lnsrch_t* self);
 
   /* Method to iterate during a line search.  STP_PTR, F_PTR and D_PTR are the
      addresses of variables which store STP, F and D.  On entry, STP is the
@@ -388,8 +390,8 @@ struct _opk_lnsrch_operations {
      corresponding derivative of the function along the search direction.
      FIXME: On exit, if convergence is achieved (or in case of error/warning)
      STP, F and D are left unchanged; otherwise STP is the new step to try. */
-  int (*iterate)(opk_lnsrch_t* self,
-                 double* stp_ptr, double f1, double d1);
+  opk_lnsrch_status_t (*iterate)(opk_lnsrch_t* self,
+                                 double* stp_ptr, double f1, double d1);
 
   /* Flag to indicate whether directional derivative are needed to check the
      line search convergence; else only function values are used (e.g. Armijo
@@ -441,22 +443,22 @@ struct _opk_operator_operations {
      (i.e., that they are non NULL and that they belong to the correct vector
      space).  If NULL, such operation is considered as not allowed by the
      operator. */
-  int (*apply_direct)(opk_operator_t* self, opk_vector_t* dst,
-                      const opk_vector_t* src);
+  opk_status_t (*apply_direct)(opk_operator_t* self, opk_vector_t* dst,
+                               const opk_vector_t* src);
 
   /* If not NULL, the apply_adjoint() method is called by opk_apply_adjoint()
      to apply the adjoint of the operator to the source vector `src` and store
      the result in the destination vector `dst`.  The same assumptions as for
      the apply_direct() method otherwise hold. */
-  int (*apply_adjoint)(opk_operator_t* self, opk_vector_t* dst,
-                       const opk_vector_t* src);
+  opk_status_t (*apply_adjoint)(opk_operator_t* self, opk_vector_t* dst,
+                                const opk_vector_t* src);
 
   /* If not NULL, the apply_inverse() method is called by opk_apply_adjoint()
      to apply the inverse of the operator to the source vector `src` and store
      the result in the destination vector `dst`.  The same assumptions as for
      the apply_direct() method otherwise hold. */
-  int (*apply_inverse)(opk_operator_t* self, opk_vector_t* dst,
-                       const opk_vector_t* src);
+  opk_status_t  (*apply_inverse)(opk_operator_t* self, opk_vector_t* dst,
+                                 const opk_vector_t* src);
 };
 
 /** @} */

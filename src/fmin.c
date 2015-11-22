@@ -118,12 +118,10 @@ int
 opk_fmin_set_precision(opk_fmin_context_t* ctx, double prec)
 {
   if (ctx == NULL) {
-    errno = EFAULT;
-    return OPK_FAILURE;
+    return OPK_ILLEGAL_ADDRESS;
   }
-  if (prec < 0.0) {
-    errno = EINVAL;
-    return OPK_FAILURE;
+  if (prec < 0) {
+    return OPK_INVALID_ARGUMENT;
   }
   ctx->prec = prec;
   return OPK_SUCCESS;
@@ -159,13 +157,10 @@ opk_fmin_start(opk_fmin_context_t* ctx,
                unsigned int flags)
 {
   if (ctx == NULL) {
-    errno = EFAULT;
-    return OPK_FAILURE;
+    return OPK_ILLEGAL_ADDRESS;
   }
   if (a == b) {
-    /* FIXME: A and B must be different. */
-    errno = EINVAL;
-    return OPK_FAILURE;
+    return OPK_INVALID_ARGUMENT;
   }
   ctx->a = a;
   ctx->b = b;
@@ -184,12 +179,10 @@ opk_fmin_get_initial(opk_fmin_context_t* ctx,
                      unsigned int* flags)
 {
   if (ctx == NULL) {
-    errno = EFAULT;
-    return OPK_FAILURE;
+    return OPK_ILLEGAL_ADDRESS;
   }
   if (ctx->status < OPK_FMIN_START) {
-    errno = EINVAL;
-    return OPK_FAILURE;
+    return OPK_INVALID_ARGUMENT;
   }
   MAYBE_GET(a, ctx->a);
   MAYBE_GET(b, ctx->b);
@@ -204,13 +197,11 @@ opk_fmin_get_final(opk_fmin_context_t* ctx,
                    long* nevals)
 {
   if (ctx == NULL) {
-    errno = EFAULT;
-    return OPK_FAILURE;
+    return OPK_ILLEGAL_ADDRESS;
   }
   /* FIXME: bracket? */
   if (ctx->status < OPK_FMIN_START) {
-    errno = EINVAL;
-    return OPK_FAILURE;
+    return OPK_INVALID_ARGUMENT;
   }
   MAYBE_GET(xmin, ctx->v);
   MAYBE_GET(fmin, ctx->fv);
