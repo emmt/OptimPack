@@ -777,15 +777,3 @@ opk_set_vmlm_stpmin_and_stpmax(opk_vmlm_t* opt,
   opt->stpmax = stpmax;
   return OPK_SUCCESS;
 }
-
-/*
- * Local Variables:
- * mode: C
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 79
- * coding: utf-8
- * ispell-local-dictionary: "american"
- * End:
- */

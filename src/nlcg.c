@@ -823,15 +823,3 @@ opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x1,
   opt->task = OPK_TASK_ERROR;
   return opt->task;
 }
-
-/*
- * Local Variables:
- * mode: C
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 79
- * coding: utf-8
- * ispell-local-dictionary: "american"
- * End:
- */

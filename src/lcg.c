@@ -407,15 +407,3 @@ OPK_TRCG(const opk_index_t n, real_t p[], const real_t q[], real_t r[],
 #endif /* OPK_TRCG */
 
 #endif /* _OPK_LCG_C defined */
-
-/*
- * Local Variables:
- * mode: C
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 79
- * coding: utf-8
- * ispell-local-dictionary: "american"
- * End:
- */

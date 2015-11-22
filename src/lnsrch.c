@@ -1075,15 +1075,3 @@ int opk_cstep(double* stx_ptr, double* fx_ptr, double* dx_ptr,
   *stp_ptr = stpf;
   return result;
 }
-
-/*
- * Local Variables:
- * mode: C
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 79
- * coding: utf-8
- * ispell-local-dictionary: "american"
- * End:
- */

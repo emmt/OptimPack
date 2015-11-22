@@ -1730,15 +1730,3 @@ OPK_POTF2(opk_blas_uplo_t uplo,
 #endif /* OPK_POTF2 */
 
 #endif /* _OPK_LINALG_C */
-
-/*
- * Local Variables:
- * mode: C
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 79
- * coding: utf-8
- * ispell-local-dictionary: "american"
- * End:
- */

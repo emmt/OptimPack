@@ -451,15 +451,3 @@ OPK_ESTSV(opk_index_t n, const real_t r_[],opk_index_t ldr, real_t z_[])
 #endif /* OPK_ESTSV */
 
 #endif /* _OPK_GQTPAR_C */
-
-/*
- * Local Variables:
- * mode: C
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 79
- * coding: utf-8
- * ispell-local-dictionary: "american"
- * End:
- */

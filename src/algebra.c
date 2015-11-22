@@ -710,15 +710,3 @@ opk_apply_inverse(opk_operator_t* op, opk_vector_t* dst,
   }
   return op->ops->apply_inverse(op, dst, src);
 }
-
-/*
- * Local Variables:
- * mode: C
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 79
- * coding: utf-8
- * ispell-local-dictionary: "american"
- * End:
- */

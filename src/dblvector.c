@@ -33,15 +33,3 @@
    per-object flags (only per-target flags are impleneted). */
 #define SINGLE_PRECISION 0
 #include "simple_vector.c"
-
-/*
- * Local Variables:
- * mode: C
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 79
- * coding: utf-8
- * ispell-local-dictionary: "american"
- * End:
- */

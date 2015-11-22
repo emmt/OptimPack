@@ -960,15 +960,3 @@ REWRAP_VECTOR(opk_vector_t* v, REAL new_data[],
   sv->free_client_data = new_free_client_data;
   return OPK_SUCCESS;
 }
-
-/*
- * Local Variables:
- * mode: C
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 79
- * coding: utf-8
- * ispell-local-dictionary: "american"
- * End:
- */

@@ -462,15 +462,3 @@ struct _opk_operator_operations {
 /** @} */
 
 #endif /* _OPTIMPACK_PRIVATE_H */
-
-/*
- * Local Variables:
- * mode: C
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 79
- * coding: utf-8
- * ispell-local-dictionary: "american"
- * End:
- */

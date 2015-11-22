@@ -342,17 +342,6 @@ opk_start_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
   return project_variables(opt, x, xl, xu);
 }
 
-/*
- * To guess an optimal step:
- *
- * f(x + alpha*d) = f(x) + alpha*<g(x),d> + (alpha^2/2)*<d,B(x).d>
- * ==> bestalpha = -<g(x),d>/<d,B(x).d>
- * ==> min_alpha f(x + alpha*d) = f(x + bestalpha*d)
- *                              = f(x) - (1/2)*<g(x),d>^2/<d,B(x).d>
- *                              = f(x) - (1/2)*bestalpha*<g(x),d>
- * ==> bestalpha = 2*(f(x) - f(x + bestalpha*d))/<g(x),d>
- *               ~ 2*abs(f(x))/<g(x),d>
- */
 
 #define S(k)     opt->s[k]
 #define Y(k)     opt->y[k]
@@ -672,15 +661,3 @@ opk_set_vmlmb_stpmin_and_stpmax(opk_vmlmb_t* opt,
   opt->stpmax = stpmax;
   return OPK_SUCCESS;
 }
-
-/*
- * Local Variables:
- * mode: C
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 79
- * coding: utf-8
- * ispell-local-dictionary: "american"
- * End:
- */

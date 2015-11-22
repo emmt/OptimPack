@@ -257,14 +257,3 @@ extern void newuoa_test(void);
 #endif
 
 #endif /* _NEWUOA_H */
-
-/*
- * Local Variables:
- * mode: C
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 79
- * coding: utf-8
- * End:
- */

@@ -203,15 +203,3 @@
 # define FMOD      OPK_MATHFUNC(fmod)
 
 #endif /* real_t */
-
-/*
- * Local Variables:
- * mode: C
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 79
- * coding: utf-8
- * ispell-local-dictionary: "american"
- * End:
- */

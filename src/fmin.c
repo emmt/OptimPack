@@ -618,15 +618,3 @@ int func(args)
 #endif /* OPK_FMIN_WITH_CONTEXT */
 
 #endif /* _OPK_FMIN_C */
-
-/*
- * Local Variables:
- * mode: C
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 79
- * coding: utf-8
- * ispell-local-dictionary: "american"
- * End:
- */
