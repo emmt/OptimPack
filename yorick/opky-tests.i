@@ -5,7 +5,9 @@
  *
  *-----------------------------------------------------------------------------
  *
- * Copyright (c) 2014 Éric Thiébaut
+ * This file is part of OptimPack (https://github.com/emmt/OptimPack).
+ *
+ * Copyright (c) 2014, 2015 Éric Thiébaut
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -168,15 +170,3 @@ func _opkt_nonnegative(x,&gx,ws)
   gx = ws.H(+,)*wr(+);
   return 0.5*sum(wr*r);
 }
-
-/*
- * Local Variables:
- * mode: Yorick
- * tab-width: 8
- * c-basic-offset: 2
- * indent-tabs-mode: nil
- * fill-column: 79
- * coding: utf-8
- * ispell-local-dictionary: "american"
- * End:
- */
