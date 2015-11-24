@@ -225,7 +225,10 @@ int MAINENTRY(void)
   }
 
   /* Make sure to null-terminate problem name */
-  pname[FSTRING_LEN] = '\0';
+  i = FSTRING_LEN;
+  do {
+     pname[i] = '\0';
+  } while (--i >= 0 && pname[i] == ' ');
 
   /* Transfer variables and constraint names into arrays of
    * null-terminated strings.
@@ -303,12 +306,6 @@ int MAINENTRY(void)
     }
   }
 
-  /* Make sure to null-terminate problem name */
-  pname[FSTRING_LEN] = '\0';
-  i = FSTRING_LEN - 1;
-  while (--i >= 0 && pname[i] == ' ') {
-    pname[i] = '\0';
-  }
 
   /*printf ("Problem: %s (n = %i)\n", pname, CUTEst_nvar );*/
 
@@ -611,7 +608,9 @@ int MAINENTRY(void)
       }
     }
     if (task == OPK_TASK_NEW_X || task == OPK_TASK_FINAL_X) {
-      ++iterations;
+      if (evaluations > 1) {
+        ++iterations;
+      }
       if (verbose > 0 && (task == OPK_TASK_FINAL_X ||
                           (iterations%verbose) == 0)) {
         double alpha;
