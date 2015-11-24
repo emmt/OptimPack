@@ -14,6 +14,7 @@
 #include <time.h>
 
 #define MAXLINE 512
+#define VERBOSE 0
 
 #ifdef __cplusplus
 extern "C" {   /* To prevent C++ compilers from mangling symbols */
@@ -118,10 +119,14 @@ int MAINENTRY(void)
   VarTypes vartypes;
   integer    ncon_dummy;
   doublereal *x, *g, *bl, *bu;
-  char       *pname;
+  doublereal *v = NULL, *cl = NULL, *cu = NULL;
+  logical *equatn = NULL, *linear = NULL;
+  char *pname, *vnames, *gnames, *cptr;
+  char **Vnames, **Gnames; /* vnames and gnames as arrays of strings */
+  integer e_order = 1, l_order = 0, v_order = 0;
   logical     constrained = FALSE_;
   doublereal  calls[7], cpu[2];
-  integer     i;
+  integer     i, j;
   FILE       *spec;
 
   /* Variables for OptimPack methods. */
@@ -159,14 +164,6 @@ int MAINENTRY(void)
     exit(1);
   }
 
-  /* Get problem name */
-  MALLOC(pname,  FSTRING_LEN+1, char);
-  CUTEST_probname(&status, pname);
-  if (status != 0) {
-    printf("** CUTEst error, status = %d, aborting\n", status);
-    exit(status);
-  }
-
   /* Determine problem size */
   CUTEST_cdimen(&status, &funit, &CUTEst_nvar, &CUTEst_ncon);
   if (status != 0) {
@@ -176,12 +173,6 @@ int MAINENTRY(void)
 
   /* Determine whether to call constrained or unconstrained tools */
   constrained = (CUTEst_ncon > 0);
-  if (constrained) {
-    printf ("** the problem %s has %i constraints\n",
-            pname,  CUTEst_ncon);
-    printf ("** current OptimPack is for unconstrained optimization\n");
-    exit(-1);
-  }
 
   /* Seems to be needed for some Solaris C compilers */
   ncon_dummy = CUTEst_ncon + 1;
@@ -192,11 +183,114 @@ int MAINENTRY(void)
   g  = (double*)malloc(CUTEst_nvar*sizeof(double));
   bl = (double*)malloc(CUTEst_nvar*sizeof(double));
   bu = (double*)malloc(CUTEst_nvar*sizeof(double));
-  CUTEST_usetup(&status, &funit, &iout, &io_buffer, &CUTEst_nvar, x, bl, bu);
+  if (constrained) {
+    MALLOC( equatn, CUTEst_ncon, logical    );
+    MALLOC( linear, CUTEst_ncon, logical    );
+    MALLOC( v,      CUTEst_ncon, doublereal );
+    MALLOC( cl,     CUTEst_ncon, doublereal );
+    MALLOC( cu,     CUTEst_ncon, doublereal );
+    CUTEST_csetup(&status, &funit, &iout, &io_buffer,
+                  &CUTEst_nvar, &CUTEst_ncon, x, bl, bu,
+                  v, cl, cu, equatn, linear,
+                  &e_order, &l_order, &v_order);
+  } else {
+    CUTEST_usetup(&status, &funit, &iout, &io_buffer, &CUTEst_nvar, x, bl, bu);
+  }
   if (status != 0) {
     printf("** CUTEst error, status = %d, aborting\n", status);
     exit(status);
   }
+
+  /* Get problem, variables and constraints names */
+  MALLOC(pname, FSTRING_LEN + 1, char);
+  MALLOC(vnames, CUTEst_nvar * FSTRING_LEN, char);        /* For Fortran */
+  MALLOC(Vnames, CUTEst_nvar, char *);               /* Array of strings */
+  for (i = 0; i < CUTEst_nvar; i++) {
+    MALLOC(Vnames[i], FSTRING_LEN + 1, char);
+  }
+  if (constrained) {
+    MALLOC(gnames, CUTEst_ncon * FSTRING_LEN, char);   /* For Fortran */
+    MALLOC(Gnames, CUTEst_ncon, char *);          /* Array of strings */
+    for (i = 0; i < CUTEst_ncon; i++) {
+      MALLOC(Gnames[i], FSTRING_LEN + 1, char);
+    }
+    CUTEST_cnames(&status, &CUTEst_nvar, &CUTEst_ncon,
+                  pname, vnames, gnames);
+  } else {
+    CUTEST_unames(&status, &CUTEst_nvar, pname, vnames);
+  }
+  if (status != 0) {
+    printf("** CUTEst error, status = %d, aborting\n", status);
+    exit(status);
+  }
+
+  /* Make sure to null-terminate problem name */
+  pname[FSTRING_LEN] = '\0';
+
+  /* Transfer variables and constraint names into arrays of
+   * null-terminated strings.
+   * If you know of a simpler way to do this portably, let me know!
+   */
+  for (i = 0; i < CUTEst_nvar; i++) {
+    cptr = vnames + i * FSTRING_LEN;
+    for (j = 0; j < FSTRING_LEN; j++) {
+      Vnames[i][j] = *cptr;
+      cptr++;
+    }
+    Vnames[i][FSTRING_LEN] = '\0';
+  }
+
+  for (i = 0; i < CUTEst_ncon; i++) {
+    cptr = gnames + i * FSTRING_LEN;
+    for (j = 0; j < FSTRING_LEN; j++) {
+      Gnames[i][j] = *cptr;
+      cptr++;
+    }
+    Gnames[i][FSTRING_LEN] = '\0';
+  }
+
+  /* Fortran strings no longer needed */
+  FREE(vnames);
+  if (constrained) FREE(gnames);
+
+#if VERBOSE
+  printf("Variable names:\n");
+  for (i = 0; i < CUTEst_nvar; i++) {
+    printf("  %s\n", Vnames[i]);
+  }
+#endif
+
+  /* Free memory for variable names */
+  for (i = 0; i < CUTEst_nvar; i++) {
+    FREE(Vnames[i]);
+  }
+  FREE(Vnames);
+
+#if VERBOSE
+  if (constrained) {
+    printf("Constraint names:\n");
+    for (i = 0; i < CUTEst_ncon; i++) {
+      printf("  %s\n", Gnames[i]);
+    }
+  }
+#endif
+
+  if (constrained) {
+    /* Free memory for constraint names */
+    for (i = 0; i < CUTEst_ncon; i++) {
+      FREE(Gnames[i]);
+    }
+    FREE(Gnames);
+  }
+
+  if (constrained) {
+    printf ("** the problem %s has %i constraints\n",
+            pname,  CUTEst_ncon);
+    printf ("** current OptimPack is for unconstrained optimization\n");
+    exit(-1);
+  }
+
+  /* Obtain basic info on problem */
   getinfo(CUTEst_nvar, CUTEst_ncon, bl, bu, NULL, NULL, NULL, NULL, &vartypes);
   bounds = 0;
   for (i = 0; i < CUTEst_nvar; ++i) {
@@ -543,15 +637,20 @@ int MAINENTRY(void)
         break;
       }
     } else if (task != OPK_TASK_COMPUTE_FG) {
-      int reason;
+      opk_status_t reason;
       if (vmlmb != NULL) {
         reason = opk_get_vmlmb_reason(vmlmb);
       } else if (vmlm != NULL) {
-        reason = 0;
+        reason = opk_get_vmlm_reason(vmlm);
       } else {
         reason = 0;
       }
-      printf ("** Algorithm exits with task = %d (%d)\n", task, reason);
+      opk_vprint(stderr, " x", vx, 10);
+      opk_vprint(stderr, " g", vg, 10);
+      opk_vprint(stderr, "xl", vbl, 10);
+      opk_vprint(stderr, "xu", vbu, 10);
+      printf ("** Algorithm exits with task = %d (%d: %s)\n", task,
+              reason, opk_get_reason(reason));
       break;
     }
     if (vmlmb != NULL) {
