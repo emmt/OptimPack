@@ -2,7 +2,10 @@
  * vmlmb.c --
  *
  * Limited memory variable metric method with bound constraints for OptimPack
- * library.
+ * library.  The method has been first described in:
+ *
+ *     Thiébaut, É. "Optimization issues in blind deconvolution algorithms,"
+ *     SPIE Conf. Astronomical Data Analysis II, Vol. 4847, 174-183 (2002).
  *
  *-----------------------------------------------------------------------------
  *
@@ -62,55 +65,55 @@ static const double GRTOL = 1E-6;
 static const double GATOL = 0.0;
 
 /* Other default parameters. */
-static const double EPSILON = 1e-2;
 static const double DELTA   = 5e-2;
+static const double EPSILON = 1e-2;
 
 struct _opk_vmlmb {
-  opk_object_t base; /**< Base type (must be the first member). */
-  double delta;      /**< Relative size for a small step. */
-  double epsilon;    /**< Threshold for Zoutendijk test. */
-  double grtol;      /**< Relative threshold for the norm or the projected
-                          gradient (relative to GPINIT the norm of the initial
-                          projected gradient) for convergence. */
-  double gatol;      /**< Absolute threshold for the norm or the projected
-                          gradient for convergence. */
-  double ginit;      /**< Euclidean norm or the initial projected gradient. */
-  double f0;         /**< Function value at x0. */
-  double gpnorm;     /**< Euclidean norm of the projected gradient at the last
-                          tested step. */
-  double alpha;      /**< Current step length. */
-  double stpmin;     /**< Relative mimimum step length. */
-  double stpmax;     /**< Relative maximum step length. */
-
-  opk_vspace_t* space;
-  opk_lnsrch_t* lnsrch;
-  opk_vector_t* x0; /**< Variables at the start of the line search. */
-  opk_vector_t* g0; /**< Gradient at x0. */
-  opk_vector_t* d;  /**< Anti-search direction; a iterate is computed
-                         as: x1 = x0 - alpha*d with alpha > 0. */
-  opk_vector_t* w;  /**< Vector whose elements are set to 1 for free variables
-                         and 0 otherwise. */
-  opk_vector_t* tmp; /**< Scratch work vector. */
-
-
-  /* Limited memory BFGS approximation of the Hessian of the objective
-     function. */
-  double gamma;        /**< Scale factor to approximate inverse Hessian. */
-  opk_vector_t** s;    /**< Storage for variable differences. */
-  opk_vector_t** y;    /**< Storage for gradient differences. */
-  double* beta;        /**< Workspace to save <d,s>/<s,y> */
-  double* rho;         /**< Workspace to save 1/<s,y> */
-  opk_index_t m;       /**< Maximum number of memorized steps. */
-  opk_index_t mp;      /**< Actual number of memorized steps (0 <= mp <= m). */
-  opk_index_t updates; /**< Number of BFGS updates since start. */
-
+  opk_object_t base;       /**< Base type (must be the first member). */
+  double delta;            /**< Relative size for a small step. */
+  double epsilon;          /**< Threshold to accept descent direction. */
+  double grtol;            /**< Relative threshold for the norm or the
+                                projected gradient (relative to GPINIT the norm
+                                of the initial projected gradient) for
+                                convergence. */
+  double gatol;            /**< Absolute threshold for the norm or the
+                                projected gradient for convergence. */
+  double ginit;            /**< Euclidean norm or the initial projected
+                            * gradient. */
+  double f0;               /**< Function value at x0. */
+  double gpnorm;           /**< Euclidean norm of the projected gradient at the
+                                last tested step. */
+  double stp;              /**< Current step length. */
+  double stpmin;           /**< Relative mimimum step length. */
+  double stpmax;           /**< Relative maximum step length. */
+  opk_vspace_t* vspace;    /**< Variable space. */
+  opk_lnsrch_t* lnsrch;    /**< Line search method. */
+  opk_vector_t* x0;        /**< Variables at the start of the line search. */
+  opk_vector_t* g0;        /**< Gradient at x0. */
+  opk_vector_t* d;         /**< Anti-search direction; a iterate is computed
+                                as: x1 = x0 - stp*d with stp > 0. */
+  opk_vector_t* w;         /**< Vector whose elements are set to 1 for free
+                                variables and 0 otherwise. */
+  opk_vector_t* tmp;       /**< Scratch work vector. */
   opk_index_t evaluations; /**< Number of functions (and gradients)
                                 evaluations. */
   opk_index_t iterations;  /**< Number of iterations (successful steps
                                 taken). */
   opk_index_t restarts;    /**< Number of LBFGS recurrence restarts. */
-  opk_status_t reason;     /**< some details about the error */
-  opk_task_t task;
+  opk_status_t reason;     /**< Last error. */
+  opk_task_t task;         /**< Pending task. */
+
+  /* Limited memory BFGS approximation of the Hessian of the objective
+     function. */
+  double gamma;            /**< Scale factor to approximate inverse Hessian. */
+  opk_vector_t** s;        /**< Storage for variable differences. */
+  opk_vector_t** y;        /**< Storage for gradient differences. */
+  double* beta;            /**< Workspace to save <d,s>/<s,y> */
+  double* rho;             /**< Workspace to save 1/<s,y> */
+  opk_index_t m;           /**< Maximum number of memorized steps. */
+  opk_index_t mp;          /**< Actual number of memorized steps
+                                (0 <= mp <= m). */
+  opk_index_t updates;     /**< Number of BFGS updates since start. */
 };
 
 static double
@@ -137,7 +140,7 @@ finalize_vmlmb(opk_object_t* obj)
 
   /* Drop references to all objects (neither opt->x0 nor opt->g0 which are weak
      references to specific vectors in opt->s and opt->y). */
-  OPK_DROP(opt->space);
+  OPK_DROP(opt->vspace);
   OPK_DROP(opt->lnsrch);
 #if ! SAVE_MEMORY
   OPK_DROP(opt->x0);
@@ -244,7 +247,7 @@ opk_new_vmlmb_optimizer_with_line_search(opk_vspace_t* space,
       goto error;
     }
   }
-  opt->space = OPK_HOLD_VSPACE(space);
+  opt->vspace = OPK_HOLD_VSPACE(space);
   opt->lnsrch = OPK_HOLD_LNSRCH(lnsrch);
 #if ! SAVE_MEMORY
   opt->x0 = opk_vcreate(space);
@@ -268,8 +271,8 @@ opk_new_vmlmb_optimizer_with_line_search(opk_vspace_t* space,
   opt->gatol = GATOL;
   opt->stpmin = STPMIN;
   opt->stpmax = STPMAX;
-  opt->epsilon = EPSILON;
   opt->delta = DELTA;
+  opt->epsilon = EPSILON;
   opt->gamma = 1.0;
   return opt;
 
@@ -336,7 +339,7 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
                   double f, opk_vector_t* g,
                   const opk_bound_t* xl, const opk_bound_t* xu)
 {
-  double gtd, yty, sty, alphamax;
+  double dtg, yty, sty, stpmax;
   opk_index_t j, k;
   opk_status_t status;
   opk_lnsrch_status_t lnsrch_status;
@@ -370,20 +373,21 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
       if (opk_lnsrch_use_deriv(opt->lnsrch)) {
         /* Compute effective step and directional derivative. */
         if (opt->tmp == NULL) {
-          opt->tmp = opk_vcreate(opt->space);
+          opt->tmp = opk_vcreate(opt->vspace);
           if (opt->tmp == NULL) {
             return failure(opt, OPK_INSUFFICIENT_MEMORY);
           }
         }
         opk_vaxpby(opt->tmp, 1, x, -1, opt->x0);
-        gtd = opk_vdot(opt->tmp, g)/opt->alpha;
+        dtg = opk_vdot(opt->tmp, g)/opt->stp;
       } else {
-        gtd = 0;
+        /* Line search does not need directional derivative. */
+        dtg = 0;
       }
-      lnsrch_status = opk_lnsrch_iterate(opt->lnsrch, &opt->alpha, f, gtd);
+      lnsrch_status = opk_lnsrch_iterate(opt->lnsrch, &opt->stp, f, dtg);
       if (lnsrch_status == OPK_LNSRCH_SEARCH) {
         /* Line search has not yet converged. */
-        goto next_step;
+        goto new_try;
       }
       if (lnsrch_status != OPK_LNSRCH_CONVERGENCE) {
         status = opk_lnsrch_get_reason(opt->lnsrch);
@@ -394,7 +398,6 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
       ++opt->iterations;
     }
     return success(opt, OPK_TASK_NEW_X);
-
 
   case OPK_TASK_NEW_X:
   case OPK_TASK_FINAL_X:
@@ -411,15 +414,15 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
     }
 
     /* Compute a search direction.  We take care of checking whether -D is a
-       sufficient descent direction.  As shown by Zoutendijk, this is true if:
-       cos(theta) = (D/|D|)'.(G/|G|) >= EPSILON > 0 where G is the gradient at
-       X. */
-
-    opt->gamma = 0;
-    gtd = 0;
+       sufficient descent direction (here D is a sufficient ascent direction).
+       As shown by Zoutendijk, this is true if cos(theta) = (D/|D|)'.(G/|G|) is
+       larger or equal EPSILON > 0, where G is the gradient at X and D the
+       descent direction. */
+    dtg = 0;
     if (opt->mp >= 1) {
       /* Apply the L-BFGS Strang's two-loop recursion to compute a search
          direction. */
+      opt->gamma = 0;
       COPY(opt->d, g);
       for (j = 1; j <= opt->mp; ++j) {
         k = slot(opt, j);
@@ -458,49 +461,51 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
 
         /* Check whether the algorithm has produced a sufficient descent
            direction. */
-        gtd = -DOT(opt->d, g);
+        dtg = -DOT(opt->d, g);
         if (opt->epsilon > 0 &&
-            opt->epsilon*opt->gpnorm*opk_vnorm2(opt->d) > -gtd) {
-          /* Set GTD to zero to indicate that D is not a sufficient descent
-             direction. */
-          gtd = 0;
-        } else {
-          opt->alpha = 1.0;
+            dtg > -opt->epsilon*opk_vnorm2(opt->d)*opt->gpnorm) {
+          /* Set DTG to zero to indicate that we do not have a sufficient
+             descent direction. */
+          dtg = 0;
         }
       }
     }
-    if (gtd >= 0) {
+    if (dtg < 0) {
+      /* Use search direction produced by L-BFGS recursion and an initial unit
+         step. */
+      opt->stp = 1.0;
+    } else {
       /* Use (projected) steepest projected ascent. */
       if (opt->mp > 0) {
-        /* BFGS recursion did not produce a sufficient descent direction. */
+        /* L-BFGS recursion did not produce a sufficient descent direction. */
         ++opt->restarts;
         opt->mp = 0;
       }
       opk_vproduct(opt->d, opt->w, g);
-      gtd = -opt->gpnorm*opt->gpnorm;
+      dtg = -opt->gpnorm*opt->gpnorm;
       if (f != 0) {
-        opt->alpha = 2*fabs(f/gtd);
+        opt->stp = 2*fabs(f/dtg);
       } else {
         double dnorm = opt->gpnorm;
         double xnorm = sqrt(WDOT(x, x));
         if (xnorm > 0) {
-          opt->alpha = opt->delta*xnorm/dnorm;
+          opt->stp = opt->delta*xnorm/dnorm;
         } else {
-          opt->alpha = opt->delta/dnorm;
+          opt->stp = opt->delta/dnorm;
         }
       }
     }
 
     /* Shortcut the step length. */
-    status = opk_box_get_step_limits(NULL, NULL, &alphamax,
+    status = opk_box_get_step_limits(NULL, NULL, &stpmax,
                                      x, xl, xu, opt->d, OPK_ASCENT);
     if (status != OPK_SUCCESS) {
       return failure(opt, status);
     }
-    if (opt->alpha > alphamax) {
-      opt->alpha = alphamax;
+    if (opt->stp > stpmax) {
+      opt->stp = stpmax;
     }
-    if (opt->alpha <= 0) {
+    if (opt->stp <= 0) {
       return failure(opt, OPK_WOULD_BLOCK);
     }
 
@@ -509,18 +514,21 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
     k = slot(opt, 0);
     opt->x0 = S(k); /* weak reference */
     opt->g0 = Y(k); /* weak reference */
+    if (opt->mp == opt->m) {
+      --opt->mp;
+    }
 #endif
-    opt->f0 = f;
     COPY(opt->x0, x);
     COPY(opt->g0, g);
+    opt->f0 = f;
 
     /* Start line search. */
-    lnsrch_status = opk_lnsrch_start(opt->lnsrch, f, gtd, opt->alpha,
+    lnsrch_status = opk_lnsrch_start(opt->lnsrch, f, dtg, opt->stp,
                                      opt->stpmin, opt->stpmax);
     if (lnsrch_status != OPK_LNSRCH_SEARCH) {
       return failure(opt, opk_lnsrch_get_reason(opt->lnsrch));
     }
-    goto next_step;
+    goto new_try;
 
   default:
 
@@ -529,8 +537,8 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
 
   }
 
- next_step:
-  opk_vaxpby(x, 1, opt->x0, -opt->alpha, opt->d);
+ new_try:
+  opk_vaxpby(x, 1, opt->x0, -opt->stp, opt->d);
   return project_variables(opt, x, xl, xu);
 }
 
@@ -605,7 +613,7 @@ opk_set_vmlmb_grtol(opk_vmlmb_t* opt, double grtol)
 double
 opk_get_vmlmb_step(opk_vmlmb_t* opt)
 {
-  return (opt == NULL ? -1.0 : opt->alpha);
+  return (opt == NULL ? -1.0 : opt->stp);
 }
 
 double

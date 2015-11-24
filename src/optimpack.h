@@ -1352,6 +1352,9 @@ opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x,
 extern opk_task_t
 opk_get_vmlm_task(opk_vmlm_t* opt);
 
+extern opk_status_t
+opk_get_vmlm_reason(opk_vmlm_t* opt);
+
 extern opk_index_t
 opk_get_vmlm_iterations(opk_vmlm_t* opt);
 

@@ -5,7 +5,9 @@
  *
  *-----------------------------------------------------------------------------
  *
- * Copyright (c) 2014 Éric Thiébaut
+ * This file is part of OptimPack (https://github.com/emmt/OptimPack).
+ *
+ * Copyright (c) 2014, 2015 Éric Thiébaut
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -56,18 +58,18 @@ struct _opk_lbfgs_operator {
   opk_vector_t* tmp;   /**< Scratch vector, needed if there is a
                             preconditioner. */
   opk_operator_t* H0;  /**< Preconditioner or NULL. */
-  double* alpha;       /**< Workspace to save 1/<s[j],y[j]> */
+  double* alpha;       /**< Workspace to save <s[j],d>/<s[j],y[j]> */
   double* rho;         /**< Workspace to save 1/<s[j],y[j]> */
   opk_index_t m;       /**< Maximum number of memorized steps. */
   opk_index_t mp;      /**< Actual number of memorized steps (0 <= mp <= m). */
-  opk_index_t mark;    /**< Index of oldest saved step. */
+  opk_index_t updates; /**< Number of updates since start. */
   int scaling;
 };
 
 static opk_index_t
-slot(opk_lbfgs_operator_t* op, opk_index_t k)
+slot(opk_lbfgs_operator_t* op, opk_index_t j)
 {
-  return (op->m + op->mark + k)%op->m;
+  return (op->updates - j)%op->m;
 }
 
 static void
@@ -96,8 +98,6 @@ apply_lbfgs_operator(opk_operator_t* self, opk_vector_t* dst,
 {
   opk_lbfgs_operator_t* op = (opk_lbfgs_operator_t*)self;
   opk_vector_t* tmp;
-  const opk_index_t newest = 0;
-  opk_index_t oldest = 1 - op->mp;
   opk_index_t j, k;
   opk_status_t status;
 
@@ -119,13 +119,13 @@ apply_lbfgs_operator(opk_operator_t* self, opk_vector_t* dst,
   /* First loop of the recursion (from the newest saved pair to the oldest
      one). */
   opk_vcopy(tmp, src);
-  for (k = newest; k >= oldest; --k) {
-    j = slot(op, k);
-    if (op->rho[j] > 0.0) {
-      op->alpha[j] = op->rho[j]*opk_vdot(tmp, op->s[j]);
-      opk_vaxpby(tmp, 1.0, tmp, -op->alpha[j], op->y[j]);
+  for (j = 1; j <= op->mp; ++j) {
+    k = slot(op, j);
+    if (op->rho[k] > 0.0) {
+      op->alpha[k] = op->rho[k]*opk_vdot(tmp, op->s[k]);
+      opk_vaxpby(tmp, 1.0, tmp, -op->alpha[k], op->y[k]);
     } else {
-      op->alpha[j] = 0.0;
+      op->alpha[k] = 0.0;
     }
   }
 
@@ -142,11 +142,11 @@ apply_lbfgs_operator(opk_operator_t* self, opk_vector_t* dst,
 
   /* Second loop of the recursion (from the oldest saved pair to the newest
      one). */
-  for (k = oldest; k <= newest; ++k) {
-    j = slot(op, k);
-    if (op->rho[j] > 0.0) {
-      double beta = op->rho[j]*opk_vdot(dst, op->y[j]);
-      opk_vaxpby(dst, 1.0, dst, op->alpha[j] - beta, op->s[j]);
+  for (j = op->mp; j >= 1; --j) {
+    k = slot(op, j);
+    if (op->rho[k] > 0.0) {
+      double beta = op->rho[k]*opk_vdot(dst, op->y[k]);
+      opk_vaxpby(dst, 1.0, dst, op->alpha[k] - beta, op->s[k]);
     }
   }
   return OPK_SUCCESS;
@@ -197,6 +197,8 @@ opk_new_lbfgs_operator(opk_vspace_t* vspace, opk_index_t m,
   op->rho = (double*)(((char*)op) + rho_offset);
   op->gamma = 1.0;
   op->m = m;
+  op->mp = 0;
+  op->updates = 0;
   op->scaling = scaling;
   for (k = 0; k < m; ++k) {
     op->s[k] = opk_vcreate(vspace);
@@ -208,7 +210,6 @@ opk_new_lbfgs_operator(opk_vspace_t* vspace, opk_index_t m,
       goto error;
     }
   }
-  opk_reset_lbfgs_operator(op);
   return op;
  error:
   OPK_DROP(op);
@@ -219,20 +220,19 @@ void
 opk_reset_lbfgs_operator(opk_lbfgs_operator_t* op)
 {
   op->mp = 0;
-  op->mark = -1;
   op->gamma = 1.0;
 }
 
 opk_vector_t*
 opk_get_lbfgs_s(opk_lbfgs_operator_t* op, opk_index_t k)
 {
-  return op->s[slot(op, k)];
+  return (0 <= k && k <= op->mp ? op->s[slot(op, k)] : NULL);
 }
 
 opk_vector_t*
 opk_get_lbfgs_y(opk_lbfgs_operator_t* op, opk_index_t k)
 {
-  return op->y[slot(op, k)];
+  return (0 <= k && k <= op->mp ? op->y[slot(op, k)] : NULL);
 }
 
 void
@@ -248,40 +248,41 @@ opk_set_lbfgs_operator_preconditioner(opk_lbfgs_operator_t* op,
 
 void
 opk_update_lbfgs_operator(opk_lbfgs_operator_t* op,
-                          const opk_vector_t* x1,
+                          const opk_vector_t* x,
                           const opk_vector_t* x0,
-                          const opk_vector_t* g1,
+                          const opk_vector_t* g,
                           const opk_vector_t* g0)
 {
-  double sty, ynorm, snorm;
+  double sty;
+  opk_index_t k;
 
   /* Store the variables and gradient differences in the slot just after the
-     mark (which is the index of the last saved pair or -1 if none). */
-  opk_index_t j = slot(op, 1);
-  opk_vaxpby(op->s[j], 1.0, x1, -1.0, x0);
-  snorm = opk_vnorm2(op->s[j]);
-  opk_vaxpby(op->y[j], 1.0, g1, -1.0, g0);
-  ynorm = opk_vnorm2(op->y[j]);
+     last update. */
+  k = slot(op, 0);
+  opk_vaxpby(op->s[k], 1, x, -1, x0);
+  opk_vaxpby(op->y[k], 1, g, -1, g0);
 
-  /* Compute RHO[j] and GAMMA.  If the update formula for GAMMA does not yield
+  /* Compute RHO[k] and GAMMA.  If the update formula for GAMMA does not yield
      a strictly positive value, the strategy is to keep the previous value. */
-  sty = opk_vdot(op->s[j], op->y[j]);
+  sty = opk_vdot(op->s[k], op->y[k]);
   if (sty <= 0.0) {
     /* This pair will be skipped. */
-    op->rho[j] = 0.0;
+    op->rho[k] = 0.0;
     if (op->mp == op->m) {
       --op->mp;
     }
   } else {
-    /* Compute RHO[j] and GAMMA. */
-    op->rho[j] = 1.0/sty;
+    /* Compute RHO[k] and GAMMA. */
+    op->rho[k] = 1.0/sty;
     if (op->scaling == OPK_SCALING_OREN_SPEDICATO) {
+      double ynorm = opk_vnorm2(op->y[k]);
       op->gamma = (sty/ynorm)/ynorm;
     } else if (op->scaling == OPK_SCALING_BARZILAI_BORWEIN) {
+      double snorm = opk_vnorm2(op->s[k]);
       op->gamma = (snorm/sty)*snorm;
     }
     /* Update the mark and the number of saved pairs. */
-    op->mark = j;
+    ++op->updates;
     if (op->mp < op->m) {
       ++op->mp;
     }
@@ -304,59 +305,51 @@ static const double GRTOL = 1E-6;
 static const double GATOL = 0.0;
 
 /* Other default parameters. */
-static const double DELTA = 0.01;
-static const double EPSILON = 1e-3;
+static const double DELTA   = 5e-2;
+static const double EPSILON = 1e-2;
 static const int    SCALING = OPK_SCALING_OREN_SPEDICATO;
 
 struct _opk_vmlm {
-  opk_object_t base; /**< Base type (must be the first member). */
-  double delta;      /**< Threshold to accept descent direction. */
-  double epsilon;    /**< Relative size for a small step. */
-  double grtol;      /**< Relative threshold for the norm or the gradient
-                          (relative to GINIT the norm of the initial gradient)
-                          for convergence. */
-  double gatol;      /**< Absolute threshold for the norm or the gradient for
-                          convergence. */
-  double ginit;      /**< Euclidean norm or the initial gradient. */
-  double f0;         /**< Function value at x0. */
-  double dg0;        /**< Directional derivative at x0. */
-  double g0norm;     /**< Euclidean norm of g0 the gradient at x0. */
-  double g1norm;     /**< Euclidean norm of the gradient at the last accepted
-                          step. */
-  double pnorm;      /**< Euclidean norm of p the anti-search direction */
-  double stp;        /**< Current step length. */
-  double stpmin;     /**< Relative mimimum step length. */
-  double stpmax;     /**< Relative maximum step length. */
-
-  opk_vspace_t* vspace;
-  opk_lnsrch_t* lnsrch;
-  opk_lbfgs_operator_t* H;
-  opk_vector_t*  x0; /**< Variables at the start of the line search. */
-  opk_vector_t*  g0; /**< Gradient at x0. */
-  opk_vector_t*  p;  /**< Anti-search direction; a iterate is computed
-                          as: x1 = x0 - stp*p with stp > 0. */
-
+  opk_object_t base;       /**< Base type (must be the first member). */
+  double delta;            /**< Relative size for a small step. */
+  double epsilon;          /**< Threshold to accept descent direction. */
+  double grtol;            /**< Relative threshold for the norm or the gradient
+                                (relative to GINIT the norm of the initial
+                                gradient) for convergence. */
+  double gatol;            /**< Absolute threshold for the norm or the gradient
+                                for convergence. */
+  double ginit;            /**< Euclidean norm or the initial gradient. */
+  double f0;               /**< Function value at x0. */
+  double g0norm;           /**< Euclidean norm of g0 the gradient at x0. */
+  double gnorm;            /**< Euclidean norm of the gradient at the last
+                                tried x. */
+  double stp;              /**< Current step length. */
+  double stpmin;           /**< Relative mimimum step length. */
+  double stpmax;           /**< Relative maximum step length. */
+  opk_vspace_t* vspace;    /**< Variable space. */
+  opk_lnsrch_t* lnsrch;    /**< Line search method. */
+  opk_lbfgs_operator_t* H; /**< L-BFGS approximation of inverse Hessian. */
+  opk_vector_t* x0;        /**< Variables at the start of the line search. */
+  opk_vector_t* g0;        /**< Gradient at x0. */
+  opk_vector_t* d;         /**< Anti-search direction; a iterate is computed
+                                as: x1 = x0 - stp*d with stp > 0. */
   opk_index_t evaluations; /**< Number of functions (and gradients)
                                 evaluations. */
   opk_index_t iterations;  /**< Number of iterations (successful steps
                                 taken). */
-  opk_index_t restarts;
-  opk_task_t task;
-  opk_status_t reason;    /**< Some details about the last error/ */
-  opk_bool_t save_memory; /**< To save space, the variable and gradient at the
-                               start of a line search are weak references to
-                               the (s,y) pair of vectors of the LBFGS operator
-                               just after the mark. */
+  opk_index_t restarts;    /**< Number of restarts. */
+  opk_status_t reason;     /**< Last error. */
+  opk_task_t task;         /**< Pending task. */
+  opk_bool_t save_memory;  /**< To save space, the variable and gradient at the
+                                start of a line search are weak references to
+                                the (s,y) pair of vectors of the LBFGS operator
+                                just after the mark. */
 };
 
 static double
 max3(double a1, double a2, double a3)
 {
-  if (a3 >= a2) {
-    return (a3 >= a1 ? a3 : a1);
-  } else {
-    return (a2 >= a1 ? a2 : a1);
-  }
+  return (a3 >= a2 ? MAX(a1, a3) : MAX(a1, a2));
 }
 
 static int
@@ -376,7 +369,7 @@ finalize_vmlm(opk_object_t* obj)
     OPK_DROP(opt->x0);
     OPK_DROP(opt->g0);
   }
-  OPK_DROP(opt->p);
+  OPK_DROP(opt->d);
 }
 
 static opk_task_t
@@ -444,8 +437,8 @@ opk_new_vmlm_optimizer_with_line_search(opk_vspace_t* vspace,
       goto error;
     }
   }
-  opt->p = opk_vcreate(vspace);
-  if (opt->p == NULL) {
+  opt->d = opk_vcreate(vspace);
+  if (opt->d == NULL) {
     goto error;
   }
   opk_start_vmlm(opt);
@@ -475,45 +468,18 @@ opk_task_t
 opk_start_vmlm(opk_vmlm_t* opt)
 {
   opt->iterations = 0;
+  opt->evaluations = 0;
+  opt->restarts = 0;
+  opt->H->updates = 0;
   opk_reset_lbfgs_operator(opt->H);
   return success(opt, OPK_TASK_COMPUTE_FG);
 }
 
-/* FIXME: There should be some thread safe global data used to store last error
-   information.   For now, I use the thread safe global variable errno. */
-
-/* FIXME: check order of arguments. */
-
-
-/* Notes:
- *
- *  - during line search, ws->s[ws->mark] is the (anti-)search direction p, and
- *    ws->y[ws->mark] is g0, the gradient at the start of the line search;
- *
- *  - gd and gd0 are the dot product of the gradient and search direction;
- *
- * To do:
- *
- *  - To save a copy operation it may be better to store the search direction p
- *    in a separate slot and to store x0 in ws->s[ws->mark] and g0 in
- *    ws->y[ws->mark].  This is also advantageous if the effective step (rather
- *    than the scaled search direction) is used to compute the variables change
- *    stored in ws->s.  Finally this is more logical for the organization of the
- *    code (e.g. the LBFGS operator is applied to p not to x0).
- */
-
-static opk_task_t
-next_step(opk_vmlm_t* opt, opk_vector_t* x1)
-{
-  opk_vaxpby(x1, 1.0, opt->x0, -opt->stp, opt->p);
-  return success(opt, OPK_TASK_COMPUTE_FG);
-}
-
 opk_task_t
-opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x1,
-                 double f1, opk_vector_t* g1)
+opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x,
+                 double f, opk_vector_t* g)
 {
-  double gtest, pg1;
+  double gtest, dtg;
   opk_status_t status;
   opk_lnsrch_status_t lnsrch_status;
 
@@ -525,13 +491,18 @@ opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x1,
        point. */
     ++opt->evaluations;
     if (opt->evaluations > 1) {
-      /* A line search is in progress.  Compute directional derivative and
-         check whether line search has converged. */
-      pg1 = opk_vdot(opt->p, g1);
-      lnsrch_status = opk_lnsrch_iterate(opt->lnsrch, &opt->stp, f1, -pg1);
+      /* A line search is in progress, check whether it has converged. */
+      if (opk_lnsrch_use_deriv(opt->lnsrch)) {
+        /* Compute effective step and directional derivative. */
+        dtg = -opk_vdot(opt->d, g);
+      } else {
+        /* Line search does not need directional derivative. */
+        dtg = 0;
+      }
+      lnsrch_status = opk_lnsrch_iterate(opt->lnsrch, &opt->stp, f, dtg);
       if (lnsrch_status == OPK_LNSRCH_SEARCH) {
         /* Line search has not yet converged. */
-        return next_step(opt, x1);
+        goto new_try;
       }
       if (lnsrch_status != OPK_LNSRCH_CONVERGENCE) {
         status = opk_lnsrch_get_reason(opt->lnsrch);
@@ -543,36 +514,40 @@ opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x1,
     }
 
     /* The current step is acceptable. Check for global convergence. */
-    opt->g1norm = opk_vnorm2(g1);
+    opt->gnorm = opk_vnorm2(g);
     if (opt->evaluations == 1) {
-      opt->ginit = opt->g1norm;
+      opt->ginit = opt->gnorm;
     }
     gtest = max3(0.0, opt->gatol, opt->grtol*opt->ginit);
-    return success(opt, (opt->g1norm <= gtest
+    return success(opt, (opt->gnorm <= gtest
                          ? OPK_TASK_FINAL_X
                          : OPK_TASK_NEW_X));
 
   case OPK_TASK_NEW_X:
+  case OPK_TASK_FINAL_X:
 
     if (opt->evaluations > 1) {
       /* Update the LBFGS matrix. */
-      opk_update_lbfgs_operator(opt->H, x1, opt->x0, g1, opt->g0);
+      opk_update_lbfgs_operator(opt->H, x, opt->x0, g, opt->g0);
     }
 
-  case OPK_TASK_FINAL_X:
+    /* Compute a search direction.  We take care of checking whether -D is a
+       sufficient descent direction (here D is a sufficient ascent direction).
+       As shown by Zoutendijk, this is true if cos(theta) = (D/|D|)'.(G/|G|) is
+       larger or equal EPSILON > 0, where G is the gradient at X and D the
+       descent direction. */
 
-    /* Compute a search direction.  We take care of checking whether D = -P is
-       a sufficient descent direction.  As shown by Zoutendijk, this is true
-       if: cos(theta) = -(D/|D|)'.(G/|G|) >= EPSILON > 0 where G is the
-       gradient and D the descent direction. */
     while (TRUE) {
-      opk_apply_direct((opk_operator_t*)opt->H, opt->p, g1);
-      opt->pnorm = opk_vnorm2(opt->p);
-      pg1 = opk_vdot(opt->p, g1);
-      if (pg1 >= opt->delta*opt->pnorm*opt->g1norm) {
-        /* Accept P (respectively D = -P) as a sufficient ascent (respectively
-           descent) direction and set the directional derivative. */
-        opt->dg0 = -pg1;
+      opk_apply_direct((opk_operator_t*)opt->H, opt->d, g);
+      dtg = -opk_vdot(opt->d, g);
+      if (opt->epsilon > 0 &&
+          dtg > -opt->epsilon*opk_vnorm2(opt->d)*opt->gnorm) {
+        /* Set DTG to zero to indicate that we do not have a sufficient
+           descent direction. */
+        dtg = 0;
+      }
+      if (dtg < 0) {
+        /* Accept D as a sufficient ascent direction. */
         break;
       }
       if (opt->H->mp < 1) {
@@ -587,44 +562,47 @@ opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x1,
       ++opt->restarts;
     }
 
-    /* Save current variables X0, gradient G0 and function value F0.  The
-       directional derivative DG0 = <D,G0> has already been set in the above
-       loop.  */
+    /* Save current variables X0, gradient G0 and function value F0. */
     if (opt->save_memory) {
       /* Use the slot just after the mark to store X0 and G0.  Note that this
          is a weak reference: we do not "hold" the vectors. */
-      opt->x0 = opk_get_lbfgs_s(opt->H, 1);
-      opt->g0 = opk_get_lbfgs_y(opt->H, 1);
-      if (opt->H->mp > opt->H->m - 1) {
-        opt->H->mp = opt->H->m - 1;
+      opt->x0 = opk_get_lbfgs_s(opt->H, 0);
+      opt->g0 = opk_get_lbfgs_y(opt->H, 0);
+      if (opt->H->mp == opt->H->m) {
+        --opt->H->mp;
       }
     }
-    opk_vcopy(opt->x0, x1);
-    opk_vcopy(opt->g0, g1);
-    opt->g0norm = opt->g1norm;
-    opt->f0 = f1;
+    opk_vcopy(opt->x0, x);
+    opk_vcopy(opt->g0, g);
+    opt->f0 = f;
+    opt->g0norm = opt->gnorm;
 
-    /* Estimate the length of the first step, start the line search and take
-       the first step along the search direction. */
+    /* Estimate the length of the first step. */
     if (opt->H->mp >= 1 || opt->H->scaling == OPK_SCALING_NONE) {
       opt->stp = 1.0;
-    } else if (0.0 < opt->epsilon && opt->epsilon < 1.0) {
-      double x1norm = opk_vnorm2(x1);
-      if (x1norm > 0.0) {
-        opt->stp = (x1norm/opt->g1norm)*opt->epsilon;
-      } else {
-        opt->stp = 1.0/opt->g1norm;
-      }
     } else {
-      opt->stp = 1.0/opt->g1norm;
+      if (f != 0) {
+        opt->stp = 2*fabs(f/dtg);
+      } else {
+        double dnorm = opt->gnorm;
+        double xnorm = opk_vnorm2(x);
+        if (xnorm > 0) {
+          opt->stp = opt->delta*xnorm/dnorm;
+        } else {
+          opt->stp = opt->delta/dnorm;
+        }
+      }
     }
-    lnsrch_status = opk_lnsrch_start(opt->lnsrch, opt->f0, opt->dg0, opt->stp,
+
+    /* Start the line search and take the first step along the search
+       direction. */
+    lnsrch_status = opk_lnsrch_start(opt->lnsrch, f, dtg, opt->stp,
                                      opt->stpmin*opt->stp,
                                      opt->stpmax*opt->stp);
     if (lnsrch_status != OPK_LNSRCH_SEARCH) {
       return failure(opt, opk_lnsrch_get_reason(opt->lnsrch));
     }
-    return next_step(opt, x1);
+    goto new_try;
 
   default:
 
@@ -633,12 +611,21 @@ opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x1,
 
   }
 
+ new_try:
+  opk_vaxpby(x, 1, opt->x0, -opt->stp, opt->d);
+  return success(opt, OPK_TASK_COMPUTE_FG);
 }
 
 opk_task_t
 opk_get_vmlm_task(opk_vmlm_t* opt)
 {
   return opt->task;
+}
+
+opk_status_t
+opk_get_vmlm_reason(opk_vmlm_t* opt)
+{
+  return opt->reason;
 }
 
 opk_index_t
