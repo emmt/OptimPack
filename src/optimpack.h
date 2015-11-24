@@ -5,9 +5,9 @@
  *
  *-----------------------------------------------------------------------------
  *
- * The OptimPack library is licensed under the MIT "Expat" License:
+ * This file is part of OptimPack (https://github.com/emmt/OptimPack).
  *
- * Copyright (c) 2014: Éric Thiébaut
+ * Copyright (C) 2014, 2015 Éric Thiébaut
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -33,6 +33,7 @@
 #ifndef _OPTIMPACK_H
 #define _OPTIMPACK_H 1
 
+#include <stdio.h>
 #include <stddef.h>
 
 /**
@@ -232,32 +233,33 @@ OPK_BEGIN_C_DECLS
   _OPK_STATUS( 4, OPK_NOT_IMPLEMENTED, "Not implemented")               \
   _OPK_STATUS( 5, OPK_CORRUPTED_WORKSPACE, "Corrupted workspace")       \
   _OPK_STATUS( 6, OPK_BAD_SPACE, "Bad variable space")                  \
-  _OPK_STATUS( 7, OPK_NOT_STARTED, "Line search not started")           \
-  _OPK_STATUS( 8, OPK_NOT_A_DESCENT, "Not a descent direction")         \
-  _OPK_STATUS( 9, OPK_STEP_CHANGED, "Step changed")                     \
-  _OPK_STATUS(10, OPK_STEP_OUTSIDE_BRACKET, "Step outside bracket")     \
-  _OPK_STATUS(11, OPK_STPMIN_GT_STPMAX,                                 \
+  _OPK_STATUS( 7, OPK_OUT_OF_BOUNDS_INDEX, "Out of bounds index")       \
+  _OPK_STATUS( 8, OPK_NOT_STARTED, "Line search not started")           \
+  _OPK_STATUS( 9, OPK_NOT_A_DESCENT, "Not a descent direction")         \
+  _OPK_STATUS(10, OPK_STEP_CHANGED, "Step changed")                     \
+  _OPK_STATUS(11, OPK_STEP_OUTSIDE_BRACKET, "Step outside bracket")     \
+  _OPK_STATUS(12, OPK_STPMIN_GT_STPMAX,                                 \
                "Lower step bound larger than upper bound")              \
-  _OPK_STATUS(12, OPK_STPMIN_LT_ZERO,                                   \
+  _OPK_STATUS(13, OPK_STPMIN_LT_ZERO,                                   \
               "Minimal step length less than zero")                     \
-  _OPK_STATUS(13, OPK_STEP_LT_STPMIN, "Step lesser than lower bound")   \
-  _OPK_STATUS(14, OPK_STEP_GT_STPMAX, "Step greater than upper bound")  \
-  _OPK_STATUS(15, OPK_FTOL_TEST_SATISFIED,                              \
+  _OPK_STATUS(14, OPK_STEP_LT_STPMIN, "Step lesser than lower bound")   \
+  _OPK_STATUS(15, OPK_STEP_GT_STPMAX, "Step greater than upper bound")  \
+  _OPK_STATUS(16, OPK_FTOL_TEST_SATISFIED,                              \
               "Convergence within variable tolerance")                  \
-  _OPK_STATUS(16, OPK_GTOL_TEST_SATISFIED,                              \
+  _OPK_STATUS(17, OPK_GTOL_TEST_SATISFIED,                              \
                 "Convergence within function tolerance")                \
-  _OPK_STATUS(17, OPK_XTOL_TEST_SATISFIED,                              \
+  _OPK_STATUS(18, OPK_XTOL_TEST_SATISFIED,                              \
                 "Convergence within gradient tolerance")                \
-  _OPK_STATUS(18, OPK_STEP_EQ_STPMAX, "Step blocked at upper bound")    \
-  _OPK_STATUS(19, OPK_STEP_EQ_STPMIN, "Step blocked at lower bound")    \
-  _OPK_STATUS(20, OPK_ROUNDING_ERRORS_PREVENT_PROGRESS,                 \
+  _OPK_STATUS(19, OPK_STEP_EQ_STPMAX, "Step blocked at upper bound")    \
+  _OPK_STATUS(20, OPK_STEP_EQ_STPMIN, "Step blocked at lower bound")    \
+  _OPK_STATUS(21, OPK_ROUNDING_ERRORS_PREVENT_PROGRESS,                 \
               "Rounding errors prevent progress")                       \
-  _OPK_STATUS(21, OPK_BAD_PRECONDITIONER,                               \
+  _OPK_STATUS(22, OPK_BAD_PRECONDITIONER,                               \
               "Preconditioner is not positive definite")                \
-  _OPK_STATUS(22, OPK_INFEASIBLE_BOUNDS, "Box set is infeasible")       \
-  _OPK_STATUS(23, OPK_WOULD_BLOCK,                                      \
+  _OPK_STATUS(23, OPK_INFEASIBLE_BOUNDS, "Box set is infeasible")       \
+  _OPK_STATUS(24, OPK_WOULD_BLOCK,                                      \
               "Variables cannot be improved (would block)")             \
-  _OPK_STATUS(24, OPK_UNDEFINED_VALUE, "Undefined value")
+  _OPK_STATUS(25, OPK_UNDEFINED_VALUE, "Undefined value")
 
 
 /**
@@ -591,6 +593,50 @@ opk_rewrap_simple_float_vector(opk_vector_t* v, float new_data[],
  */
 extern opk_vector_t*
 opk_vcreate(opk_vspace_t* vspace);
+
+/**
+ * Print vector contents.
+ *
+ * @param file  - The output file stream, `stdout` is used if `NULL`.
+ * @param name  - The name of the vector, can be `NULL`.
+ * @param nmax  - The maximum number of elements to print.  The vector size is
+ *                used if this parameter is not strictly positive.
+ */
+extern void
+opk_vprint(FILE* file, const char* name, const opk_vector_t* vect,
+           opk_index_t nmax);
+
+/**
+ * Fetch a specific vector component.
+ *
+ * This function is by no means intended to be efficient and should be avoided
+ * except for debugging purposes.
+ *
+ * @param vect - A vector.
+ * @param k    - The index of the compoent to peek.
+ * @param ptr  - The address to store the component value (as a double
+ *               precision floating point).
+ *
+ * @return A standard status.
+ */
+extern opk_status_t
+opk_vpeek(const opk_vector_t* vect, opk_index_t k, double* ptr);
+
+/**
+ * Set the value of a specific vector component.
+ *
+ * This function is by no means intended to be efficient and should be avoided
+ * except for debugging purposes.
+ *
+ * @param vect  - A vector.
+ * @param k     - The index of the component to set.
+ * @param value - The value to store in the component (as a double precision
+ *                floating point).
+ *
+ * @return A standard status.
+ */
+extern opk_status_t
+opk_vpoke(opk_vector_t* vect, opk_index_t k, double value);
 
 /**
  * Fill a vector with zeros.

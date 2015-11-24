@@ -5,7 +5,9 @@
  *
  *-----------------------------------------------------------------------------
  *
- * Copyright (C) 2014 Éric Thiébaut <thiebaut@obs.univ-lyon1.fr>
+ * This file is part of OptimPack (https://github.com/emmt/OptimPack).
+ *
+ * Copyright (C) 2014, 2015 Éric Thiébaut
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -184,6 +186,18 @@ struct _opk_vspace_operations {
   /* Delete an element of this vector space.  Same semantics as the
      finalize_space() method. FIXME: improve explanations */
   void (*finalize_vector)(opk_vspace_t* vspace, opk_vector_t* v);
+
+  /* Get a specific value in a vector.  This function is only needed for
+     debugging.   When called, it is guaranteed, that `v` belongs to `vspace`
+     and that index `k` is valid (0 <= k < vspace->size). */
+  double (*peek)(const opk_vspace_t* vspace, const opk_vector_t* v,
+                 opk_index_t k);
+
+  /* Set a specific value in a vector.  This function is only needed for
+     debugging.   When called, it is guaranteed, that `v` belongs to `vspace`
+     and that index `k` is valid (0 <= k < vspace->size). */
+  void (*poke)(const opk_vspace_t* vspace, opk_vector_t* v,
+               opk_index_t k, double value);
 
   /* Fill a vector with a scalar ALPHA.  When this method is called, it is
      guaranteed that X belong to VSPACE.  The implementation of this method

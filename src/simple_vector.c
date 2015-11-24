@@ -5,7 +5,9 @@
  *
  *-----------------------------------------------------------------------------
  *
- * Copyright (c) 2014 Éric Thiébaut
+ * This file is part of OptimPack (https://github.com/emmt/OptimPack).
+ *
+ * Copyright (C) 2014, 2015 Éric Thiébaut
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -99,6 +101,20 @@ finalize(opk_vspace_t* vspace,
   if (sv->free_client_data != NULL) {
     sv->free_client_data(sv->client_data);
   }
+}
+
+static double peek(const opk_vspace_t* vspace,
+                   const opk_vector_t* vect,
+                   opk_index_t k)
+{
+  return DATA(vect)[k];
+}
+
+static void poke(const opk_vspace_t* vspace,
+                 opk_vector_t* vect,
+                 opk_index_t k, double value)
+{
+  DATA(vect)[k] = value;
 }
 
 static void
@@ -829,6 +845,8 @@ static opk_vspace_operations_t operations = {
   NULL,
   create,
   finalize,
+  peek,
+  poke,
   fill,
   norm1,
   norm2,

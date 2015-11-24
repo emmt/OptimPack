@@ -5,9 +5,9 @@
  *
  *-----------------------------------------------------------------------------
  *
- * The OptimPack library is licensed under the MIT "Expat" License:
+ * This file is part of OptimPack (https://github.com/emmt/OptimPack).
  *
- * Copyright (c) 2014: Éric Thiébaut
+ * Copyright (C) 2014, 2015 Éric Thiébaut
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -156,6 +156,69 @@ opk_vector_t*
 opk_vcreate(opk_vspace_t* vspace)
 {
   return vspace->ops->create(vspace);
+}
+
+opk_status_t
+opk_vpeek(const opk_vector_t* vect, opk_index_t k, double* ptr)
+{
+  if (vect == NULL || ptr == NULL) {
+    return OPK_ILLEGAL_ADDRESS;
+  }
+  if (k < 0 || k >= vect->owner->size) {
+    return OPK_OUT_OF_BOUNDS_INDEX;
+  }
+  *ptr = vect->owner->ops->peek(vect->owner, vect, k);
+  return OPK_SUCCESS;
+}
+
+opk_status_t
+opk_vpoke(opk_vector_t* vect, opk_index_t k, double value)
+{
+  if (vect == NULL) {
+    return OPK_ILLEGAL_ADDRESS;
+  }
+  if (k < 0 || k >= vect->owner->size) {
+    return OPK_OUT_OF_BOUNDS_INDEX;
+  }
+  vect->owner->ops->poke(vect->owner, vect, k, value);
+  return OPK_SUCCESS;
+}
+
+void
+opk_vprint(FILE* file, const char* name, const opk_vector_t* vect,
+           opk_index_t nmax)
+{
+  opk_vspace_t* vspace;
+  opk_index_t i, n;
+
+  if (vect == NULL) {
+    if (name != NULL) {
+      fputs(name, file);
+      fputs(" = NULL;\n", file);
+    } else {
+      fputs("NULL;\n", file);
+    }
+    return;
+  }
+  if (file == NULL) {
+    file = stdout;
+  }
+  if (name != NULL) {
+    fputs(name, file);
+    fputs(" = {", file);
+  } else {
+    fputs("{", file);
+  }
+  vspace = vect->owner;
+  n = vspace->size;
+  if (nmax > 0 && nmax < n) {
+    n = nmax;
+  }
+  for (i = 0; i < n; ++i) {
+    fprintf(file, "%g", vspace->ops->peek(vspace, vect, i));
+    fputs((i < n - 1 ? "," : ""), file);
+  }
+  fputs((n < vspace->size ? ",...};\n" : "};\n"), file);
 }
 
 /* Zero-fill a vector. */
