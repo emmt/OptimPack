@@ -12,7 +12,9 @@
  *
  *-----------------------------------------------------------------------------
  *
- * Copyright (C) 2009-2014 Éric Thiébaut <thiebaut@obs.univ-lyon1.fr>
+ * This file is part of OptimPack (https://github.com/emmt/OptimPack).
+ *
+ * Copyright (C) 2009-2015 Éric Thiébaut
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -259,21 +261,19 @@ int opk_fmin_next(opk_fmin_context_t* ctx, double* xptr, double fx)
 
   /* The following macros are to facilitate reverse communication and to hide
      the necessary ugliness of the resulting code.  S is the stage number, N is
-     the member name for the variable value, FN the member name for the
-     fonction value and EXPR is the expression (evaluated only once) to
-     compute the variable value. */
+     the member name for the variable value and EXPR is the expression
+     (evaluated only once) to compute the variable value. */
 #define _EVAL_u(s, expr)    _EVAL_n(s, u, expr)
 #define _EVAL_v(s, expr)    _EVAL_n(s, v, expr)
 #define _EVAL_w(s, expr)    _EVAL_n(s, w, expr)
-#define _EVAL_x(s, expr)    _EVAL_o(s, *xptr = x = (expr), )
-#define _EVAL_n(s, n, expr) _EVAL_o(s, *xptr = x = n = (expr), f##n = fx)
-#define _EVAL_o(s, init, final)                 \
+#define _EVAL_x(s, expr)    _EVAL_o(s, *xptr = x = (expr))
+#define _EVAL_n(s, n, expr) _EVAL_o(s, *xptr = x = n = (expr)); f##n = fx
+#define _EVAL_o(s, init)                        \
      init;                                      \
      ctx->stage = s;                            \
      return (ctx->status = OPK_FMIN_FX);        \
    stage_##s:                                   \
-     ++ctx->nevals;                             \
-     final
+     ++ctx->nevals
 #define EVAL(s, n, expr)   _EVAL_##n(s, expr)
 #define JUMP(s)            case s: goto stage_##s
 
