@@ -3,7 +3,8 @@
  *
  * Minimization of an univariate function.  The implemented algorithms are the
  * golden section method and Brent's method [1] with some improvements to
- * account for various boundary conditions and initial search interval.
+ * account for various boundary conditions and initial search interval.  A
+ * reverse communication version is also provided.
  *
  * [1] Brent, R.P., "Algorithms for Minimization without Derivatives,"
  *     Prentice-Hall, Inc. (1973).
