@@ -684,8 +684,8 @@ boxsteplimits(opk_vspace_t* space,
   const REAL* xu;
   const REAL inf = FLOAT_CHOICE(FLT_MAX, DBL_MAX);
   REAL a, b;
-  REAL s, s1 = inf, s2 = inf, s3 = 0;
-  opk_index_t i, n = space->size;
+  REAL s, s1, s2, s3;
+  opk_index_t i, n;
 
 #define VALUE(addr)    (*((double*)(addr)))
 
@@ -741,7 +741,7 @@ boxsteplimits(opk_vspace_t* space,
         if (s < s1) s1 = s;                     \
         if (s < s2 && s > 0) s2 = s;            \
         if (s > s3) s3 = s;                     \
-      } else if (p > 0) {                       \
+      } else if (p < 0) {                       \
         s3 = inf;                               \
       }                                         \
     }                                           \
@@ -774,42 +774,54 @@ boxsteplimits(opk_vspace_t* space,
     }                                           \
   }
 
+  /* Find the step limits. */
+  n = space->size;
+  s1 = inf;
+  s2 = inf;
   switch (bound) {
   case 0:
     s3 = inf;
     break;
   case 1:
+    s3 = 0;
     a = VALUE(lower);
     LOWER(a);
     break;
   case 2:
+    s3 = 0;
     xl = DATA(lower);
     LOWER(xl[i]);
     break;
   case 3:
+    s3 = 0;
     b = VALUE(upper);
     UPPER(b);
     break;
   case 4:
+    s3 = 0;
     a = VALUE(lower);
     b = VALUE(upper);
     BOXED(a, b);
     break;
   case 5:
+    s3 = 0;
     xl = DATA(lower);
     b = VALUE(upper);
     BOXED(xl[i], b);
     break;
   case 6:
+    s3 = 0;
     xu = DATA(upper);
     UPPER(xu[i]);
     break;
   case 7:
+    s3 = 0;
     a = VALUE(lower);
     xu = DATA(upper);
     BOXED(a, xu[i]);
     break;
   case 8:
+    s3 = 0;
     xl = DATA(lower);
     xu = DATA(upper);
     BOXED(xl[i], xu[i]);
