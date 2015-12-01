@@ -1234,9 +1234,6 @@ opk_get_nlcg_evaluations(opk_nlcg_t* opt);
 extern unsigned int
 opk_get_nlcg_method(opk_nlcg_t* opt);
 
-extern opk_bool_t
-opk_get_nlcg_starting(opk_nlcg_t* opt);
-
 extern opk_task_t
 opk_get_nlcg_task(opk_nlcg_t* opt);
 
