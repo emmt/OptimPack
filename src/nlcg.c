@@ -53,6 +53,10 @@
 #define TRUE   OPK_TRUE
 #define FALSE  OPK_FALSE
 
+/* Code returned by the `update` procedures. */
+#define UPDATE_SUCCESS   0
+#define UPDATE_FAILURE  -1
+
 /*---------------------------------------------------------------------------*/
 /* PRIVATE DEFINITIONS */
 
@@ -69,51 +73,50 @@ static const double GRTOL = 1E-6;
 static const double GATOL = 0.0;
 
 struct _opk_nlcg {
-  opk_object_t base;     /* Base type (must be the first member). */
-  double f0;             /* Function value at the start of the line search. */
-  double g0norm;         /* Euclidean norm of G0, the gradient at the start of
-                            the line search. */
-  double gnorm;         /* Euclidean norm of G, the gradient of the end of
-                            the line search / last accepted point. */
+  opk_object_t base;      /* Base type (must be the first member). */
+  double f0;              /* Function value at the start of the line search. */
+  double g0norm;          /* Euclidean norm of G0, the gradient at the start of
+                             the line search. */
+  double gnorm;           /* Euclidean norm of G, the gradient of the last
+                             accepted point. */
   double dtg0;            /* Directional derivative at the start of the line
-                            search; given by the inner product: -<d,g0> */
-  double dtg;            /* Directional derivative at the end or during the
-                            line search; given by the inner product:
-                            -<d,g> */
-  double grtol;          /* Relative threshold for the norm or the gradient
-                            (relative to the initial gradient) for
-                            convergence. */
-  double gatol;          /* Absolute threshold for the norm or the gradient for
-                            convergence. */
-  double ginit;          /* Euclidean norm of the initial gradient. */
-  double fmin;           /* Minimal function value if provided. */
-  double alpha;          /* Current step length. */
-  double beta;           /* Current parameter in conjugate gradient update rule
-                            (for information). */
-  double stpmin;         /* Relative lower bound for the step length. */
-  double stpmax;         /* Relative upper bound for the step length. */
-  opk_status_t (*update)(opk_nlcg_t* opt,
-                         const opk_vector_t* x,
-                         const opk_vector_t* g);
-                         /* The update "method" is called to update the search
-                            direction.  The returned value indicates whether
-                            the updating rule has been successful, otherwise a
-                            restart is needed. */
-  opk_vspace_t* vspace;  /* Vector space of the variables of the problem. */
-  opk_lnsrch_t* lnsrch;  /* Line search method. */
-  opk_vector_t* x0;      /* Variables at start of line search. */
-  opk_vector_t* g0;      /* Gradient at start of line search. */
-  opk_vector_t* d;       /* (Anti-)search direction, new iterate is searched
-                            as: x = x0 - alpha*d, for alpha >= 0. */
-  opk_vector_t* y;       /* Work vector (e.g., to store the gradient
-                            difference: Y = G - G0). */
-  opk_index_t iter;      /* Iteration number. */
-  opk_index_t nrestarts; /* Number of algorithm restarts. */
-  opk_index_t nevals;    /* Number of function and gradient evaluations. */
-  unsigned int method;   /* Conjugate gradient method. */
-  opk_status_t status;   /* Current error status. */
-  opk_task_t task;       /* Current caller task. */
-  opk_bool_t fmin_given; /* Indicate whether FMIN is specified. */
+                             search; given by the inner product: -<d,g0> */
+  double dtg;             /* Directional derivative at the last trial point;
+                             given by the inner product: -<d,g> */
+  double grtol;           /* Relative threshold for the norm or the gradient
+                             (relative to the initial gradient) for
+                             convergence. */
+  double gatol;           /* Absolute threshold for the norm or the gradient
+                             for convergence. */
+  double ginit;           /* Euclidean norm of the initial gradient. */
+  double fmin;            /* Minimal function value if provided. */
+  double alpha;           /* Current step length. */
+  double beta;            /* Current parameter in conjugate gradient update
+                             rule (for information). */
+  double stpmin;          /* Relative lower bound for the step length. */
+  double stpmax;          /* Relative upper bound for the step length. */
+  int (*update)(opk_nlcg_t* opt,
+                const opk_vector_t* x,
+                const opk_vector_t* g);
+                          /* The update "method" is called to update the search
+                             direction.  The returned value indicates whether
+                             the updating rule has been successful, otherwise a
+                             restart is needed. */
+  opk_vspace_t* vspace;   /* Vector space of the variables of the problem. */
+  opk_lnsrch_t* lnsrch;   /* Line search method. */
+  opk_vector_t* x0;       /* Variables at start of line search. */
+  opk_vector_t* g0;       /* Gradient at start of line search. */
+  opk_vector_t* d;        /* (Anti-)search direction, new iterate is searched
+                             as: x = x0 - alpha*d, for alpha >= 0. */
+  opk_vector_t* y;        /* Work vector (e.g., to store the gradient
+                             difference: Y = G - G0). */
+  opk_index_t iterations; /* Number of iterations. */
+  opk_index_t restarts;   /* Number of algorithm restarts. */
+  opk_index_t evaluations;/* Number of function and gradient evaluations. */
+  unsigned int method;    /* Conjugate gradient method. */
+  opk_status_t status;    /* Current error status. */
+  opk_task_t task;        /* Pending caller task. */
+  opk_bool_t fmin_given;  /* Indicate whether FMIN is specified. */
   opk_bool_t update_Hager_Zhang_orig;
 };
 
@@ -170,34 +173,34 @@ failure(opk_nlcg_t* opt, opk_status_t status)
  */
 
 /* Helper function to compute search direction as: d' = g + beta*d. */
-static opk_status_t
+static int
 update0(opk_nlcg_t* opt,
         const opk_vector_t* g,
         double beta)
 {
   if ((opt->beta = beta) == 0) {
-    return OPK_INVALID_ARGUMENT;
+    return UPDATE_FAILURE;
   }
   opk_vaxpby(opt->d, 1, g, beta, opt->d);
-  return OPK_SUCCESS;
+  return UPDATE_SUCCESS;
 }
 
 /* Helper function to compute search direction as: d' = g + beta*d
    possibly with the constraint that beta > 0. */
-static opk_status_t
+static int
 update1(opk_nlcg_t* opt,
         const opk_vector_t* g,
         double beta)
 {
   if ((opt->method & OPK_NLCG_POWELL) == OPK_NLCG_POWELL && beta < 0) {
-    ++opt->nrestarts;
+    ++opt->restarts;
     beta = 0;
   }
   if ((opt->beta = beta) == 0) {
-    return OPK_INVALID_ARGUMENT;
+    return UPDATE_FAILURE;
   }
   opk_vaxpby(opt->d, 1, g, beta, opt->d);
-  return OPK_SUCCESS;
+  return UPDATE_SUCCESS;
 }
 
 /* Form: Y = G - G0 */
@@ -211,11 +214,11 @@ form_y(opk_nlcg_t* opt,
 /*
  * For Hestenes & Stiefel method:
  *
- *     beta = <g,y>/<d,y> = - <g,y>/<d,y>
+ *     beta = <g,y>/<d,y>
  *
  * with y = g - g0.
  */
-static opk_status_t
+static int
 update_Hestenes_Stiefel(opk_nlcg_t* opt,
                         const opk_vector_t* x,
                         const opk_vector_t* g)
@@ -235,7 +238,7 @@ update_Hestenes_Stiefel(opk_nlcg_t* opt,
  *
  * (this value is always >= 0 and can only be zero at a stationary point).
  */
-static opk_status_t
+static int
 update_Fletcher_Reeves(opk_nlcg_t* opt,
                        const opk_vector_t* x,
                        const opk_vector_t* g)
@@ -249,7 +252,7 @@ update_Fletcher_Reeves(opk_nlcg_t* opt,
  *
  *     beta = <g,y>/<g0,g0>
  */
-static opk_status_t
+static int
 update_Polak_Ribiere_Polyak(opk_nlcg_t* opt,
                             const opk_vector_t* x,
                             const opk_vector_t* g)
@@ -263,11 +266,11 @@ update_Polak_Ribiere_Polyak(opk_nlcg_t* opt,
 /*
  * For Fletcher "Conjugate Descent" method:
  *
- *     beta = <g,g>/(-<d,g0>)
+ *     beta = -<g,g>/<d,g0>
  *
  * (this value is always >= 0 and can only be zero at a stationnary point).
  */
-static opk_status_t
+static int
 update_Fletcher(opk_nlcg_t* opt,
                 const opk_vector_t* x,
                 const opk_vector_t* g)
@@ -279,9 +282,9 @@ update_Fletcher(opk_nlcg_t* opt,
 /*
  * For Liu & Storey method:
  *
- *     beta = <g,y>/(-<d,g0>)
+ *     beta = -<g,y>/<d,g0>
  */
-static opk_status_t
+static int
 update_Liu_Storey(opk_nlcg_t* opt,
                   const opk_vector_t* x,
                   const opk_vector_t* g)
@@ -298,7 +301,7 @@ update_Liu_Storey(opk_nlcg_t* opt,
  *
  *     beta = <g,g>/<d,y>
  */
-static opk_status_t
+static int
 update_Dai_Yuan(opk_nlcg_t* opt,
                 const opk_vector_t* x,
                 const opk_vector_t* g)
@@ -313,10 +316,10 @@ update_Dai_Yuan(opk_nlcg_t* opt,
 /*
  * For Hager & Zhang method:
  *
- *     beta = <y - (2*<y,y>/<d,y>)*d,g>
+ *     beta = <y - (2*<y,y>/<d,y>)*d,g>/<d,y>
  *          = (<g,y> - 2*<y,y>*<d,g>/<d,y>)/<d,y>
  */
-static opk_status_t
+static int
 update_Hager_Zhang(opk_nlcg_t* opt,
                    const opk_vector_t* x,
                    const opk_vector_t* g)
@@ -326,7 +329,7 @@ update_Hager_Zhang(opk_nlcg_t* opt,
   dty = -opk_vdot(opt->d, opt->y);
   if (dty != 0) {
     if (opt->update_Hager_Zhang_orig) {
-      /* Original formulation. */
+      /* Original formulation, using Y as a scratch vector. */
       double q = 1.0/dty;
       double r = q*opk_vnorm2(opt->y);
       opk_vaxpby(opt->y, q, opt->y, 2.0*r*r, opt->d);
@@ -340,8 +343,8 @@ update_Hager_Zhang(opk_nlcg_t* opt,
          systematic trend. */
       double ytg = opk_vdot(opt->y, g);
       double dtg = opt->dtg;
-      double r = opk_vnorm2(opt->y)/dty;
-      beta = ytg/dty - 2.0*r*r*dtg;
+      double ynorm = opk_vnorm2(opt->y);
+      beta = (ytg - 2.0*(ynorm/dty)*ynorm*dtg)/dty;
     }
   } else {
     beta = 0.0;
@@ -369,7 +372,7 @@ update_Hager_Zhang(opk_nlcg_t* opt,
  * with alpha the step length, s = x - x0 = alpha*d = -alpha*d.  For this
  * method, beta = c2/c1.
  */
-static opk_status_t
+static int
 update_Perry_Shanno(opk_nlcg_t* opt,
                     const opk_vector_t* x,
                     const opk_vector_t* g)
@@ -378,11 +381,11 @@ update_Perry_Shanno(opk_nlcg_t* opt,
   form_y(opt, g);
   yty = opk_vdot(opt->y, opt->y);
   if (yty <= 0) {
-    return OPK_INVALID_ARGUMENT;
+    return UPDATE_FAILURE;
   }
   dty = -opk_vdot(opt->d, opt->y);
   if (dty == 0) {
-    return OPK_INVALID_ARGUMENT;
+    return UPDATE_FAILURE;
   }
   gty = opk_vdot(g, opt->y);
   dtg = opt->dtg;
@@ -391,7 +394,7 @@ update_Perry_Shanno(opk_nlcg_t* opt,
   c3 = -dtg/yty;
   opt->beta = c2/c1;
   opk_vaxpbypcz(opt->d, c1, g, c2, opt->d, c3, opt->y);
-  return OPK_SUCCESS;
+  return UPDATE_SUCCESS;
 }
 
 static void
@@ -416,9 +419,9 @@ opk_new_nlcg_optimizer_with_line_search(opk_vspace_t* vspace,
 {
   opk_nlcg_t* opt;
   opk_bool_t g0_needed, y_needed;
-  opk_status_t (*update)(opk_nlcg_t* opt,
-                         const opk_vector_t* x,
-                         const opk_vector_t* g);
+  int (*update)(opk_nlcg_t* opt,
+                const opk_vector_t* x,
+                const opk_vector_t* g);
 
   /* Check the input arguments for errors. */
   if (vspace == NULL || lnsrch == NULL) {
@@ -646,19 +649,19 @@ opk_unset_nlcg_fmin(opk_nlcg_t* opt)
 opk_index_t
 opk_get_nlcg_iterations(opk_nlcg_t* opt)
 {
-  return opt->iter;
+  return opt->iterations;
 }
 
 opk_index_t
 opk_get_nlcg_restarts(opk_nlcg_t* opt)
 {
-  return opt->nrestarts;
+  return opt->restarts;
 }
 
 opk_index_t
 opk_get_nlcg_evaluations(opk_nlcg_t* opt)
 {
-  return opt->nevals;
+  return opt->evaluations;
 }
 
 unsigned int
@@ -682,15 +685,15 @@ opk_get_nlcg_beta(opk_nlcg_t* opt)
 opk_task_t
 opk_start_nlcg(opk_nlcg_t* opt)
 {
-  opt->iter = 0;
-  opt->nevals = 0;
-  opt->nrestarts = 0;
+  opt->iterations = 0;
+  opt->evaluations = 0;
+  opt->restarts = 0;
   return success(opt, OPK_TASK_COMPUTE_FG);
 }
 
 opk_task_t
 opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x,
-                 double f1, opk_vector_t* g)
+                 double f, opk_vector_t* g)
 {
   /*
    * The new iterate is:
@@ -699,39 +702,38 @@ opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x,
    */
   opk_status_t status = 0;
   opk_task_t next_task;
-  opk_lnsrch_status_t lnsrch_status = 0;
+  opk_lnsrch_status_t lnsrch_task = 0;
 
   switch (opt->task) {
+
   case OPK_TASK_COMPUTE_FG:
-    ++opt->nevals;
-    if (opt->nevals > 1) {
+
+    ++opt->evaluations;
+    if (opt->evaluations > 1) {
       /* Line search in progress. Compute directional derivative and check
          whether line search has converged. */
       opt->dtg = -opk_vdot(opt->d, g);
-      lnsrch_status = opk_lnsrch_iterate(opt->lnsrch, &opt->alpha, f1, opt->dtg);
-      if (lnsrch_status == OPK_LNSRCH_SEARCH) {
-        /* Proceed with next step. */
-        break;
-      }
-      /* Line search is finished, hopefully because of convergence. */
-      if (lnsrch_status != OPK_LNSRCH_CONVERGENCE) {
+      lnsrch_task = opk_lnsrch_iterate(opt->lnsrch, &opt->alpha, f, opt->dtg);
+      if (lnsrch_task != OPK_LNSRCH_CONVERGENCE) {
+        if (lnsrch_task == OPK_LNSRCH_SEARCH) {
+          /* Line search has not converged, break to compute a new trial point
+             along the search direction. */
+          break;
+        }
         status = opk_lnsrch_get_reason(opt->lnsrch);
         if (status != OPK_ROUNDING_ERRORS_PREVENT_PROGRESS) {
           return failure(opt, status);
         }
       }
       /* Line search has converged. */
-      ++opt->iter;
-      opt->gnorm = opk_vnorm2(g);
-    } else {
-      /* First evaluation. */
-      opt->gnorm = opk_vnorm2(g);
-      opt->ginit = opt->gnorm;
-      opt->dtg = 0.0;
-      opt->beta = 0.0;
+      ++opt->iterations;
     }
 
-    /* Check for global convergence. */
+    /* The current step is acceptable.  Check for global convergence. */
+    opt->gnorm = opk_vnorm2(g);
+    if (opt->evaluations <= 1) {
+      opt->ginit = opt->gnorm;
+    }
     if (opt->gnorm <= max3(0.0, opt->gatol, opt->grtol*opt->ginit)) {
       next_task = OPK_TASK_FINAL_X;
     } else {
@@ -743,7 +745,7 @@ opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x,
   case OPK_TASK_FINAL_X:
 
     /* Compute a search direction and start line search. */
-    if (opt->nevals <= 1 || opt->update(opt, x, g) != OPK_SUCCESS) {
+    if (opt->evaluations <= 1 || opt->update(opt, x, g) != UPDATE_SUCCESS) {
       /* First evaluation or update failed. */
       opt->dtg = 0.0;
     } else {
@@ -767,8 +769,8 @@ opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x,
     if (opt->dtg >= 0.0) {
       /* Initial search direction or recurrence has been restarted.  FIXME:
          other possibility is to use Fletcher's formula, see BGLS p. 39) */
-      if (opt->nevals > 1) {
-        ++opt->nrestarts;
+      if (opt->evaluations > 1) {
+        ++opt->restarts;
       }
       opt->beta = 0.0;
 #if 0
@@ -776,7 +778,7 @@ opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x,
       if (xnorm > 0.0) {
         opt->alpha = (xnorm/opt->gnorm)*opt->tiny;
       } else {
-        opt->alpha = (1e-3*MAX(fabs(f1), 1.0)/opt->gnorm)/opt->gnorm;
+        opt->alpha = (1e-3*MAX(fabs(f), 1.0)/opt->gnorm)/opt->gnorm;
       }
 #else
       opt->alpha = 1.0/opt->gnorm;
@@ -787,14 +789,15 @@ opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x,
 
     /* Store current position as X0, f0, etc. */
     opk_vcopy(opt->x0, x);
-    opt->f0 = f1;
+    opt->f0 = f;
     if (opt->g0 != NULL) {
       opk_vcopy(opt->g0, g);
     }
     opt->g0norm = opt->gnorm;
     opt->dtg0 = opt->dtg;
 
-    /* Start the line search. */
+    /* Start the line search and break to compute the first trial point along
+       the line search. */
     if (opk_lnsrch_start(opt->lnsrch, opt->f0, opt->dtg0, opt->alpha,
                          opt->stpmin*opt->alpha,
                          opt->stpmax*opt->alpha) != OPK_LNSRCH_SEARCH) {
@@ -806,7 +809,7 @@ opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x,
     return opt->task;
   }
 
-  /* Build a new step to try. */
+  /* Compute a trial point along the line search. */
   opk_vaxpby(x, 1.0, opt->x0, -opt->alpha, opt->d);
   return success(opt, OPK_TASK_COMPUTE_FG);
 }
