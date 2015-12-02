@@ -9,7 +9,9 @@
  *
  *-----------------------------------------------------------------------------
  *
- * Copyright (c) 2002, 2015 Éric Thiébaut
+ * This file is part of OptimPack (https://github.com/emmt/OptimPack).
+ *
+ * Copyright (C) 2002, 2015 Éric Thiébaut
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -339,10 +341,11 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
                   double f, opk_vector_t* g,
                   const opk_bound_t* xl, const opk_bound_t* xu)
 {
-  double dtg, yty, sty, stpmax;
+  double dtg, yty, sty;
+  double smax, smin, swolfe;
   opk_index_t j, k;
   opk_status_t status;
-  opk_lnsrch_status_t lnsrch_status;
+  opk_lnsrch_task_t lnsrch_task;
 
   switch (opt->task) {
 
@@ -384,13 +387,13 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
         /* Line search does not need directional derivative. */
         dtg = 0;
       }
-      lnsrch_status = opk_lnsrch_iterate(opt->lnsrch, &opt->stp, f, dtg);
-      if (lnsrch_status == OPK_LNSRCH_SEARCH) {
+      lnsrch_task = opk_lnsrch_iterate(opt->lnsrch, &opt->stp, f, dtg);
+      if (lnsrch_task == OPK_LNSRCH_SEARCH) {
         /* Line search has not yet converged. */
         goto new_try;
       }
-      if (lnsrch_status != OPK_LNSRCH_CONVERGENCE) {
-        status = opk_lnsrch_get_reason(opt->lnsrch);
+      if (lnsrch_task != OPK_LNSRCH_CONVERGENCE) {
+        status = opk_lnsrch_get_status(opt->lnsrch);
         if (status != OPK_ROUNDING_ERRORS_PREVENT_PROGRESS) {
           return failure(opt, status);
         }
@@ -497,16 +500,16 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
     }
 
     /* Shortcut the step length. */
-    status = opk_box_get_step_limits(NULL, NULL, &stpmax,
+    status = opk_box_get_step_limits(&smin, &swolfe, &smax,
                                      x, xl, xu, opt->d, OPK_ASCENT);
     if (status != OPK_SUCCESS) {
       return failure(opt, status);
     }
-    if (opt->stp > stpmax) {
-      opt->stp = stpmax;
-    }
-    if (opt->stp <= 0) {
+    if (smax <= 0) {
       return failure(opt, OPK_WOULD_BLOCK);
+    }
+    if (opt->stp > smax) {
+      opt->stp = smax;
     }
 
     /* Save current point. */
@@ -523,10 +526,9 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
     opt->f0 = f;
 
     /* Start line search. */
-    lnsrch_status = opk_lnsrch_start(opt->lnsrch, f, dtg, opt->stp,
-                                     opt->stpmin, opt->stpmax);
-    if (lnsrch_status != OPK_LNSRCH_SEARCH) {
-      return failure(opt, opk_lnsrch_get_reason(opt->lnsrch));
+    if (opk_lnsrch_start(opt->lnsrch, f, dtg, opt->stp,
+                         opt->stpmin, opt->stpmax) != OPK_LNSRCH_SEARCH) {
+      return failure(opt, opk_lnsrch_get_status(opt->lnsrch));
     }
     goto new_try;
 

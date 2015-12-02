@@ -379,9 +379,8 @@ struct _opk_lnsrch {
                                      search. */
   double ginit;                 /**< Directional derivative value at the start
                                      of the search. */
-  opk_status_t reason;          /**< More detailed reason of the status. */
-  opk_lnsrch_status_t status;   /**< Last value returned by line search
-                                     methods. */
+  opk_status_t status;          /**< Last status. */
+  opk_lnsrch_task_t task;       /**< Current pending task. */
   int searching;                /**< True if search is in progress. */
 };
 
@@ -396,16 +395,16 @@ struct _opk_lnsrch_operations {
      of the step length, members FINIT and GINIT with the function value and
      the derivative the function along the search direction at the start of the
      search. */
-  opk_lnsrch_status_t (*start)(opk_lnsrch_t* self);
+  opk_lnsrch_task_t (*start)(opk_lnsrch_t* self);
 
-  /* Method to iterate during a line search.  STP_PTR, F_PTR and D_PTR are the
-     addresses of variables which store STP, F and D.  On entry, STP is the
-     current step length, F is the function value for this step and D is the
-     corresponding derivative of the function along the search direction.
-     FIXME: On exit, if convergence is achieved (or in case of error/warning)
-     STP, F and D are left unchanged; otherwise STP is the new step to try. */
-  opk_lnsrch_status_t (*iterate)(opk_lnsrch_t* self,
-                                 double* stp_ptr, double f1, double d1);
+  /* Method to iterate during a line search.  STP_PTR is the addresse of the
+     variable which store the current step size STP.  F is the function value
+     for this step size.  DF is the corresponding directional derivative along
+     the search direction.  On exit, if convergence is achieved (or in case of
+     error/warning) the step size is left unchanged; otherwise, the contents of
+     STP_PTR is set with the new step to try. */
+  opk_lnsrch_task_t (*iterate)(opk_lnsrch_t* self,
+                               double* stp_ptr, double f, double df);
 
   /* Flag to indicate whether directional derivative are needed to check the
      line search convergence; else only function values are used (e.g. Armijo

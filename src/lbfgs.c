@@ -318,7 +318,7 @@ opk_iterate_lbfgs(opk_lbfgs_t* opt, opk_vector_t* x,
   double dtg, yty, sty;
   opk_index_t j, k;
   opk_status_t status;
-  opk_lnsrch_status_t lnsrch_task;
+  opk_lnsrch_task_t lnsrch_task;
 
   switch (opt->task) {
 
@@ -353,7 +353,7 @@ opk_iterate_lbfgs(opk_lbfgs_t* opt, opk_vector_t* x,
         break;
       }
       if (lnsrch_task != OPK_LNSRCH_CONVERGENCE) {
-        status = opk_lnsrch_get_reason(opt->lnsrch);
+        status = opk_lnsrch_get_status(opt->lnsrch);
         if (lnsrch_task != OPK_LNSRCH_WARNING ||
             status != OPK_ROUNDING_ERRORS_PREVENT_PROGRESS) {
           return failure(opt, status);
@@ -467,7 +467,7 @@ opk_iterate_lbfgs(opk_lbfgs_t* opt, opk_vector_t* x,
     if (opk_lnsrch_start(opt->lnsrch, f, dtg, opt->stp,
                          opt->stp*opt->stpmin,
                          opt->stp*opt->stpmax) != OPK_LNSRCH_SEARCH) {
-      return failure(opt, opk_lnsrch_get_reason(opt->lnsrch));
+      return failure(opt, opk_lnsrch_get_status(opt->lnsrch));
     }
     break;
 

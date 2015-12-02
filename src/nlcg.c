@@ -760,7 +760,7 @@ opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x,
    */
   opk_status_t status = 0;
   opk_task_t next_task;
-  opk_lnsrch_status_t lnsrch_task = 0;
+  opk_lnsrch_task_t lnsrch_task = 0;
 
   switch (opt->task) {
 
@@ -778,8 +778,9 @@ opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x,
              along the search direction. */
           break;
         }
-        status = opk_lnsrch_get_reason(opt->lnsrch);
-        if (status != OPK_ROUNDING_ERRORS_PREVENT_PROGRESS) {
+        status = opk_lnsrch_get_status(opt->lnsrch);
+        if (lnsrch_task != OPK_LNSRCH_WARNING ||
+            status != OPK_ROUNDING_ERRORS_PREVENT_PROGRESS) {
           return failure(opt, status);
         }
       }
@@ -805,7 +806,7 @@ opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x,
     /* Compute search direction and initial step size. */
     if (opt->evaluations <= 1 || opt->update(opt, x, g) != UPDATE_SUCCESS) {
       /* First evaluation or update failed, set DTG to zero to use the steepest
-       * descent direction. */
+         descent direction. */
       opt->dtg = 0;
     } else {
       opt->dtg = -opk_vdot(opt->d, g);
@@ -863,11 +864,13 @@ opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x,
     if (opk_lnsrch_start(opt->lnsrch, opt->f0, opt->dtg0, opt->alpha,
                          opt->stpmin*opt->alpha,
                          opt->stpmax*opt->alpha) != OPK_LNSRCH_SEARCH) {
-      return failure(opt, opk_lnsrch_get_reason(opt->lnsrch));
+      return failure(opt, opk_lnsrch_get_status(opt->lnsrch));
     }
     break;
 
   default:
+
+    /* There is probably something wrong. */
     return opt->task;
   }
 

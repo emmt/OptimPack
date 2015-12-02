@@ -966,7 +966,7 @@ typedef enum {
   OPK_LNSRCH_SEARCH      =  0,
   OPK_LNSRCH_CONVERGENCE =  1,
   OPK_LNSRCH_WARNING     =  2
-} opk_lnsrch_status_t;
+} opk_lnsrch_task_t;
 
 /**
  * Start a new linesearch.
@@ -1012,11 +1012,11 @@ opk_lnsrch_iterate(opk_lnsrch_t* ls, double* stp_ptr,
 extern double
 opk_lnsrch_get_step(const opk_lnsrch_t* ls);
 
-extern opk_lnsrch_status_t
-opk_lnsrch_get_status(const opk_lnsrch_t* ls);
+extern opk_lnsrch_task_t
+opk_lnsrch_get_task(const opk_lnsrch_t* ls);
 
 extern opk_status_t
-opk_lnsrch_get_reason(const opk_lnsrch_t* ls);
+opk_lnsrch_get_status(const opk_lnsrch_t* ls);
 
 extern opk_bool_t
 opk_lnsrch_has_errors(const opk_lnsrch_t* ls);

@@ -1,10 +1,12 @@
 /*
  * lnsrch.c --
  *
- * Linesearch routines for OptimPack library.  Implements Armijo linesearch,
- * Moré & Thuente inexact linesearch and nonmonotone linesearch methods.
+ * Line search routines for OptimPack library.  Implements Armijo line search,
+ * Moré & Thuente inexact line search and nonmonotone line search methods.
  *
  *-----------------------------------------------------------------------------
+ *
+ * This file is part of OptimPack (https://github.com/emmt/OptimPack).
  *
  * Copyright (C) 2003-2014 Éric Thiébaut
  *
@@ -57,28 +59,28 @@ non_finite(double x)
   return (isnan(x) || isinf(x));
 }
 
-static opk_lnsrch_status_t
-failure(opk_lnsrch_t* ls, opk_status_t reason)
+static opk_lnsrch_task_t
+failure(opk_lnsrch_t* ls, opk_status_t status)
 {
-  ls->reason = reason;
-  ls->status = OPK_LNSRCH_ERROR;
-  return ls->status;
-}
-
-static opk_lnsrch_status_t
-warning(opk_lnsrch_t* ls, opk_status_t reason)
-{
-  ls->reason = reason;
-  ls->status = OPK_LNSRCH_WARNING;
-  return ls->status;
-}
-
-static opk_lnsrch_status_t
-success(opk_lnsrch_t* ls, opk_lnsrch_status_t status)
-{
-  ls->reason = OPK_SUCCESS;
   ls->status = status;
-  return ls->status;
+  ls->task = OPK_LNSRCH_ERROR;
+  return ls->task;
+}
+
+static opk_lnsrch_task_t
+warning(opk_lnsrch_t* ls, opk_status_t status)
+{
+  ls->status = status;
+  ls->task = OPK_LNSRCH_WARNING;
+  return ls->task;
+}
+
+static opk_lnsrch_task_t
+success(opk_lnsrch_t* ls, opk_lnsrch_task_t status)
+{
+  ls->status = OPK_SUCCESS;
+  ls->task = status;
+  return ls->task;
 }
 
 /*---------------------------------------------------------------------------*/
@@ -111,15 +113,15 @@ opk_allocate_line_search(opk_lnsrch_operations_t *ops,
   ls = (opk_lnsrch_t*)opk_allocate_object(finalize_line_search, size);
   if (ls != NULL) {
     ls->ops = ops;
-    ls->reason = OPK_NOT_STARTED;
-    ls->status = OPK_LNSRCH_ERROR;
+    ls->status = OPK_NOT_STARTED;
+    ls->task = OPK_LNSRCH_ERROR;
   }
   return ls;
 }
 
 /* after an error or convergence, you must call opk_lnsrch_start */
 
-opk_lnsrch_status_t
+opk_lnsrch_task_t
 opk_lnsrch_start(opk_lnsrch_t* ls, double f0, double g0,
                  double stp, double stpmin, double stpmax)
 {
@@ -149,20 +151,20 @@ opk_lnsrch_start(opk_lnsrch_t* ls, double f0, double g0,
   return ls->ops->start(ls);
 }
 
-opk_lnsrch_status_t
+opk_lnsrch_task_t
 opk_lnsrch_iterate(opk_lnsrch_t* ls, double* stp_ptr,
                    double f1, double g1)
 {
   if (ls == NULL || stp_ptr == NULL) {
     return OPK_ILLEGAL_ADDRESS;
   }
-  if (ls->status != OPK_LNSRCH_SEARCH) {
+  if (ls->task != OPK_LNSRCH_SEARCH) {
     return failure(ls, OPK_NOT_STARTED);
   }
   if (*stp_ptr != ls->stp) {
     return failure(ls, OPK_STEP_CHANGED);
   }
-  ls->status = ls->ops->iterate(ls, stp_ptr, f1, g1);
+  ls->task = ls->ops->iterate(ls, stp_ptr, f1, g1);
   if (*stp_ptr > ls->stpmax) {
     if (ls->stp >= ls->stpmax) {
       warning(ls, OPK_STEP_EQ_STPMAX);
@@ -175,49 +177,49 @@ opk_lnsrch_iterate(opk_lnsrch_t* ls, double* stp_ptr,
     *stp_ptr = ls->stpmin;
   }
   ls->stp = *stp_ptr;
-  return ls->status;
+  return ls->task;
 }
 
 double
 opk_lnsrch_get_step(const opk_lnsrch_t* ls)
 {
-  return (ls != NULL && ls->status == OPK_LNSRCH_SEARCH ? ls->stp : -1.0);
+  return (ls != NULL && ls->task == OPK_LNSRCH_SEARCH ? ls->stp : -1.0);
 }
 
-opk_lnsrch_status_t
-opk_lnsrch_get_status(const opk_lnsrch_t* ls)
+opk_lnsrch_task_t
+opk_lnsrch_get_task(const opk_lnsrch_t* ls)
 {
-  return (ls != NULL ? ls->status : OPK_LNSRCH_ERROR);
+  return (ls != NULL ? ls->task : OPK_LNSRCH_ERROR);
 }
 
 opk_status_t
-opk_lnsrch_get_reason(const opk_lnsrch_t* ls)
+opk_lnsrch_get_status(const opk_lnsrch_t* ls)
 {
-  return (ls != NULL ? ls->reason : OPK_ILLEGAL_ADDRESS);
+  return (ls != NULL ? ls->status : OPK_ILLEGAL_ADDRESS);
 }
 
 opk_bool_t
 opk_lnsrch_has_errors(const opk_lnsrch_t* ls)
 {
-  return (opk_lnsrch_get_status(ls) == OPK_LNSRCH_ERROR);
+  return (opk_lnsrch_get_task(ls) == OPK_LNSRCH_ERROR);
 }
 
 opk_bool_t
 opk_lnsrch_has_warnings(const opk_lnsrch_t* ls)
 {
-  return (opk_lnsrch_get_status(ls) == OPK_LNSRCH_WARNING);
+  return (opk_lnsrch_get_task(ls) == OPK_LNSRCH_WARNING);
 }
 
 opk_bool_t
 opk_lnsrch_converged(const opk_lnsrch_t* ls)
 {
-  return (opk_lnsrch_get_status(ls) == OPK_LNSRCH_CONVERGENCE);
+  return (opk_lnsrch_get_task(ls) == OPK_LNSRCH_CONVERGENCE);
 }
 
 opk_bool_t
 opk_lnsrch_finished(const opk_lnsrch_t* ls)
 {
-  return (opk_lnsrch_get_status(ls) != OPK_LNSRCH_SEARCH);
+  return (opk_lnsrch_get_task(ls) != OPK_LNSRCH_SEARCH);
 }
 
 opk_bool_t
@@ -236,13 +238,13 @@ struct _backtrack_lnsrch {
   double ftol;
 };
 
-static opk_lnsrch_status_t
+static opk_lnsrch_task_t
 backtrack_start(opk_lnsrch_t* ls)
 {
   return success(ls, OPK_LNSRCH_SEARCH);
 }
 
-static opk_lnsrch_status_t
+static opk_lnsrch_task_t
 backtrack_iterate(opk_lnsrch_t* ls,
                   double* stp_ptr, double f, double g)
 {
@@ -307,7 +309,7 @@ struct _nonmonotone_lnsrch {
   opk_index_t mp;    /**< Number of steps since starting. */
 };
 
-static opk_lnsrch_status_t
+static opk_lnsrch_task_t
 nonmonotone_start(opk_lnsrch_t* ls)
 {
   nonmonotone_lnsrch_t* nmls = (nonmonotone_lnsrch_t*)ls;
@@ -338,7 +340,7 @@ nonmonotone_reset(opk_lnsrch_t* ls)
 }
 #endif
 
-static opk_lnsrch_status_t
+static opk_lnsrch_task_t
 nonmonotone_iterate(opk_lnsrch_t* ls,
                     double* stp_ptr, double f, double g)
 {
@@ -455,7 +457,7 @@ struct _csrch_lnsrch {
 static csrch_lnsrch_t*
 csrch_get_workspace(opk_lnsrch_t* ls);
 
-static opk_lnsrch_status_t
+static opk_lnsrch_task_t
 csrch_start(opk_lnsrch_t* ls)
 {
   csrch_lnsrch_t* cls;
@@ -491,7 +493,7 @@ csrch_start(opk_lnsrch_t* ls)
   return success(ls, OPK_LNSRCH_SEARCH);
 }
 
-static opk_lnsrch_status_t
+static opk_lnsrch_task_t
 csrch_iterate(opk_lnsrch_t* ls,
               double* stp_ptr, double f1, double g1)
 {
