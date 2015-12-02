@@ -64,7 +64,7 @@
    LBFGS algorithm by Jorge Nocedal but other values may be more suitable. */
 static const double STPMIN = 1E-20;
 static const double STPMAX = 1E+20;
-static const double SFTOL = 1E-4;
+static const double SFTOL = 0.0001;
 static const double SGTOL = 0.9;
 static const double SXTOL = DBL_EPSILON;
 
@@ -169,7 +169,6 @@ slot(const opk_lbfgs_t* opt, opk_index_t j)
   return (opt->updates - j)%opt->m;
 }
 
-#if 0
 opk_vector_t*
 opk_get_lbfgs_s(opk_lbfgs_t* opt, opk_index_t k)
 {
@@ -181,7 +180,6 @@ opk_get_lbfgs_y(opk_lbfgs_t* opt, opk_index_t k)
 {
   return (0 <= k && k <= opt->mp ? opt->y[slot(opt, k)] : NULL);
 }
-#endif
 
 static opk_task_t
 success(opk_lbfgs_t* opt, opk_task_t task)
@@ -231,14 +229,13 @@ opk_new_lbfgs_optimizer_with_line_search(opk_vspace_t* space,
   if (opt == NULL) {
     return NULL;
   }
-  opt->s    = ADDRESS(opk_vector_t*, opt,    s_offset);
-  opt->y    = ADDRESS(opk_vector_t*, opt,    y_offset);
-  opt->beta = ADDRESS(double,        opt, beta_offset);
-  opt->rho  = ADDRESS(double,        opt,  rho_offset);
-  opt->m = m;
-  opk_set_lbfgs_options(opt, NULL);
-  failure(opt, OPK_NOT_STARTED);
+  opt->s     = ADDRESS(opk_vector_t*, opt,    s_offset);
+  opt->y     = ADDRESS(opk_vector_t*, opt,    y_offset);
+  opt->beta  = ADDRESS(double,        opt, beta_offset);
+  opt->rho   = ADDRESS(double,        opt,  rho_offset);
+  opt->m     = m;
   opt->gamma = 1.0;
+  opk_set_lbfgs_options(opt, NULL);
 
   /* Allocate work vectors.  If saving memory, x0 and g0 will be weak
      references to one of the saved vectors in the LBFGS operator. */
@@ -268,6 +265,9 @@ opk_new_lbfgs_optimizer_with_line_search(opk_vspace_t* space,
   if (opt->d == NULL) {
     goto error;
   }
+
+  /* Make sure that caller calls opk_lbfgs_start and return the optimizer. */
+  failure(opt, OPK_NOT_STARTED);
   return opt;
 
  error:
@@ -302,16 +302,16 @@ opk_start_lbfgs(opk_lbfgs_t* opt, opk_vector_t* x)
 }
 
 /* Define a few macros to make the code more readable. */
-#define S(k)     opt->s[k]
-#define Y(k)     opt->y[k]
-#define BETA(k)  opt->beta[k]
-#define RHO(k)   opt->rho[k]
-#define COPY(dst, src)                   opk_vcopy(dst, src)
-#define AXPBY(dst, alpha, x, beta, y)    opk_vaxpby(dst, alpha, x, beta, y)
-#define UPDATE(dst, alpha, x)            AXPBY(dst, 1, dst, alpha, x)
-#define SCALE(x, alpha)                  opk_vscale(x, alpha, x)
-#define DOT(x, y)                        opk_vdot(x, y)
-#define NORM2(x)                         opk_vnorm2(x)
+#define S(k)                           opt->s[k]
+#define Y(k)                           opt->y[k]
+#define BETA(k)                        opt->beta[k]
+#define RHO(k)                         opt->rho[k]
+#define COPY(dst, src)                 opk_vcopy(dst, src)
+#define AXPBY(dst, alpha, x, beta, y)  opk_vaxpby(dst, alpha, x, beta, y)
+#define UPDATE(dst, alpha, x)          AXPBY(dst, 1, dst, alpha, x)
+#define SCALE(x, alpha)                opk_vscale(x, alpha, x)
+#define DOT(x, y)                      opk_vdot(x, y)
+#define NORM2(x)                       opk_vnorm2(x)
 
 opk_task_t
 opk_iterate_lbfgs(opk_lbfgs_t* opt, opk_vector_t* x,

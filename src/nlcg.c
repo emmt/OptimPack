@@ -18,7 +18,9 @@
  *
  *-----------------------------------------------------------------------------
  *
- * Copyright (c) 2003-2014 Éric Thiébaut
+ * This file is part of OptimPack (https://github.com/emmt/OptimPack).
+ *
+ * Copyright (C) 2003-2015 Éric Thiébaut
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -64,8 +66,8 @@
    other values may be more suitable. */
 static const double STPMIN = 1E-20;
 static const double STPMAX = 1E+20;
-static const double SFTOL = 1E-4;
-static const double SGTOL = 1E-1;
+static const double SFTOL = 0.0001;
+static const double SGTOL = 0.1;
 static const double SXTOL = DBL_EPSILON;
 
 /* Default parameters for the global convergence. */
@@ -493,12 +495,10 @@ opk_new_nlcg_optimizer_with_line_search(opk_vspace_t* vspace,
   opt->lnsrch = OPK_HOLD_LNSRCH(lnsrch);
   opt->fmin_given = FALSE;
   opt->method = method;
-  opt->grtol = GRTOL;
-  opt->gatol = GATOL;
-  opt->stpmin = STPMIN;
-  opt->stpmax = STPMAX;
-  opt->delta = DELTA;
-  opt->epsilon = EPSILON;
+  opt->update_Hager_Zhang_orig = FALSE;
+  opk_set_nlcg_options(opt, NULL);
+
+  /* Allocate work vectors. */
   opt->x0 = opk_vcreate(vspace);
   if (opt->x0 == NULL) {
     goto error;
@@ -519,8 +519,9 @@ opk_new_nlcg_optimizer_with_line_search(opk_vspace_t* vspace,
       goto error;
     }
   }
-  opt->update_Hager_Zhang_orig = FALSE;
-  opk_start_nlcg(opt);
+
+  /* Enforce calling opk_nlcg_start and return the optimizer. */
+  failure(opt, OPK_NOT_STARTED);
   return opt;
 
  error:
@@ -544,74 +545,9 @@ opk_new_nlcg_optimizer(opk_vspace_t* vspace, unsigned int method)
 }
 
 double
-opk_get_nlcg_gatol(opk_nlcg_t* opt)
-{
-  return (opt == NULL ? GATOL : opt->gatol);
-}
-
-opk_status_t
-opk_set_nlcg_gatol(opk_nlcg_t* opt, double gatol)
-{
-  if (opt == NULL) {
-    return OPK_ILLEGAL_ADDRESS;
-  }
-  if (non_finite(gatol) || gatol < 0) {
-    return OPK_INVALID_ARGUMENT;
-  }
-  opt->gatol = gatol;
-  return OPK_SUCCESS;
-}
-
-double
-opk_get_nlcg_grtol(opk_nlcg_t* opt)
-{
-  return (opt == NULL ? GRTOL : opt->grtol);
-}
-
-opk_status_t
-opk_set_nlcg_grtol(opk_nlcg_t* opt, double grtol)
-{
-  if (opt == NULL) {
-    return OPK_ILLEGAL_ADDRESS;
-  }
-  if (non_finite(grtol) || grtol < 0) {
-    return OPK_INVALID_ARGUMENT;
-  }
-  opt->grtol = grtol;
-  return OPK_SUCCESS;
-}
-
-double
 opk_get_nlcg_step(opk_nlcg_t* opt)
 {
   return (opt == NULL ? -1.0 : opt->alpha);
-}
-
-double
-opk_get_nlcg_stpmin(opk_nlcg_t* opt)
-{
-  return (opt == NULL ? STPMIN : opt->stpmin);
-}
-
-double
-opk_get_nlcg_stpmax(opk_nlcg_t* opt)
-{
-  return (opt == NULL ? STPMAX : opt->stpmax);
-}
-
-opk_status_t
-opk_set_nlcg_stpmin_and_stpmax(opk_nlcg_t* opt, double stpmin, double stpmax)
-{
-  if (opt == NULL) {
-    return OPK_ILLEGAL_ADDRESS;
-  }
-  if (non_finite(stpmin) || non_finite(stpmax) ||
-      stpmin < 0 || stpmax <= stpmin) {
-    return OPK_INVALID_ARGUMENT;
-  }
-  opt->stpmin = stpmin;
-  opt->stpmax = stpmax;
-  return OPK_SUCCESS;
 }
 
 opk_status_t
@@ -740,8 +676,68 @@ opk_get_nlcg_beta(opk_nlcg_t* opt)
   return opt->beta;
 }
 
+opk_status_t
+opk_get_nlcg_options(opk_nlcg_options_t* dst, const opk_nlcg_t* src)
+{
+  if (dst == NULL) {
+    return OPK_ILLEGAL_ADDRESS;
+  }
+  if (src == NULL) {
+    /* Get default options. */
+    dst->delta = DELTA;
+    dst->epsilon = EPSILON;
+    dst->grtol = GRTOL;
+    dst->gatol = GATOL;
+    dst->stpmin = STPMIN;
+    dst->stpmax = STPMAX;
+  } else {
+    /* Get current options. */
+    dst->delta = src->delta;
+    dst->epsilon = src->epsilon;
+    dst->grtol = src->grtol;
+    dst->gatol = src->gatol;
+    dst->stpmin = src->stpmin;
+    dst->stpmax = src->stpmax;
+  }
+  return OPK_SUCCESS;
+}
+
+opk_status_t
+opk_set_nlcg_options(opk_nlcg_t* dst, const opk_nlcg_options_t* src)
+{
+  if (dst == NULL) {
+    return OPK_ILLEGAL_ADDRESS;
+  }
+  if (src == NULL) {
+    /* Set default options. */
+    dst->delta = DELTA;
+    dst->epsilon = EPSILON;
+    dst->grtol = GRTOL;
+    dst->gatol = GATOL;
+    dst->stpmin = STPMIN;
+    dst->stpmax = STPMAX;
+  } else {
+    /* Check and set given options. */
+    if (non_finite(src->gatol) || src->gatol < 0 ||
+        non_finite(src->grtol) || src->grtol < 0 ||
+        non_finite(src->delta) || src->delta <= 0 ||
+        non_finite(src->epsilon) || src->epsilon < 0 ||
+        non_finite(src->stpmin) || src->stpmin < 0 ||
+        non_finite(src->stpmax) || src->stpmax <=  src->stpmin) {
+      return OPK_INVALID_ARGUMENT;
+    }
+    dst->delta = src->delta;
+    dst->epsilon = src->epsilon;
+    dst->grtol = src->grtol;
+    dst->gatol = src->gatol;
+    dst->stpmin = src->stpmin;
+    dst->stpmax = src->stpmax;
+  }
+  return OPK_SUCCESS;
+}
+
 opk_task_t
-opk_start_nlcg(opk_nlcg_t* opt)
+opk_start_nlcg(opk_nlcg_t* opt, opk_vector_t* x)
 {
   opt->iterations = 0;
   opt->evaluations = 0;

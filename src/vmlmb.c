@@ -234,11 +234,16 @@ opk_new_vmlmb_optimizer_with_line_search(opk_vspace_t* space,
   if (opt == NULL) {
     return NULL;
   }
-  opt->s    = ADDRESS(opk_vector_t*, opt,    s_offset);
-  opt->y    = ADDRESS(opk_vector_t*, opt,    y_offset);
-  opt->beta = ADDRESS(double,        opt, beta_offset);
-  opt->rho  = ADDRESS(double,        opt,  rho_offset);
-  opt->m = m;
+  opt->s     = ADDRESS(opk_vector_t*, opt,    s_offset);
+  opt->y     = ADDRESS(opk_vector_t*, opt,    y_offset);
+  opt->beta  = ADDRESS(double,        opt, beta_offset);
+  opt->rho   = ADDRESS(double,        opt,  rho_offset);
+  opt->m     = m;
+  opt->gamma = 1.0;
+  opk_set_vmlmb_options(opt, NULL);
+
+  /* Allocate work vectors.  If saving memory, x0 and g0 will be weak
+     references to one of the saved vectors in the LBFGS operator. */
   for (k = 0; k < m; ++k) {
     opt->s[k] = opk_vcreate(space);
     if (opt->s[k] == NULL) {
@@ -269,13 +274,9 @@ opk_new_vmlmb_optimizer_with_line_search(opk_vspace_t* space,
   if (opt->w == NULL) {
     goto error;
   }
-  opt->grtol = GRTOL;
-  opt->gatol = GATOL;
-  opt->stpmin = STPMIN;
-  opt->stpmax = STPMAX;
-  opt->delta = DELTA;
-  opt->epsilon = EPSILON;
-  opt->gamma = 1.0;
+
+  /* Enforce calling opk_vmlmb_start and return the optimizer. */
+  failure(opt, OPK_NOT_STARTED);
   return opt;
 
  error:
@@ -325,16 +326,19 @@ opk_start_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
 }
 
 
-#define S(k)     opt->s[k]
-#define Y(k)     opt->y[k]
-#define BETA(k)  opt->beta[k]
-#define RHO(k)   opt->rho[k]
-#define UPDATE(dst, alpha, x)            opk_vaxpby(dst, 1, dst, alpha, x)
-#define COMBINE(dst, alpha, x, beta, y)  opk_vaxpby(dst, alpha, x, beta, y)
-#define COPY(dst, src)                   opk_vcopy(dst, src)
-#define SCALE(x, alpha)                  opk_vscale(x, alpha, x)
-#define DOT(x, y)                        opk_vdot(x, y)
-#define WDOT(x, y)                       opk_vdot3(opt->w, x, y)
+/* Define a few macros to make the code more readable. */
+#define S(k)                           opt->s[k]
+#define Y(k)                           opt->y[k]
+#define BETA(k)                        opt->beta[k]
+#define RHO(k)                         opt->rho[k]
+#define UPDATE(dst, alpha, x)          AXPBY(dst, 1, dst, alpha, x)
+#define AXPBY(dst, alpha, x, beta, y)  opk_vaxpby(dst, alpha, x, beta, y)
+#define COPY(dst, src)                 opk_vcopy(dst, src)
+#define SCALE(x, alpha)                opk_vscale(x, alpha, x)
+#define DOT(x, y)                      opk_vdot(x, y)
+#define WDOT(x, y)                     opk_vdot3(opt->w, x, y)
+#define NORM2(x)                       opk_vnorm2(x)
+#define WNORM2(x)                      sqrt(WDOT(x, x))
 
 opk_task_t
 opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
@@ -363,7 +367,7 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
     }
 
     /* Check for global convergence. */
-    opt->gpnorm = sqrt(WDOT(g, g));
+    opt->gpnorm = WNORM2(g);
     if (opt->evaluations == 1) {
       opt->ginit = opt->gpnorm;
     }
@@ -381,8 +385,8 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
             return failure(opt, OPK_INSUFFICIENT_MEMORY);
           }
         }
-        opk_vaxpby(opt->tmp, 1, x, -1, opt->x0);
-        dtg = opk_vdot(opt->tmp, g)/opt->stp;
+        AXPBY(opt->tmp, 1, x, -1, opt->x0);
+        dtg = DOT(opt->tmp, g)/opt->stp;
       } else {
         /* Line search does not need directional derivative. */
         dtg = 0;
@@ -466,7 +470,7 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
            direction. */
         dtg = -DOT(opt->d, g);
         if (opt->epsilon > 0 &&
-            dtg > -opt->epsilon*opk_vnorm2(opt->d)*opt->gpnorm) {
+            dtg > -opt->epsilon*NORM2(opt->d)*opt->gpnorm) {
           /* Set DTG to zero to indicate that we do not have a sufficient
              descent direction. */
           dtg = 0;
@@ -490,7 +494,7 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
         opt->stp = 2*fabs(f/dtg);
       } else {
         double dnorm = opt->gpnorm;
-        double xnorm = sqrt(WDOT(x, x));
+        double xnorm = WNORM2(x);
         if (xnorm > 0) {
           opt->stp = opt->delta*xnorm/dnorm;
         } else {
@@ -575,73 +579,67 @@ opk_get_vmlmb_restarts(opk_vmlmb_t* opt)
 }
 
 double
-opk_get_vmlmb_gatol(opk_vmlmb_t* opt)
-{
-  return (opt == NULL ? GATOL : opt->gatol);
-}
-
-opk_status_t
-opk_set_vmlmb_gatol(opk_vmlmb_t* opt, double gatol)
-{
-  if (opt == NULL) {
-    return OPK_ILLEGAL_ADDRESS;
-  }
-  if (non_finite(gatol) || gatol < 0) {
-    return OPK_INVALID_ARGUMENT;
-  }
-  opt->gatol = gatol;
-  return OPK_SUCCESS;
-}
-
-double
-opk_get_vmlmb_grtol(opk_vmlmb_t* opt)
-{
-  return (opt == NULL ? GRTOL : opt->grtol);
-}
-
-opk_status_t
-opk_set_vmlmb_grtol(opk_vmlmb_t* opt, double grtol)
-{
-  if (opt == NULL) {
-    return OPK_ILLEGAL_ADDRESS;
-  }
-  if (non_finite(grtol) || grtol < 0) {
-    return OPK_INVALID_ARGUMENT;
-  }
-  opt->grtol = grtol;
-  return OPK_SUCCESS;
-}
-
-double
 opk_get_vmlmb_step(opk_vmlmb_t* opt)
 {
   return (opt == NULL ? -1.0 : opt->stp);
 }
 
-double
-opk_get_vmlmb_stpmin(opk_vmlmb_t* opt)
+opk_status_t
+opk_get_vmlmb_options(opk_vmlmb_options_t* dst, const opk_vmlmb_t* src)
 {
-  return (opt == NULL ? STPMIN : opt->stpmin);
-}
-
-double
-opk_get_vmlmb_stpmax(opk_vmlmb_t* opt)
-{
-  return (opt == NULL ? STPMAX : opt->stpmax);
+  if (dst == NULL) {
+    return OPK_ILLEGAL_ADDRESS;
+  }
+  if (src == NULL) {
+    /* Get default options. */
+    dst->delta = DELTA;
+    dst->epsilon = EPSILON;
+    dst->grtol = GRTOL;
+    dst->gatol = GATOL;
+    dst->stpmin = STPMIN;
+    dst->stpmax = STPMAX;
+  } else {
+    /* Get current options. */
+    dst->delta = src->delta;
+    dst->epsilon = src->epsilon;
+    dst->grtol = src->grtol;
+    dst->gatol = src->gatol;
+    dst->stpmin = src->stpmin;
+    dst->stpmax = src->stpmax;
+  }
+  return OPK_SUCCESS;
 }
 
 opk_status_t
-opk_set_vmlmb_stpmin_and_stpmax(opk_vmlmb_t* opt,
-                                double stpmin, double stpmax)
+opk_set_vmlmb_options(opk_vmlmb_t* dst, const opk_vmlmb_options_t* src)
 {
-  if (opt == NULL) {
+  if (dst == NULL) {
     return OPK_ILLEGAL_ADDRESS;
   }
-  if (non_finite(stpmin) || non_finite(stpmax) ||
-      stpmin < 0 || stpmax <= stpmin) {
-    return OPK_INVALID_ARGUMENT;
+  if (src == NULL) {
+    /* Set default options. */
+    dst->delta = DELTA;
+    dst->epsilon = EPSILON;
+    dst->grtol = GRTOL;
+    dst->gatol = GATOL;
+    dst->stpmin = STPMIN;
+    dst->stpmax = STPMAX;
+  } else {
+    /* Check and set given options. */
+    if (non_finite(src->gatol) || src->gatol < 0 ||
+        non_finite(src->grtol) || src->grtol < 0 ||
+        non_finite(src->delta) || src->delta <= 0 ||
+        non_finite(src->epsilon) || src->epsilon < 0 ||
+        non_finite(src->stpmin) || src->stpmin < 0 ||
+        non_finite(src->stpmax) || src->stpmax <=  src->stpmin) {
+      return OPK_INVALID_ARGUMENT;
+    }
+    dst->delta = src->delta;
+    dst->epsilon = src->epsilon;
+    dst->grtol = src->grtol;
+    dst->gatol = src->gatol;
+    dst->stpmin = src->stpmin;
+    dst->stpmax = src->stpmax;
   }
-  opt->stpmin = stpmin;
-  opt->stpmax = stpmax;
   return OPK_SUCCESS;
 }

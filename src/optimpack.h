@@ -1054,6 +1054,39 @@ opk_cstep(double *stx_ptr, double *fx_ptr, double *dx_ptr,
 typedef struct _opk_nlcg opk_nlcg_t;
 
 /**
+ * Structure used to store the settings of a NLCG optimizer.
+ *
+ * The absolute threshold for the norm or the gradient for convergence are
+ * specified by the members `gatol` and `grtol` of this structure.  The
+ * convergence of the non-linear convergence gradient (NLCG) method is defined
+ * by:
+ * <pre>
+ * ||g|| <= max(0, gatol, grtol*||ginit||)
+ * </pre>
+ * where `||g||` is the Euclidean norm of the current gradient `g`, `||ginit||`
+ * is the Euclidean norm of the initial gradient `ginit` while `gatol` and
+ * `grtol` are absolute and relative thresholds.
+ *
+ * During a line search, the step is constrained to be within `stpmin` and
+ * `stpmax` times the lenght of the first step.  The relative bounds must be
+ * such that:
+ * <pre>
+ * 0 <= stpmin < stpmax
+ * </pre>
+ */
+typedef struct _opk_nlcg_options {
+  double delta;   /**< Relative size for a small step. */
+  double epsilon; /**< Threshold to accept descent direction. */
+  double grtol;   /**< Relative threshold for the norm or the gradient
+                       (relative to the norm of the initial gradient) for
+                       convergence. */
+  double gatol;   /**< Absolute threshold for the norm or the gradient for
+                       convergence. */
+  double stpmin;  /**< Relative mimimum step length. */
+  double stpmax;  /**< Relative maximum step length. */
+} opk_nlcg_options_t;
+
+/**
  * Create a new optimizer instance for non-linear conjugate gradient method.
  *
  * This function creates an optimizer instance for minimization by a non-linear
@@ -1081,71 +1114,11 @@ opk_new_nlcg_optimizer_with_line_search(opk_vspace_t* vspace,
                                         unsigned int method,
                                         opk_lnsrch_t* lnsrch);
 extern opk_task_t
-opk_start_nlcg(opk_nlcg_t* opt);
+opk_start_nlcg(opk_nlcg_t* opt, opk_vector_t* x);
 
 extern opk_task_t
 opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x,
                  double f, opk_vector_t* g);
-
-/**
- * Get the absolute threshold for the norm or the gradient for convergence.
- *
- * This function retrieves the absolute threshold for the norm or the gradient
- * for convergence.  The convergence of the non-linear convergence gradient
- * (NLCG) method is defined by:
- * <pre>
- * ||g|| <= max(0, gatol, grtol*||ginit||)
- * </pre>
- * where `||g||` is the Euclidean norm of the current gradient `g`, `||ginit||`
- * is the Euclidean norm of the initial gradient `ginit` while `gatol` and
- * `grtol` are absolute and relative thresholds.
-
- * @param opt - The NLCG optimizer or `NULL` to get the default value.
- *
- * @return The value of `gatol` for the optimzer `opt`, if not `NULL`; the
- *         default value of `gatol`, if `opt` is `NULL`.
- */
-extern double
-opk_get_nlcg_gatol(opk_nlcg_t* opt);
-
-/**
- * Set the absolute threshold for the norm or the gradient for convergence.
- *
- * @param opt - The NLCG optimizer.
- * @param gatol - The new value of the absolute threshold.
- *
- * @return `OPK_SUCCESS`, or a status indicating the error.
- *
- * @see opk_get_nlcg_gatol()
- */
-extern opk_status_t
-opk_set_nlcg_gatol(opk_nlcg_t* opt, double gatol);
-
-/**
- * Get the relative threshold for the norm or the gradient for convergence.
- *
- * @param opt - The NLCG optimizer or `NULL` to get the default value.
- *
- * @return The value of `grtol` for the optimzer `opt`, if not `NULL`; the
- *         default value of `grtol`, if `opt` is `NULL`.
- *
- * @see opk_get_nlcg_gatol()
- */
-extern double
-opk_get_nlcg_grtol(opk_nlcg_t* opt);
-
-/**
- * Set the relative threshold for the norm or the gradient for convergence.
- *
- * @param opt - The NLCG optimizer.
- * @param grtol - The new value of the relative threshold.
- *
- * @return `OPK_SUCCESS`, or a status indicating the error.
- *
- * @see opk_get_nlcg_grtol()
- */
-extern opk_status_t
-opk_set_nlcg_grtol(opk_nlcg_t* opt, double grtol);
 
 /**
  * Get the current step length.
@@ -1160,58 +1133,6 @@ opk_set_nlcg_grtol(opk_nlcg_t* opt, double grtol);
  */
 extern double
 opk_get_nlcg_step(opk_nlcg_t* opt);
-
-/**
- * Get the minimum relative step size.
- *
- * This function retrieves the value of the minimum relative step size `stpmin`
- * for the line search.
- *
- * @param opt - The NLCG optimizer or `NULL` to get the default value.
- *
- * @return The value of `stpmin` for the optimzer `opt`, if not `NULL`; the
- *         default value of `stpmin`, if `opt` is `NULL`.
- *
- * @see opk_get_nlcg_stpmax(), opk_set_nlcg_stpmin_and_stpmax().
- */
-extern double
-opk_get_nlcg_stpmin(opk_nlcg_t* opt);
-
-/**
- * Get the maximum relative step size.
- *
- * During a line search, the step is constrained to be within `stpmin` and
- * `stpmax` times the lenght of the first step.  The relative bounds must be
- * such that:
- * <pre>
- * 0 <= stpmin < stpmax
- * </pre>
- * This function retrieves the value of the maximum relative step size `stpmax`
- * for the line search.
- *
- * @param opt - The NLCG optimizer or `NULL` to get the default value.
- *
- * @return The value of `stpmax` for the optimzer `opt`, if not `NULL`; the
- *         default value of `stpmax`, if `opt` is `NULL`.
- *
- * @see opk_get_nlcg_stpmin(), opk_set_nlcg_stpmin_and_stpmax().
- */
-extern double
-opk_get_nlcg_stpmax(opk_nlcg_t* opt);
-
-/**
- * Set the relative step limits.
- *
- * @param opt - The NLCG optimizer or `NULL` to get the default value.
- * @param stpmin - The minimum relative step size.
- * @param stpmax - The maximum relative step size.
- *
- * @return `OPK_SUCCESS`, or a status indicating the error.
- *
- * @see opk_get_nlcg_stpmin(), opk_get_nlcg_stpmax().
- */
-extern opk_status_t
-opk_set_nlcg_stpmin_and_stpmax(opk_nlcg_t* opt, double stpmin, double stpmax);
 
 extern opk_status_t
 opk_get_nlcg_fmin(opk_nlcg_t* opt, double* fmin);
@@ -1243,6 +1164,31 @@ opk_get_nlcg_description(opk_nlcg_t* opt, char* str);
 
 extern double
 opk_get_nlcg_beta(opk_nlcg_t* opt);
+
+/**
+ * Query NLCG optimizer parameters.
+ *
+ * @param dst - The structure where to store the parameters.
+ * @param src - The NLCG optimizer from which to fetch the parameters; if
+ *              `NULL`, default parameters are retrieved.
+ *
+ * @return A standard status.
+ */
+extern opk_status_t
+opk_get_nlcg_options(opk_nlcg_options_t* dst, const opk_nlcg_t* src);
+
+/**
+ * Set NLCG optimizer parameters.
+ *
+ * @param dst - The NLCG optimizer whose parameters to set.
+ * @param src - The structure with the new parameter values; if `NULL`, default
+ *              parameters are used.
+ *
+ * @return A standard status.
+ */
+extern opk_status_t
+opk_set_nlcg_options(opk_nlcg_t* dst, const opk_nlcg_options_t* src);
+
 
 /* Rules to compute the search direction in NLCG: */
 #define OPK_NLCG_FLETCHER_REEVES        1
@@ -1277,14 +1223,14 @@ opk_get_nlcg_beta(opk_nlcg_t* opt);
 /** @} */
 
 /*---------------------------------------------------------------------------*/
-/* LIMITED MEMORY BFGS OPERATOR */
+/* BFGS OPERATOR */
 
 /**
- * @defgroup LBGFS      Limited memory BFGS operator
+ * @defgroup BGFS      BFGS operator
  * @ingroup VariableMetric
  * @{
  *
- * Implement limited memory quasi-Newton approximation of the inverse Hessian.
+ * Implement quasi-Newton approximation of the inverse Hessian.
  *
  * The approximation of the inverse of Hessian is based on BFGS (Broyden,
  * Fletcher, Goldfarb & Shanno) updates using the 2-loop recursive algorithm of
@@ -1295,12 +1241,14 @@ opk_get_nlcg_beta(opk_nlcg_t* opt);
 
 /** Opaque type to store a limited memory BFGS operator.  This type inherits
     from the `opk_operator_t` object.  */
-typedef struct _opk_lbfgs_operator opk_lbfgs_operator_t;
+typedef struct _opk_bfgs_operator opk_bfgs_operator_t;
 
 /** Rules for scaling the inverse Hessian approximation. */
-#define OPK_SCALING_NONE               0
-#define OPK_SCALING_OREN_SPEDICATO     1  /**< gamma = <s,y>/<y,y> */
-#define OPK_SCALING_BARZILAI_BORWEIN   2  /**< gamma = <s,s>/<s,y> */
+typedef enum {
+  OPK_SCALING_NONE             = 0,
+  OPK_SCALING_OREN_SPEDICATO   = 1, /**< gamma = <s,y>/<y,y> */
+  OPK_SCALING_BARZILAI_BORWEIN = 2  /**< gamma = <s,s>/<s,y> */
+} opk_bfgs_scaling_t;
 
 /**
  * Create a new limited memory BFGS operator.
@@ -1308,15 +1256,15 @@ typedef struct _opk_lbfgs_operator opk_lbfgs_operator_t;
  * @param vspace - The input and output vector space of the operator.
  * @param m       - The maximum number of previous steps to memorize.
  * @param scaling - The rule for scaling the approximation of the
- *                   inverse Hessian.
+ *                  inverse Hessian.
  */
-extern opk_lbfgs_operator_t*
-opk_new_lbfgs_operator(opk_vspace_t* vspace, opk_index_t m,
-                       int rule);
+extern opk_bfgs_operator_t*
+opk_new_bfgs_operator(opk_vspace_t* vspace, opk_index_t m,
+                       opk_bfgs_scaling_t scaling);
 
 /** Forget all memorized steps in limited memory BFGS operator. */
 extern void
-opk_reset_lbfgs_operator(opk_lbfgs_operator_t* op);
+opk_reset_bfgs_operator(opk_bfgs_operator_t* op);
 
 /**
  * Query a memorized variable difference from a limited memory BFGS operator.
@@ -1329,7 +1277,7 @@ opk_reset_lbfgs_operator(opk_lbfgs_operator_t* op);
  * @return s_k
  */
 extern opk_vector_t*
-opk_get_lbfgs_s(opk_lbfgs_operator_t* op, opk_index_t k);
+opk_get_bfgs_s(opk_bfgs_operator_t* op, opk_index_t k);
 
 /**
  * Query a memorized gradient difference from a limited memory BFGS operator.
@@ -1342,11 +1290,11 @@ opk_get_lbfgs_s(opk_lbfgs_operator_t* op, opk_index_t k);
  * @return y_k
  */
 extern opk_vector_t*
-opk_get_lbfgs_y(opk_lbfgs_operator_t* op, opk_index_t k);
+opk_get_bfgs_y(opk_bfgs_operator_t* op, opk_index_t k);
 
 extern void
-opk_set_lbfgs_operator_preconditioner(opk_lbfgs_operator_t* op,
-                                      opk_operator_t* B0);
+opk_set_bfgs_operator_preconditioner(opk_bfgs_operator_t* op,
+                                     opk_operator_t* B0);
 
 /**
  * Update LBFGS operator with a new pair of variables and gradient
@@ -1358,15 +1306,15 @@ opk_set_lbfgs_operator_preconditioner(opk_lbfgs_operator_t* op,
  * @throws IncorrectSpaceException
  */
 extern void
-opk_update_lbfgs_operator(opk_lbfgs_operator_t* op,
-                          const opk_vector_t* x1,
-                          const opk_vector_t* x0,
-                          const opk_vector_t* g1,
-                          const opk_vector_t* g0);
+opk_update_bfgs_operator(opk_bfgs_operator_t* op,
+                         const opk_vector_t* x1,
+                         const opk_vector_t* x0,
+                         const opk_vector_t* g1,
+                         const opk_vector_t* g0);
 
 extern void
-opk_set_lbfgs_operator_preconditioner(opk_lbfgs_operator_t* op,
-                                      opk_operator_t* B0);
+opk_set_bfgs_operator_preconditioner(opk_bfgs_operator_t* op,
+                                     opk_operator_t* H0);
 
 /** @} */
 
@@ -1388,15 +1336,15 @@ typedef struct _opk_lbfgs opk_lbfgs_t;
 
 /** Structure used to store the settings of an LBFGS optimizer. */
 typedef struct _opk_lbfgs_options {
-  double delta;            /**< Relative size for a small step. */
-  double epsilon;          /**< Threshold to accept descent direction. */
-  double grtol;            /**< Relative threshold for the norm or the gradient
-                                (relative to GINIT the norm of the initial
-                                gradient) for convergence. */
-  double gatol;            /**< Absolute threshold for the norm or the gradient
-                                for convergence. */
-  double stpmin;           /**< Relative mimimum step length. */
-  double stpmax;           /**< Relative maximum step length. */
+  double delta;   /**< Relative size for a small step. */
+  double epsilon; /**< Threshold to accept descent direction. */
+  double grtol;   /**< Relative threshold for the norm or the gradient
+                       (relative to the norm of the initial gradient) for
+                       convergence. */
+  double gatol;   /**< Absolute threshold for the norm or the gradient for
+                       convergence. */
+  double stpmin;  /**< Relative mimimum step length. */
+  double stpmax;  /**< Relative maximum step length. */
 } opk_lbfgs_options_t;
 
 extern opk_lbfgs_t*
@@ -1463,8 +1411,22 @@ opk_set_lbfgs_options(opk_lbfgs_t* dst, const opk_lbfgs_options_t* src);
  * @{
  */
 
-/** Opaque type for a LBFGS optimizer. */
+/** Opaque type for a VMLM optimizer. */
 typedef struct _opk_vmlm opk_vmlm_t;
+
+/** Structure used to store the settings of a VMLM optimizer. */
+typedef struct _opk_vmlm_options {
+  double delta;   /**< Relative size for a small step. */
+  double epsilon; /**< Threshold to accept descent direction. */
+  double grtol;   /**< Relative threshold for the norm or the gradient
+                       (relative to the norm of the initial gradient) for
+                       convergence. */
+  double gatol;   /**< Absolute threshold for the norm or the gradient for
+                       convergence. */
+  double stpmin;  /**< Relative mimimum step length. */
+  double stpmax;  /**< Relative maximum step length. */
+  opk_bfgs_scaling_t scaling; /**< Scaling rule for the initial BFGS approximation. */
+} opk_vmlm_options_t;
 
 extern opk_vmlm_t*
 opk_new_vmlm_optimizer(opk_vspace_t* vspace, opk_index_t m);
@@ -1475,7 +1437,7 @@ opk_new_vmlm_optimizer_with_line_search(opk_vspace_t* vspace,
                                         opk_lnsrch_t* lnsrch);
 
 extern opk_task_t
-opk_start_vmlm(opk_vmlm_t* opt);
+opk_start_vmlm(opk_vmlm_t* opt, opk_vector_t* x);
 
 extern opk_task_t
 opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x,
@@ -1496,35 +1458,32 @@ opk_get_vmlm_evaluations(opk_vmlm_t* opt);
 extern opk_index_t
 opk_get_vmlm_restarts(opk_vmlm_t* opt);
 
-extern int
-opk_get_vmlm_scaling(opk_vmlm_t* opt);
-
-extern opk_status_t
-opk_set_vmlm_scaling(opk_vmlm_t* opt, int scaling);
-
-extern double
-opk_get_vmlm_gatol(opk_vmlm_t* opt);
-
-extern opk_status_t
-opk_set_vmlm_gatol(opk_vmlm_t* opt, double gatol);
-
-extern double
-opk_get_vmlm_grtol(opk_vmlm_t* opt);
-
-extern opk_status_t
-opk_set_vmlm_grtol(opk_vmlm_t* opt, double grtol);
-
 extern double
 opk_get_vmlm_step(opk_vmlm_t* opt);
 
-extern double
-opk_get_vmlm_stpmin(opk_vmlm_t* opt);
-
-extern double
-opk_get_vmlm_stpmax(opk_vmlm_t* opt);
-
+/**
+ * Query VMLM optimizer parameters.
+ *
+ * @param dst - The structure where to store the parameters.
+ * @param src - The VMLM optimizer from which to fetch the parameters; if
+ *              `NULL`, default parameters are retrieved.
+ *
+ * @return A standard status.
+ */
 extern opk_status_t
-opk_set_vmlm_stpmin_and_stpmax(opk_vmlm_t* opt, double stpmin, double stpmax);
+opk_get_vmlm_options(opk_vmlm_options_t* dst, const opk_vmlm_t* src);
+
+/**
+ * Set VMLM optimizer parameters.
+ *
+ * @param dst - The VMLM optimizer whose parameters to set.
+ * @param src - The structure with the new parameter values; if `NULL`, default
+ *              parameters are used.
+ *
+ * @return A standard status.
+ */
+extern opk_status_t
+opk_set_vmlm_options(opk_vmlm_t* dst, const opk_vmlm_options_t* src);
 
 /** @} */
 
@@ -1621,6 +1580,18 @@ opk_box_get_step_limits(double* smin, double* wolfe, double *smax,
 /** Opaque type for a variable metric optimizer. */
 typedef struct _opk_vmlmb opk_vmlmb_t;
 
+/** Structure used to store the settings of a VMLMB optimizer. */
+typedef struct _opk_vmlmb_options {
+  double delta;   /**< Relative size for a small step. */
+  double epsilon; /**< Threshold to accept descent direction. */
+  double grtol;   /**< Relative threshold for the norm or the projected
+                       gradient (relative to the norm of the initial projected
+                       gradient) for convergence. */
+  double gatol;   /**< Absolute threshold for the norm or the projected
+                       gradient for convergence. */
+  double stpmin;  /**< Relative mimimum step length. */
+  double stpmax;  /**< Relative maximum step length. */
+} opk_vmlmb_options_t;
 
 /**
  * Create a reverse communication optimizer implementing a limited memory
@@ -1674,29 +1645,31 @@ extern opk_index_t
 opk_get_vmlmb_restarts(opk_vmlmb_t* opt);
 
 extern double
-opk_get_vmlmb_gatol(opk_vmlmb_t* opt);
-
-extern opk_status_t
-opk_set_vmlmb_gatol(opk_vmlmb_t* opt, double gatol);
-
-extern double
-opk_get_vmlmb_grtol(opk_vmlmb_t* opt);
-
-extern opk_status_t
-opk_set_vmlmb_grtol(opk_vmlmb_t* opt, double grtol);
-
-extern double
 opk_get_vmlmb_step(opk_vmlmb_t* opt);
 
-extern double
-opk_get_vmlmb_stpmin(opk_vmlmb_t* opt);
-
-extern double
-opk_get_vmlmb_stpmax(opk_vmlmb_t* opt);
-
+/**
+ * Query VMLMB optimizer parameters.
+ *
+ * @param dst - The structure where to store the parameters.
+ * @param src - The VMLMB optimizer from which to fetch the parameters; if
+ *              `NULL`, default parameters are retrieved.
+ *
+ * @return A standard status.
+ */
 extern opk_status_t
-opk_set_vmlmb_stpmin_and_stpmax(opk_vmlmb_t* opt,
-                                double stpmin, double stpmax);
+opk_get_vmlmb_options(opk_vmlmb_options_t* dst, const opk_vmlmb_t* src);
+
+/**
+ * Set VMLMB optimizer parameters.
+ *
+ * @param dst - The VMLMB optimizer whose parameters to set.
+ * @param src - The structure with the new parameter values; if `NULL`, default
+ *              parameters are used.
+ *
+ * @return A standard status.
+ */
+extern opk_status_t
+opk_set_vmlmb_options(opk_vmlmb_t* dst, const opk_vmlmb_options_t* src);
 
 /** @} */
 

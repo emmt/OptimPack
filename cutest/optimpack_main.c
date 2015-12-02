@@ -521,6 +521,7 @@ int MAINENTRY(void)
   /* Create the optimizer */
   vgp = NULL;
   if (algorithm == VMLMB) {
+    opk_vmlmb_options_t options;
     algorithm_name = "VMLMB";
     vmlmb = opk_new_vmlmb_optimizer(vspace, mem);
     if (vmlmb == NULL) {
@@ -532,16 +533,16 @@ int MAINENTRY(void)
       printf("** Failed to create projected gradient vector\n");
       exit(-1);
     }
-    if (opk_set_vmlmb_gatol(vmlmb, 0) != OPK_SUCCESS) {
-      printf("** Bad value for GATOL\n");
-      exit(-1);
-    }
-    if (opk_set_vmlmb_grtol(vmlmb, 0) != OPK_SUCCESS) {
-      printf("** Bad value for GRTOL\n");
+    opk_get_vmlmb_options(&options, vmlmb);
+    options.gatol = gatol;
+    options.grtol = grtol;
+    if (opk_set_vmlmb_options(vmlmb, &options) != OPK_SUCCESS) {
+      printf("** Bad VMLMB options\n");
       exit(-1);
     }
     task = opk_start_vmlmb(vmlmb, vx, lower, upper);
   } else if (algorithm == VMLM) {
+    opk_vmlm_options_t options;
     algorithm_name = "VMLM";
     if (bounds != 0) {
       printf("** Algorithm %s cannot be used with bounds\n",
@@ -553,15 +554,14 @@ int MAINENTRY(void)
       printf("** Failed to create VMLM optimizer\n");
       exit(-1);
     }
-    if (opk_set_vmlm_gatol(vmlm, 0) != OPK_SUCCESS) {
-      printf("** Bad value for GATOL\n");
+    opk_get_vmlm_options(&options, vmlm);
+    options.gatol = gatol;
+    options.grtol = grtol;
+    if (opk_set_vmlm_options(vmlm, &options) != OPK_SUCCESS) {
+      printf("** Bad VMLM options\n");
       exit(-1);
     }
-    if (opk_set_vmlm_grtol(vmlm, 0) != OPK_SUCCESS) {
-      printf("** Bad value for GRTOL\n");
-      exit(-1);
-    }
-    task = opk_start_vmlm(vmlm);
+    task = opk_start_vmlm(vmlm, vx);
   } else if (algorithm == LBFGS) {
     opk_lbfgs_options_t options;
     algorithm_name = "LBFGS";
@@ -584,6 +584,7 @@ int MAINENTRY(void)
     }
     task = opk_start_lbfgs(lbfgs, vx);
   } else if (algorithm == NLCG) {
+    opk_nlcg_options_t options;
     algorithm_name = "NLCG";
     if (bounds != 0) {
       printf("** Algorithm %s cannot be used with bounds\n",
@@ -595,15 +596,14 @@ int MAINENTRY(void)
       printf("** Failed to create NLCG optimizer\n");
       exit(-1);
     }
-    if (opk_set_nlcg_gatol(nlcg, 0) != OPK_SUCCESS) {
-      printf("** Bad value for GATOL\n");
+    opk_get_nlcg_options(&options, nlcg);
+    options.gatol = gatol;
+    options.grtol = grtol;
+    if (opk_set_nlcg_options(nlcg, &options) != OPK_SUCCESS) {
+      printf("** Bad NLCG options\n");
       exit(-1);
     }
-    if (opk_set_nlcg_grtol(nlcg, 0) != OPK_SUCCESS) {
-      printf("** Bad value for GRTOL\n");
-      exit(-1);
-    }
-    task = opk_start_nlcg(nlcg);
+    task = opk_start_nlcg(nlcg, vx);
   } else {
     printf("** Bad algorithm\n");
     exit(-1);
