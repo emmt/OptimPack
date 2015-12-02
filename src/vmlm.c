@@ -338,7 +338,7 @@ struct _opk_vmlm {
   opk_index_t iterations;  /**< Number of iterations (successful steps
                                 taken). */
   opk_index_t restarts;    /**< Number of restarts. */
-  opk_status_t reason;     /**< Last error. */
+  opk_status_t status;     /**< Last error. */
   opk_task_t task;         /**< Pending task. */
   opk_bool_t save_memory;  /**< To save space, the variable and gradient at the
                                 start of a line search are weak references to
@@ -375,7 +375,7 @@ finalize_vmlm(opk_object_t* obj)
 static opk_task_t
 success(opk_vmlm_t* opt, opk_task_t task)
 {
-  opt->reason = OPK_SUCCESS;
+  opt->status = OPK_SUCCESS;
   opt->task = task;
   return task;
 }
@@ -383,7 +383,7 @@ success(opk_vmlm_t* opt, opk_task_t task)
 static opk_task_t
 failure(opk_vmlm_t* opt, opk_status_t status)
 {
-  opt->reason = status;
+  opt->status = status;
   opt->task = OPK_TASK_ERROR;
   return opt->task;
 }
@@ -479,9 +479,10 @@ opk_task_t
 opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x,
                  double f, opk_vector_t* g)
 {
-  double gtest, dtg;
+  double dtg;
   opk_status_t status;
   opk_lnsrch_task_t lnsrch_task;
+  int final;
 
   switch (opt->task) {
 
@@ -493,7 +494,7 @@ opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x,
     if (opt->evaluations > 1) {
       /* A line search is in progress, check whether it has converged. */
       if (opk_lnsrch_use_deriv(opt->lnsrch)) {
-        /* Compute effective step and directional derivative. */
+        /* Compute directional derivative. */
         dtg = -opk_vdot(opt->d, g);
       } else {
         /* Line search does not need directional derivative. */
@@ -501,12 +502,14 @@ opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x,
       }
       lnsrch_task = opk_lnsrch_iterate(opt->lnsrch, &opt->stp, f, dtg);
       if (lnsrch_task == OPK_LNSRCH_SEARCH) {
-        /* Line search has not yet converged. */
-        goto new_try;
+        /* Line search has not yet converged, break to compute a new trial
+           point along the search direction. */
+        break;
       }
       if (lnsrch_task != OPK_LNSRCH_CONVERGENCE) {
         status = opk_lnsrch_get_status(opt->lnsrch);
-        if (status != OPK_ROUNDING_ERRORS_PREVENT_PROGRESS) {
+        if (lnsrch_task != OPK_LNSRCH_WARNING ||
+            status != OPK_ROUNDING_ERRORS_PREVENT_PROGRESS) {
           return failure(opt, status);
         }
       }
@@ -518,10 +521,8 @@ opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x,
     if (opt->evaluations == 1) {
       opt->ginit = opt->gnorm;
     }
-    gtest = max3(0.0, opt->gatol, opt->grtol*opt->ginit);
-    return success(opt, (opt->gnorm <= gtest
-                         ? OPK_TASK_FINAL_X
-                         : OPK_TASK_NEW_X));
+    final = (opt->gnorm <= max3(0.0, opt->gatol, opt->grtol*opt->ginit));
+    return success(opt, (final ? OPK_TASK_FINAL_X : OPK_TASK_NEW_X));
 
   case OPK_TASK_NEW_X:
   case OPK_TASK_FINAL_X:
@@ -594,14 +595,14 @@ opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x,
       }
     }
 
-    /* Start the line search and take the first step along the search
-       direction. */
+    /* Start the line search andh and break to take the first step along the
+       search direction. */
     if (opk_lnsrch_start(opt->lnsrch, f, dtg, opt->stp,
-                         opt->stpmin*opt->stp,
-                         opt->stpmax*opt->stp) != OPK_LNSRCH_SEARCH) {
+                         opt->stp*opt->stpmin,
+                         opt->stp*opt->stpmax) != OPK_LNSRCH_SEARCH) {
       return failure(opt, opk_lnsrch_get_status(opt->lnsrch));
     }
-    goto new_try;
+    break;
 
   default:
 
@@ -610,7 +611,7 @@ opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x,
 
   }
 
- new_try:
+  /* Compute a new trial point along the line search. */
   opk_vaxpby(x, 1, opt->x0, -opt->stp, opt->d);
   return success(opt, OPK_TASK_COMPUTE_FG);
 }
@@ -622,9 +623,9 @@ opk_get_vmlm_task(opk_vmlm_t* opt)
 }
 
 opk_status_t
-opk_get_vmlm_reason(opk_vmlm_t* opt)
+opk_get_vmlm_status(opk_vmlm_t* opt)
 {
-  return opt->reason;
+  return opt->status;
 }
 
 opk_index_t

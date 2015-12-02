@@ -676,9 +676,9 @@ int MAINENTRY(void)
     } else if (task != OPK_TASK_COMPUTE_FG) {
       opk_status_t status;
       if (vmlmb != NULL) {
-        status = opk_get_vmlmb_reason(vmlmb);
+        status = opk_get_vmlmb_status(vmlmb);
       } else if (vmlm != NULL) {
-        status = opk_get_vmlm_reason(vmlm);
+        status = opk_get_vmlm_status(vmlm);
       } else if (lbfgs != NULL) {
         status = opk_get_lbfgs_status(lbfgs);
       } else {

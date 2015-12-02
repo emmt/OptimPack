@@ -102,7 +102,7 @@ struct _opk_vmlmb {
   opk_index_t iterations;  /**< Number of iterations (successful steps
                                 taken). */
   opk_index_t restarts;    /**< Number of LBFGS recurrence restarts. */
-  opk_status_t reason;     /**< Last error. */
+  opk_status_t status;     /**< Last error. */
   opk_task_t task;         /**< Pending task. */
 
   /* Limited memory BFGS approximation of the Hessian of the objective
@@ -189,7 +189,7 @@ opk_get_vmlmb_y(opk_vmlmb_t* opt, opk_index_t k)
 static opk_task_t
 success(opk_vmlmb_t* opt, opk_task_t task)
 {
-  opt->reason = OPK_SUCCESS;
+  opt->status = OPK_SUCCESS;
   opt->task = task;
   return task;
 }
@@ -197,7 +197,7 @@ success(opk_vmlmb_t* opt, opk_task_t task)
 static opk_task_t
 failure(opk_vmlmb_t* opt, opk_status_t status)
 {
-  opt->reason = status;
+  opt->status = status;
   opt->task = OPK_TASK_ERROR;
   return opt->task;
 }
@@ -551,9 +551,9 @@ opk_get_vmlmb_task(opk_vmlmb_t* opt)
 }
 
 opk_status_t
-opk_get_vmlmb_reason(opk_vmlmb_t* opt)
+opk_get_vmlmb_status(opk_vmlmb_t* opt)
 {
-  return opt->reason;
+  return opt->status;
 }
 
 opk_index_t
