@@ -7,7 +7,7 @@
  *
  * This file is part of OptimPack (https://github.com/emmt/OptimPack).
  *
- * Copyright (c) 2014, 2015 Éric Thiébaut
+ * Copyright (C) 2014, 2015 Éric Thiébaut
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -66,13 +66,15 @@ extern opk_nlcg;
    SEE ALSO: opk_iterate, opk_task, opk_start, opk_vmlm, opk_vmlmc.
  */
 
+extern opk_lbfgs;
 extern opk_vmlm;
 /* DOCUMENT opt = opk_vmlm(n, m);
+         or opt = opk_lbfgs(n, m);
 
-     The function opk_vmlm() creates a new instance of OPKY reverse
-     communication optimizer implementing a limited memory variant of the BFGS
-     variable metric method.  N is the size of the problem and M is the number
-     of previous steps to memorize.
+     The functions opk_vmlm() and opk_lbfgs() create a new instance of OPKY
+     reverse communication optimizer implementing a limited memory variant of
+     the BFGS variable metric method.  N is the size of the problem and M is
+     the number of previous steps to memorize.
 
      Keyword SINGLE may be set true to use single precision floating point
      variables.  The default is to use double precision floating point
@@ -91,8 +93,8 @@ extern opk_vmlm;
    SEE ALSO: opk_iterate, opk_task, opk_start, opk_vmlmc, opk_nlcg.
  */
 
-extern opk_vmlmc;
-/* DOCUMENT opt = opk_vmlmc(n, m, scl);
+extern opk_vmlmb;
+/* DOCUMENT opt = opk_vmlmb(n, m, xmin=..., xmax=...);
 
      The function opk_vmlmc() creates a new instance of OPKY reverse
      communication optimizer implementing a limited memory variant of the BFGS
@@ -132,9 +134,9 @@ extern opk_iterate;
  */
 
 extern opk_start;
-/* DOCUMENT task = opk_start(opt);
-     Start or re-start the reverse communication optimizer OPT.  See
-     opk_task() for the interpretaion of the returned value.
+/* DOCUMENT task = opk_start(opt, x);
+     Start or re-start the reverse communication optimizer OPT with initial
+     variables X.  See opk_task() for the interpretaion of the returned value.
 
    SEE ALSO: opk_nlcg, opk_vmlm, opk_task, opk_iterate.
 */
@@ -208,7 +210,7 @@ func opk_minimize(fg, x0, m, vmlm=, nlcg=, single=, verb=)
     if (is_void(m)) m = OPK_NLCG_DEFAULT;
     opt = opk_nlcg(n, m, single=single);
   }
-  task = opk_start(opt);
+  task = opk_start(opt, x);
   while (TRUE) {
     if (task == OPK_TASK_COMPUTE_FG) {
       fx = fg(x, gx);
