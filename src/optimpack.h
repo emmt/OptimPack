@@ -1271,8 +1271,8 @@ opk_get_nlcg_beta(opk_nlcg_t* opt);
 
 /* Default settings for non linear conjugate gradient (should correspond to
    the method which is, in general, the most successful). */
-#define OPK_NLCG_DEFAULT (OPK_NLCG_HAGER_ZHANG | OPK_NLCG_SHANNO_PHUA)
-
+#define OPK_NLCG_DEFAULT (OPK_NLCG_POLAK_RIBIERE_POLYAK | \
+                          OPK_NLCG_POWELL | OPK_NLCG_SHANNO_PHUA)
 
 /** @} */
 
