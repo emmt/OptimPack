@@ -1,24 +1,15 @@
 # OptimPack
-# (version 2.0)
+# (version 3.0)
 
 ![Travis build status](http://travis-ci.org/emmt/OptimPack.png)
 
-***Although it can already be used, this version is a work in progress: not
-   all routines have been tested or implemented yet.  The older version of
-   OptimPack is available
-   [here](http://cral.univ-lyon1.fr/labo/perso/eric.thiebaut/?Software/OptimPack)***
+This is **OptimPack**, a library for solving optimization problems.  The
+library is mostly targeted at vary large problems (*e.g.* as the ones
+encountered in image restoration) but also provide routines for problems of
+smaller size.
 
-This is **OptimPack**, a library for solving optimization problems.  For
-problems of small to moderate size, **OptimPack** provides:
 
-- computation of a trust region step (see ref. [13]);
-
-- Mike Powell's **COBYLA** (see ref. [10]), **NEWUOA** (see ref. [11]), and
-  **BOBYQA** (see ref. [12]) algorithms for minimizing a function of many
-  variables.  These methods are *derivatives free* (only the function
-  values are needed).  **NEWUOA** is for unconstrained optimization.
-  **COBYLA** accounts for general inequality constraints.  **BOBYQA** accounts
-  for bound constraints on the variables.
+## large scale problems
 
 For large scale problems involving millions of variables (or more),
 **OptimPack** provides:
@@ -29,14 +20,34 @@ For large scale problems involving millions of variables (or more),
   constraints and/or preconditioning (VMLMB, see ref. [5], or BLMVM, see
   ref. [6]);
 
-- spectral project gradient (SPG, see ref. [7]) method;
-
 - inexact monotone and nonmonotone line searches (see ref. [7,8]);
 
-- linear conjugate gradients [1] and trust region conjugate gradient [9].
+- linear conjugate gradients [1].
 
 Most of the documentation is in the header files, *e.g.*
 [src/optimpack.h](src/optimpack.h), in Doxygen format.
+
+The large scale optimizers of the **OptimPack** library can work with the
+unknowns stored in almost any form (providing a minimal set of functions to
+manipulate them are implemented).  This feature may be used to exploit hardware
+acceleration, multi-threading or to distribute the storage and computation
+across multiple machines.
+
+
+## Problems of small to moderate size
+
+For problems of small to moderate size, **OptimPack** provides:
+
+- Moré & Sorensen method to compute a trust region step (see ref. [13]);
+
+- Mike Powell's **COBYLA** (see ref. [10]), **NEWUOA** (see ref. [11]), and
+  **BOBYQA** (see ref. [12]) algorithms for minimizing a function of many
+  variables.  These methods are *derivatives free* (only the function
+  values are needed).  **NEWUOA** is for unconstrained optimization.
+  **COBYLA** accounts for general inequality constraints.  **BOBYQA** accounts
+  for bound constraints on the variables.
+
+- Brent's method for the minimization of an univariate function.
 
 
 ## OptimPack Bindings
@@ -57,10 +68,6 @@ programming languages:
 
 * The [OptimPack.jl](https://github.com/emmt/OptimPack.jl) project
   implements of OptimPack support for [Julia](http://julialang.org/).
-
-* Directory `idl` contains an implementation of OptimPack support in
-  [IDL](http://en.wikipedia.org/wiki/IDL_%28programming_language%29)/[PV-Wave](http://www.roguewave.com/products-services/pv-wave)/[GDL](http://gnudatalanguage.sourceforge.net/)
-  (using `CALL_EXTERNAL`).
 
 * The [TiPi](https://github.com/emmt/TiPi) project provides a
   framework for solving inverse image reconstruction problems in
@@ -124,6 +131,9 @@ programming languages:
 13. J.J. Moré & D.C. Sorensen, "*Computing A Trust Region Step*," SIAM
     J. Sci. Stat. Comp. **4**, 553-572 (1983).
 
+14. R.P. Brent, "*Algorithms for Minimization without Derivatives*,"
+    Prentice-Hall, Inc. (1973).
+
 ## Installation
 
 ### OptimPack library
@@ -177,8 +187,11 @@ The development of OptimPack was supported by the
 [*Agence Nationale pour la Recherche*](http://www.agence-nationale-recherche.fr)
 (ref. ANR-09-EMER-008).
 
+The older version of OptimPack is available
+[here](http://cral.univ-lyon1.fr/labo/perso/eric.thiebaut/?Software/OptimPack)***
+
 
 ## License
 
-The OptimPack library is released under under the
+The OptimPack library is released under the
 [MIT "Expat" License](LICENSE.md).
