@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <strings.h>
 #include <time.h>
 
 #define MAXLINE 512
@@ -140,8 +141,13 @@ int MAINENTRY(void)
   opk_vmlm_t* vmlm;  /* limited memory quasi-Newton optimizer */
   opk_vmlmb_t* vmlmb; /* idem with bound constraints */
   opk_task_t task;
-  unsigned int method;
-  const char* algname;
+#define NLCG  1
+#define VMLM  2
+#define VMLMB 3
+#define BLMVM 4
+  int algorithm = VMLMB;
+  unsigned int nlcg_method = OPK_NLCG_DEFAULT;
+  const char* algorithm_name;
   opk_bound_t* lower;
   opk_bound_t* upper;
   double f, gnorm, finalf, finalgnorm, gtest;
@@ -151,7 +157,7 @@ int MAINENTRY(void)
   int maxeval = -1;
   int verbose = 0;
   int evaluations, iterations, bounds;
-  int mem = 0; /* number of saved (Y,S) pairs memorized by the quasi-Newton
+  int mem = 5; /* number of saved (Y,S) pairs memorized by the quasi-Newton
                   method to approximate the Hessian, if zero non-linear
                   conjugate gradient is used */
 
@@ -326,143 +332,137 @@ int MAINENTRY(void)
      the start of the line followed by one or more spaces and then
      the parameter value.  */
 
-  mem = 0;
   spec = fopen("OPTIMPACK.SPC", "r");
-  if (spec == NULL) {
-    method = OPK_NLCG_DEFAULT;
-    verbose = 0;
-  } else {
+  if (spec != NULL) {
     char line[MAXLINE+1];
+    char str[MAXLINE+1];
     int ival;
     double dval;
     int powell = FALSE_;
     unsigned int autostep = 0;
-    method = 0;
+    nlcg_method = OPK_NLCG_POLAK_RIBIERE_POLYAK;
     while (fgets(line, MAXLINE, spec) != (char*)NULL) {
       /* determine the parameter and its value */
       line[MAXLINE] = 0;
-      if (sscanf(line, "Powell %d", &ival) == 1) {
+      if (sscanf(line, " algorithm %s", str) == 1) {
+        if (strcasecmp(str, "nlcg") == 0) {
+          algorithm = NLCG;
+        } else if (strcasecmp(str, "vmlm") == 0) {
+          algorithm = VMLM;
+        } else if (strcasecmp(str, "vmlmb") == 0) {
+          algorithm = VMLMB;
+        } else {
+          printf("Unknown algorithm\n");
+          exit(-1);
+        }
+        continue;
+      }
+      if (sscanf(line, " Powell %d", &ival) == 1) {
         if (ival != 0) {
           powell = TRUE_;
         }
         continue;
       }
-      if (sscanf(line, "ShannoPhua %d", &ival) == 1) {
+      if (sscanf(line, " ShannoPhua %d", &ival) == 1) {
         if (ival != 0) {
           autostep = OPK_NLCG_SHANNO_PHUA;
         }
         continue;
       }
-      if (sscanf(line, "OrenSpedicato %d", &ival) == 1) {
+      if (sscanf(line, " OrenSpedicato %d", &ival) == 1) {
         if (ival != 0) {
           autostep = OPK_NLCG_OREN_SPEDICATO;
         }
         continue;
       }
-      if (sscanf(line, "BarzilaiBorwein %d", &ival) == 1) {
+      if (sscanf(line, " BarzilaiBorwein %d", &ival) == 1) {
         if (ival != 0) {
           autostep = OPK_NLCG_BARZILAI_BORWEIN;
         }
         continue;
       }
-      if (sscanf(line, "FletcherReeves %d", &ival) == 1) {
+      if (sscanf(line, " FletcherReeves %d", &ival) == 1) {
         if (ival != 0) {
-          method = OPK_NLCG_FLETCHER_REEVES;
+          nlcg_method = OPK_NLCG_FLETCHER_REEVES;
         }
         continue;
       }
-      if (sscanf(line, "HestenesStiefel %d", &ival) == 1) {
+      if (sscanf(line, " HestenesStiefel %d", &ival) == 1) {
         if (ival != 0) {
-          method = OPK_NLCG_HESTENES_STIEFEL;
+          nlcg_method = OPK_NLCG_HESTENES_STIEFEL;
         }
         continue;
       }
-      if (sscanf(line, "PolakRibierePolyak %d", &ival) == 1) {
+      if (sscanf(line, " PolakRibierePolyak %d", &ival) == 1) {
         if (ival != 0) {
-          method = OPK_NLCG_POLAK_RIBIERE_POLYAK;
+          nlcg_method = OPK_NLCG_POLAK_RIBIERE_POLYAK;
         }
         continue;
       }
-      if (sscanf(line, "Fletcher %d", &ival) == 1) {
+      if (sscanf(line, " Fletcher %d", &ival) == 1) {
         if (ival != 0) {
-          method = OPK_NLCG_FLETCHER;
+          nlcg_method = OPK_NLCG_FLETCHER;
         }
         continue;
       }
-      if (sscanf(line, "LiuStorey %d", &ival) == 1) {
+      if (sscanf(line, " LiuStorey %d", &ival) == 1) {
         if (ival != 0) {
-          method = OPK_NLCG_LIU_STOREY;
+          nlcg_method = OPK_NLCG_LIU_STOREY;
         }
         continue;
       }
-      if (sscanf(line, "DaiYuan %d", &ival) == 1) {
+      if (sscanf(line, " DaiYuan %d", &ival) == 1) {
         if (ival != 0) {
-          method = OPK_NLCG_DAI_YUAN;
+          nlcg_method = OPK_NLCG_DAI_YUAN;
         }
         continue;
       }
-      if (sscanf(line, "PerryShanno %d", &ival) == 1) {
+      if (sscanf(line, " PerryShanno %d", &ival) == 1) {
         if (ival != 0) {
-          method = OPK_NLCG_PERRY_SHANNO;
+          nlcg_method = OPK_NLCG_PERRY_SHANNO;
         }
         continue;
       }
-      if (sscanf(line, "HagerZhang %d", &ival) == 1) {
+      if (sscanf(line, " HagerZhang %d", &ival) == 1) {
         if (ival != 0) {
-          method = OPK_NLCG_HAGER_ZHANG;
+          nlcg_method = OPK_NLCG_HAGER_ZHANG;
         }
         continue;
       }
-      if (sscanf(line, "mem %d", &ival) == 1) {
-        if (mem < 0) {
+      if (sscanf(line, " mem %d", &ival) == 1) {
+        if (mem <= 0) {
           printf("Illegal value for option MEM\n");
           exit(-1);
         }
         mem = ival;
         continue;
       }
-      if (sscanf(line, "maxiter %d", &ival) == 1) {
+      if (sscanf(line, " maxiter %d", &ival) == 1) {
         maxiter = ival;
         continue;
       }
-      if (sscanf(line, "maxeval %d", &ival) == 1) {
+      if (sscanf(line, " maxeval %d", &ival) == 1) {
         maxeval = ival;
         continue;
       }
-      if (sscanf(line, "verb %d", &ival) == 1) {
+      if (sscanf(line, " verb %d", &ival) == 1) {
         verbose = ival;
         continue;
       }
-      if (sscanf(line, "gatol %lf", &dval) == 1) {
+      if (sscanf(line, " gatol %lf", &dval) == 1) {
         gatol = dval;
         continue;
       }
-      if (sscanf(line, "grtol %lf", &dval) == 1) {
+      if (sscanf(line, " grtol %lf", &dval) == 1) {
         grtol = dval;
         continue;
       }
     }
-    if (method == 0 && mem == 0) {
-      printf("A method must be chosen\n");
-      exit(-1);
-    }
-    if ((method == 0) == (mem == 0)) {
-      printf("MEM must be zero for non-linear conjugate gradient\n");
-      exit(-1);
-    }
     if (powell) {
-      if (mem != 0) {
-        printf("POWELL must be false (zero) for quasi-Newton methods\n");
-        exit(-1);
-      }
-      method |= OPK_NLCG_POWELL;
+      nlcg_method |= OPK_NLCG_POWELL;
     }
     if (autostep != 0) {
-      if (mem != 0) {
-        printf("scaling must not be specified for quasi-Newton methods\n");
-        exit(-1);
-      }
-      method |= autostep;
+      nlcg_method |= autostep;
     }
     fclose(spec);
   }
@@ -519,8 +519,8 @@ int MAINENTRY(void)
   vmlmb = NULL;
   vmlm = NULL;
   vgp = NULL;
-  if (bounds != 0) {
-    algname = "VMLMB";
+  if (algorithm == VMLMB) {
+    algorithm_name = "VMLMB";
     vmlmb = opk_new_vmlmb_optimizer(vspace, mem);
     if (vmlmb == NULL) {
       printf("** Failed to create VMLMB optimizer\n");
@@ -540,8 +540,13 @@ int MAINENTRY(void)
       exit(-1);
     }
     task = opk_start_vmlmb(vmlmb, vx, lower, upper);
-  } else if (mem > 0) {
-    algname = "VMLM";
+  } else if (algorithm == VMLM) {
+    algorithm_name = "VMLM";
+    if (bounds != 0) {
+      printf("** Algorithm %s cannot be used with bounds\n",
+             algorithm_name);
+      exit(-1);
+    }
     vmlm = opk_new_vmlm_optimizer(vspace, mem);
     if (vmlm == NULL) {
       printf("** Failed to create VMLM optimizer\n");
@@ -556,9 +561,14 @@ int MAINENTRY(void)
       exit(-1);
     }
     task = opk_start_vmlm(vmlm);
-  } else {
-    algname = "NLCG";
-    nlcg = opk_new_nlcg_optimizer(vspace, method);
+  } else if (algorithm == NLCG) {
+    algorithm_name = "NLCG";
+    if (bounds != 0) {
+      printf("** Algorithm %s cannot be used with bounds\n",
+             algorithm_name);
+      exit(-1);
+    }
+    nlcg = opk_new_nlcg_optimizer(vspace, nlcg_method);
     if (nlcg == NULL) {
       printf("** Failed to create NLCG optimizer\n");
       exit(-1);
@@ -670,11 +680,13 @@ int MAINENTRY(void)
 
   /* Print statistics */
   printf(" *********************** CUTEst statistics ************************\n");
-  printf(" Code used               : OptimPack/%s ", algname);
-  if (mem > 0) {
+  printf(" Code used               : OptimPack/%s ", algorithm_name);
+  if (algorithm == VMLMB || algorithm == VMLM) {
     printf("(mem=%d)\n", mem);
   } else {
-    printf("(%u/%u/%u)\n", (method&0xf), ((method>9)&3), ((method>8)&1));
+    char temp[OPK_NLCG_DESCRIPTION_MAX_SIZE];
+    opk_get_nlcg_description(nlcg, temp);
+    printf("(%s)\n", temp);
   }
   printf(" Problem                 : %-s\n", pname);
   printf(" # variables             = %-10d\n", CUTEst_nvar);
