@@ -1378,7 +1378,92 @@ opk_set_lbfgs_operator_preconditioner(opk_lbfgs_operator_t* op,
  * @{
  */
 
+/**
+ * @addtogroup LBFGS
+ * @{
+ */
+
 /** Opaque type for a variable metric optimizer. */
+typedef struct _opk_lbfgs opk_lbfgs_t;
+
+/** Structure used to store the settings of an LBFGS optimizer. */
+typedef struct _opk_lbfgs_options {
+  double delta;            /**< Relative size for a small step. */
+  double epsilon;          /**< Threshold to accept descent direction. */
+  double grtol;            /**< Relative threshold for the norm or the gradient
+                                (relative to GINIT the norm of the initial
+                                gradient) for convergence. */
+  double gatol;            /**< Absolute threshold for the norm or the gradient
+                                for convergence. */
+  double stpmin;           /**< Relative mimimum step length. */
+  double stpmax;           /**< Relative maximum step length. */
+} opk_lbfgs_options_t;
+
+extern opk_lbfgs_t*
+opk_new_lbfgs_optimizer_with_line_search(opk_vspace_t* space,
+                                         opk_index_t m,
+                                         opk_lnsrch_t* lnsrch);
+
+extern opk_lbfgs_t*
+opk_new_lbfgs_optimizer(opk_vspace_t* space, opk_index_t m);
+
+extern opk_task_t
+opk_start_lbfgs(opk_lbfgs_t* opt, opk_vector_t* x);
+
+extern opk_task_t
+opk_iterate_lbfgs(opk_lbfgs_t* opt, opk_vector_t* x,
+                  double f, opk_vector_t* g);
+
+extern opk_task_t
+opk_get_lbfgs_task(opk_lbfgs_t* opt);
+
+extern opk_status_t
+opk_get_lbfgs_status(opk_lbfgs_t* opt);
+
+extern opk_index_t
+opk_get_lbfgs_iterations(opk_lbfgs_t* opt);
+
+extern opk_index_t
+opk_get_lbfgs_evaluations(opk_lbfgs_t* opt);
+
+extern opk_index_t
+opk_get_lbfgs_restarts(opk_lbfgs_t* opt);
+
+extern double
+opk_get_lbfgs_step(opk_lbfgs_t* opt);
+
+/**
+ * Query LBFGS optimizer parameters.
+ *
+ * @param dst - The structure where to store the parameters.
+ * @param src - The LBFGS optimizer from which to fetch the parameters; if
+ *              `NULL`, default parameters are retrieved.
+ *
+ * @return A standard status.
+ */
+extern opk_status_t
+opk_get_lbfgs_options(opk_lbfgs_options_t* dst, const opk_lbfgs_t* src);
+
+/**
+ * Set LBFGS optimizer parameters.
+ *
+ * @param dst - The LBFGS optimizer whose parameters to set.
+ * @param src - The structure with the new parameter values; if `NULL`, default
+ *              parameters are used.
+ *
+ * @return A standard status.
+ */
+extern opk_status_t
+opk_set_lbfgs_options(opk_lbfgs_t* dst, const opk_lbfgs_options_t* src);
+
+/** @} */
+
+/**
+ * @addtogroup VMLM
+ * @{
+ */
+
+/** Opaque type for a LBFGS optimizer. */
 typedef struct _opk_vmlm opk_vmlm_t;
 
 extern opk_vmlm_t*

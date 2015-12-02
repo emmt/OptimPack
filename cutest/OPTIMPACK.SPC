@@ -1,4 +1,4 @@
-algorithm          vmlmb  (nlcg/vmlm/vmlmb)
+algorithm          vmlmb  (nlcg/vmlm/lbfgs/vmlmb)
 
 Powell             1       (use Powell's prescription to impose beta >= 0)
 

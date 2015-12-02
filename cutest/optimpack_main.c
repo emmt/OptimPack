@@ -137,14 +137,16 @@ int MAINENTRY(void)
   opk_vector_t* vgp;
   opk_vector_t* vbl;
   opk_vector_t* vbu;
-  opk_nlcg_t* nlcg;   /* non-linear conjugate gradient optimizer */
-  opk_vmlm_t* vmlm;  /* limited memory quasi-Newton optimizer */
-  opk_vmlmb_t* vmlmb; /* idem with bound constraints */
+  opk_nlcg_t*  nlcg  = NULL; /* non-linear conjugate gradient optimizer */
+  opk_vmlm_t*  vmlm  = NULL; /* limited memory quasi-Newton optimizer */
+  opk_vmlmb_t* vmlmb = NULL; /* idem with bound constraints */
+  opk_lbfgs_t* lbfgs = NULL; /* LBFGS optimizer */
   opk_task_t task;
 #define NLCG  1
 #define VMLM  2
-#define VMLMB 3
-#define BLMVM 4
+#define LBFGS 3
+#define VMLMB 4
+#define BLMVM 5
   int algorithm = VMLMB;
   unsigned int nlcg_method = OPK_NLCG_DEFAULT;
   const char* algorithm_name;
@@ -351,6 +353,8 @@ int MAINENTRY(void)
           algorithm = VMLM;
         } else if (strcasecmp(str, "vmlmb") == 0) {
           algorithm = VMLMB;
+        } else if (strcasecmp(str, "lbfgs") == 0) {
+          algorithm = LBFGS;
         } else {
           printf("Unknown algorithm\n");
           exit(-1);
@@ -515,9 +519,6 @@ int MAINENTRY(void)
   }
 
   /* Create the optimizer */
-  nlcg =  NULL;
-  vmlmb = NULL;
-  vmlm = NULL;
   vgp = NULL;
   if (algorithm == VMLMB) {
     algorithm_name = "VMLMB";
@@ -561,6 +562,27 @@ int MAINENTRY(void)
       exit(-1);
     }
     task = opk_start_vmlm(vmlm);
+  } else if (algorithm == LBFGS) {
+    opk_lbfgs_options_t options;
+    algorithm_name = "LBFGS";
+    if (bounds != 0) {
+      printf("** Algorithm %s cannot be used with bounds\n",
+             algorithm_name);
+      exit(-1);
+    }
+    lbfgs = opk_new_lbfgs_optimizer(vspace, mem);
+    if (lbfgs == NULL) {
+      printf("** Failed to create LBFGS optimizer\n");
+      exit(-1);
+    }
+    opk_get_lbfgs_options(&options, lbfgs);
+    options.gatol = gatol;
+    options.grtol = grtol;
+    if (opk_set_lbfgs_options(lbfgs, &options) != OPK_SUCCESS) {
+      printf("** Bad LBFGS options\n");
+      exit(-1);
+    }
+    task = opk_start_lbfgs(lbfgs, vx);
   } else if (algorithm == NLCG) {
     algorithm_name = "NLCG";
     if (bounds != 0) {
@@ -582,6 +604,9 @@ int MAINENTRY(void)
       exit(-1);
     }
     task = opk_start_nlcg(nlcg);
+  } else {
+    printf("** Bad algorithm\n");
+    exit(-1);
   }
 
   /* Iteratively call the optimizer */
@@ -631,6 +656,9 @@ int MAINENTRY(void)
         } else if (vmlm != NULL) {
           alpha = opk_get_vmlm_step(vmlm);
           restarts = opk_get_vmlm_restarts(vmlm);
+        } else if (lbfgs != NULL) {
+          alpha = opk_get_lbfgs_step(lbfgs);
+          restarts = opk_get_lbfgs_restarts(lbfgs);
         } else {
           alpha = opk_get_nlcg_step(nlcg);
           restarts = 0;
@@ -646,26 +674,30 @@ int MAINENTRY(void)
         break;
       }
     } else if (task != OPK_TASK_COMPUTE_FG) {
-      opk_status_t reason;
+      opk_status_t status;
       if (vmlmb != NULL) {
-        reason = opk_get_vmlmb_reason(vmlmb);
+        status = opk_get_vmlmb_reason(vmlmb);
       } else if (vmlm != NULL) {
-        reason = opk_get_vmlm_reason(vmlm);
+        status = opk_get_vmlm_reason(vmlm);
+      } else if (lbfgs != NULL) {
+        status = opk_get_lbfgs_status(lbfgs);
       } else {
-        reason = 0;
+        status = OPK_SUCCESS;
       }
       opk_vprint(stderr, " x", vx, 10);
       opk_vprint(stderr, " g", vg, 10);
       opk_vprint(stderr, "xl", vbl, 10);
       opk_vprint(stderr, "xu", vbu, 10);
       printf ("** Algorithm exits with task = %d (%d: %s)\n", task,
-              reason, opk_get_reason(reason));
+              status, opk_get_reason(status));
       break;
     }
     if (vmlmb != NULL) {
       task = opk_iterate_vmlmb(vmlmb, vx, f, vg, lower, upper);
     } else if (vmlm != NULL) {
       task = opk_iterate_vmlm(vmlm, vx, f, vg);
+    } else if (lbfgs != NULL) {
+      task = opk_iterate_lbfgs(lbfgs, vx, f, vg);
     } else {
       task = opk_iterate_nlcg(nlcg, vx, f, vg);
     }
