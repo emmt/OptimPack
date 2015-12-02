@@ -675,7 +675,57 @@ opk_get_nlcg_evaluations(opk_nlcg_t* opt)
 unsigned int
 opk_get_nlcg_method(opk_nlcg_t* opt)
 {
-  return opt->method;
+  return (opt != NULL ? opt->method : -1);
+}
+
+opk_status_t
+opk_get_nlcg_description(opk_nlcg_t* opt, char* str)
+{
+  int and;
+  if (opt == NULL || str == NULL) {
+    return OPK_ILLEGAL_ADDRESS;
+  }
+  switch (opt->method & 0xff) {
+  case OPK_NLCG_FLETCHER_REEVES:
+    strcpy(str, "Fletcher & Reeves");
+    break;
+  case OPK_NLCG_HESTENES_STIEFEL:
+    strcpy(str, "Hestenes & Stiefel");
+    break;
+  case OPK_NLCG_POLAK_RIBIERE_POLYAK:
+    strcpy(str, "Polak, Ribière & Polyak");
+    break;
+  case OPK_NLCG_FLETCHER:
+    strcpy(str, "Fletcher conjugate descent");
+    break;
+  case OPK_NLCG_LIU_STOREY:
+    strcpy(str, "Liu & Storey");
+    break;
+  case OPK_NLCG_DAI_YUAN:
+    strcpy(str, "Dai & Yuan");
+    break;
+  case OPK_NLCG_PERRY_SHANNO:
+    strcpy(str, "Perry & Shanno");
+    break;
+  case OPK_NLCG_HAGER_ZHANG:
+    strcpy(str, "Hager & Zhang");
+    break;
+  default:
+    *str = 0;
+    return OPK_CORRUPTED_WORKSPACE;
+  }
+  strcat(str, " updates");
+  if ((opt->method & OPK_NLCG_POWELL) == OPK_NLCG_POWELL) {
+    and = TRUE;
+    strcat(str, " with Powell restarts");
+  } else {
+    and = FALSE;
+  }
+  if ((opt->method & OPK_NLCG_SHANNO_PHUA) == OPK_NLCG_SHANNO_PHUA) {
+    strcat(str, (and ? " and" : " with"));
+    strcat(str, " Shanno & Phua step size");
+  }
+  return OPK_SUCCESS;
 }
 
 opk_task_t
