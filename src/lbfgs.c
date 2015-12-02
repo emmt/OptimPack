@@ -3,15 +3,14 @@
  *
  * Limited memory variable metric method for OptimPack library.  The method has
  * been first described by Nocedal (1980) under the name VMLM (for Variable
- * Metric Limited Memory) and popularized under the name LBFGS by Byrd et
- * al. (1994).
+ * Metric Limited Memory) and popularized under the name LBFGS by Lyu and
+ * Nocedal (1989).
  *
- *  - Nocedal, J. "Updating Quasi-Newton Matrices with Limited Storage,"
+ *  - J. Nocedal, "Updating Quasi-Newton Matrices with Limited Storage,"
  *    Mathematics of Computation, Vol. 35, pp. 773-782 (1980)
  *
- *  - Byrd, R. H., Nocedal, J. & Schnabel, R. B. "Representations of
- *    quasi-Newton matrices and their use in limited memory methods,"
- *    Mathematical Programming, Vol. 63, pp. 129-156 (1994).
+ *  - D. Liu and J. Nocedal, "On the limited memory BFGS method for large scale
+ *    optimization", Mathematical Programming B 45, 503-528 (1989).
  *
  *-----------------------------------------------------------------------------
  *
