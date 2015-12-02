@@ -1,5 +1,5 @@
 # OptimPack
-# (version 3.0)
+# (version 3.0.0a)
 
 ![Travis build status](http://travis-ci.org/emmt/OptimPack.png)
 
