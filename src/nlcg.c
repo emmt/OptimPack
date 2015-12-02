@@ -72,6 +72,10 @@ static const double SXTOL = DBL_EPSILON;
 static const double GRTOL = 1E-6;
 static const double GATOL = 0.0;
 
+/* Other default parameters. */
+static const double DELTA   = 5e-2;
+static const double EPSILON = 1e-2;
+
 struct _opk_nlcg {
   opk_object_t base;      /* Base type (must be the first member). */
   double f0;              /* Function value at the start of the line search. */
@@ -90,6 +94,8 @@ struct _opk_nlcg {
                              for convergence. */
   double ginit;           /* Euclidean norm of the initial gradient. */
   double fmin;            /* Minimal function value if provided. */
+  double delta;           /* Relative size for a small step. */
+  double epsilon;         /* Threshold to accept descent direction. */
   double alpha;           /* Current step length. */
   double beta;            /* Current parameter in conjugate gradient update
                              rule (for information). */
@@ -491,6 +497,8 @@ opk_new_nlcg_optimizer_with_line_search(opk_vspace_t* vspace,
   opt->gatol = GATOL;
   opt->stpmin = STPMIN;
   opt->stpmax = STPMAX;
+  opt->delta = DELTA;
+  opt->epsilon = EPSILON;
   opt->x0 = opk_vcreate(vspace);
   if (opt->x0 == NULL) {
     goto error;
@@ -744,47 +752,51 @@ opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x,
   case OPK_TASK_NEW_X:
   case OPK_TASK_FINAL_X:
 
-    /* Compute a search direction and start line search. */
+    /* Compute search direction and initial step size. */
     if (opt->evaluations <= 1 || opt->update(opt, x, g) != UPDATE_SUCCESS) {
-      /* First evaluation or update failed. */
-      opt->dtg = 0.0;
+      /* First evaluation or update failed, set DTG to zero to use the steepest
+       * descent direction. */
+      opt->dtg = 0;
     } else {
       opt->dtg = -opk_vdot(opt->d, g);
-      if (opt->dtg < 0.0) {
-        /* The recursion yields a sufficient descent direction (not all methods
-           warrant that).  Compute an initial step size ALPHA along the new
-           direction. */
-        if ((opt->method & OPK_NLCG_SHANNO_PHUA) == OPK_NLCG_SHANNO_PHUA) {
-          /* Initial step size is such that:
-             <alpha_{k+1}*d_{k+1},g_{k+1}> = <alpha_{k}*d_{k},g_{k}> */
-          opt->alpha *= (opt->dtg0/opt->dtg);
-#if 0 /* keep same ALPHA */
-        } else {
-          /* FIXME: check this */
-          opt->alpha = (-opt->dtg0)/p0norm/p0norm/opt->alpha;
-#endif
-        }
+      if (opt->epsilon > 0 &&
+          opt->dtg > -opt->epsilon*opk_vnorm2(opt->d)*opt->gnorm) {
+        /* Set DTG to zero to indicate that we do not have a sufficient
+           descent direction. */
+        opt->dtg = 0;
       }
     }
-    if (opt->dtg >= 0.0) {
+    if (opt->dtg < 0) {
+      /* The recursion yields a sufficient descent direction (not all methods
+         warrant that).  Compute an initial step size ALPHA along the new
+         direction. */
+      if ((opt->method & OPK_NLCG_SHANNO_PHUA) == OPK_NLCG_SHANNO_PHUA) {
+        /* Initial step size is such that:
+           <alpha_{k+1}*d_{k+1},g_{k+1}> = <alpha_{k}*d_{k},g_{k}> */
+        opt->alpha *= (opt->dtg0/opt->dtg);
+      }
+    } else {
       /* Initial search direction or recurrence has been restarted.  FIXME:
          other possibility is to use Fletcher's formula, see BGLS p. 39) */
       if (opt->evaluations > 1) {
         ++opt->restarts;
       }
-      opt->beta = 0.0;
-#if 0
-      double xnorm = opk_vnorm2(x);
-      if (xnorm > 0.0) {
-        opt->alpha = (xnorm/opt->gnorm)*opt->tiny;
-      } else {
-        opt->alpha = (1e-3*MAX(fabs(f), 1.0)/opt->gnorm)/opt->gnorm;
-      }
-#else
-      opt->alpha = 1.0/opt->gnorm;
-#endif
       opk_vcopy(opt->d, g);
       opt->dtg = -opt->gnorm*opt->gnorm;
+      if (opt->fmin_given && opt->fmin < f) {
+        opt->alpha = 2*(opt->fmin - f)/opt->dtg;
+      } else if (f != 0) {
+        opt->alpha = 2*fabs(f/opt->dtg);
+      } else {
+        double dnorm = opt->gnorm;
+        double xnorm = opk_vnorm2(x);
+        if (xnorm > 0) {
+          opt->alpha = opt->delta*xnorm/dnorm;
+        } else {
+          opt->alpha = opt->delta/dnorm;
+        }
+      }
+      opt->beta = 0;
     }
 
     /* Store current position as X0, f0, etc. */
