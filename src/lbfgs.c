@@ -66,7 +66,7 @@
 static const double STPMIN = 1E-20;
 static const double STPMAX = 1E+20;
 static const double SFTOL = 1E-4;
-static const double SGTOL = 1E-1;
+static const double SGTOL = 0.9;
 static const double SXTOL = DBL_EPSILON;
 
 /* Default parameters for the global convergence. */
@@ -76,6 +76,7 @@ static const double GATOL = 0.0;
 /* Other default parameters. */
 static const double DELTA   = 5e-2;
 static const double EPSILON = 1e-2;
+static const int    SCALING = OPK_SCALING_OREN_SPEDICATO;
 
 struct _opk_lbfgs {
   opk_object_t base;       /**< Base type (must be the first member). */
@@ -123,11 +124,7 @@ struct _opk_lbfgs {
 static double
 max3(double a1, double a2, double a3)
 {
-  if (a3 >= a2) {
-    return (a3 >= a1 ? a3 : a1);
-  } else {
-    return (a2 >= a1 ? a2 : a1);
-  }
+  return (a3 >= a2 ? MAX(a1, a3) : MAX(a1, a2));
 }
 
 static int
@@ -240,6 +237,12 @@ opk_new_lbfgs_optimizer_with_line_search(opk_vspace_t* space,
   opt->beta = ADDRESS(double,        opt, beta_offset);
   opt->rho  = ADDRESS(double,        opt,  rho_offset);
   opt->m = m;
+  opk_set_lbfgs_options(opt, NULL);
+  failure(opt, OPK_NOT_STARTED);
+  opt->gamma = 1.0;
+
+  /* Allocate work vectors.  If saving memory, x0 and g0 will be weak
+     references to one of the saved vectors in the LBFGS operator. */
   for (k = 0; k < m; ++k) {
     opt->s[k] = opk_vcreate(space);
     if (opt->s[k] == NULL) {
@@ -266,8 +269,6 @@ opk_new_lbfgs_optimizer_with_line_search(opk_vspace_t* space,
   if (opt->d == NULL) {
     goto error;
   }
-  opk_set_lbfgs_options(opt, NULL);
-  opt->gamma = 1.0;
   return opt;
 
  error:
@@ -301,15 +302,17 @@ opk_start_lbfgs(opk_lbfgs_t* opt, opk_vector_t* x)
   return success(opt, OPK_TASK_COMPUTE_FG);
 }
 
-
+/* Define a few macros to make the code more readable. */
 #define S(k)     opt->s[k]
 #define Y(k)     opt->y[k]
 #define BETA(k)  opt->beta[k]
 #define RHO(k)   opt->rho[k]
-#define UPDATE(dst, alpha, x)            opk_vaxpby(dst, 1, dst, alpha, x)
-#define COMBINE(dst, alpha, x, beta, y)  opk_vaxpby(dst, alpha, x, beta, y)
+#define COPY(dst, src)                   opk_vcopy(dst, src)
+#define AXPBY(dst, alpha, x, beta, y)    opk_vaxpby(dst, alpha, x, beta, y)
+#define UPDATE(dst, alpha, x)            AXPBY(dst, 1, dst, alpha, x)
 #define SCALE(x, alpha)                  opk_vscale(x, alpha, x)
 #define DOT(x, y)                        opk_vdot(x, y)
+#define NORM2(x)                         opk_vnorm2(x)
 
 opk_task_t
 opk_iterate_lbfgs(opk_lbfgs_t* opt, opk_vector_t* x,
@@ -329,7 +332,7 @@ opk_iterate_lbfgs(opk_lbfgs_t* opt, opk_vector_t* x,
     ++opt->evaluations;
 
     /* Check for global convergence. */
-    opt->gnorm = opk_vnorm2(g);
+    opt->gnorm = NORM2(g);
     if (opt->evaluations == 1) {
       opt->ginit = opt->gnorm;
     }
@@ -369,8 +372,8 @@ opk_iterate_lbfgs(opk_lbfgs_t* opt, opk_vector_t* x,
     if (opt->iterations >= 1) {
       /* Update L-BFGS approximation of the Hessian. */
       k = slot(opt, 0);
-      opk_vaxpby(S(k), 1, x, -1, opt->x0);
-      opk_vaxpby(Y(k), 1, g, -1, opt->g0);
+      AXPBY(S(k), 1, x, -1, opt->x0);
+      AXPBY(Y(k), 1, g, -1, opt->g0);
       sty = DOT(Y(k), S(k));
       if (sty <= 0) {
         RHO(k) = 0;
@@ -392,12 +395,13 @@ opk_iterate_lbfgs(opk_lbfgs_t* opt, opk_vector_t* x,
        As shown by Zoutendijk, this is true if cos(theta) = (D/|D|)'.(G/|G|) is
        larger or equal EPSILON > 0, where G is the gradient at X and D the
        descent direction. */
-    dtg = 0;
-    if (opt->mp >= 1) {
+
+    if (opt->mp < 1) {
+      dtg = 0;
+    } else {
       /* Apply the L-BFGS Strang's two-loop recursion to compute a search
          direction. */
-      opt->gamma = 0;
-      opk_vcopy(opt->d, g);
+      COPY(opt->d, g);
       for (j = 1; j <= opt->mp; ++j) {
         k = slot(opt, j);
         BETA(k) = RHO(k)*DOT(opt->d, S(k));
@@ -417,8 +421,7 @@ opk_iterate_lbfgs(opk_lbfgs_t* opt, opk_vector_t* x,
       /* Check whether the algorithm has produced a sufficient descent
          direction. */
       dtg = -DOT(opt->d, g);
-      if (opt->epsilon > 0 &&
-          dtg > -opt->epsilon*opk_vnorm2(opt->d)*opt->gnorm) {
+      if (opt->epsilon > 0 && dtg > -opt->epsilon*NORM2(opt->d)*opt->gnorm) {
         /* Set DTG to zero to indicate that we do not have a sufficient
            descent direction. */
         dtg = 0;
@@ -435,12 +438,13 @@ opk_iterate_lbfgs(opk_lbfgs_t* opt, opk_vector_t* x,
         ++opt->restarts;
         opt->mp = 0;
       }
+      COPY(opt->d, g);
       dtg = -opt->gnorm*opt->gnorm;
       if (f != 0) {
         opt->stp = 2*fabs(f/dtg);
       } else {
         double dnorm = opt->gnorm;
-        double xnorm = opk_vnorm2(x);
+        double xnorm = NORM2(x);
         if (xnorm > 0) {
           opt->stp = opt->delta*xnorm/dnorm;
         } else {
@@ -458,12 +462,12 @@ opk_iterate_lbfgs(opk_lbfgs_t* opt, opk_vector_t* x,
       --opt->mp;
     }
 #endif
-    opk_vcopy(opt->x0, x);
-    opk_vcopy(opt->g0, g);
+    COPY(opt->x0, x);
+    COPY(opt->g0, g);
     opt->f0 = f;
 
-    /* Start the line search and break to compute the first trial point along
-       the line search. */
+    /* Start the line search and break to take the first step along the line
+       search. */
     if (opk_lnsrch_start(opt->lnsrch, f, dtg, opt->stp,
                          opt->stp*opt->stpmin,
                          opt->stp*opt->stpmax) != OPK_LNSRCH_SEARCH) {
@@ -478,8 +482,8 @@ opk_iterate_lbfgs(opk_lbfgs_t* opt, opk_vector_t* x,
 
   }
 
-  /* Compute a trial point along the line search. */
-  opk_vaxpby(x, 1, opt->x0, -opt->stp, opt->d);
+  /* Compute a new trial point along the line search. */
+  AXPBY(x, 1, opt->x0, -opt->stp, opt->d);
   return success(opt, OPK_TASK_COMPUTE_FG);
 }
 
