@@ -254,12 +254,14 @@ OPK_BEGIN_C_DECLS
   _OPK_STATUS(20, OPK_STEP_EQ_STPMIN, "Step blocked at lower bound")    \
   _OPK_STATUS(21, OPK_ROUNDING_ERRORS_PREVENT_PROGRESS,                 \
               "Rounding errors prevent progress")                       \
-  _OPK_STATUS(22, OPK_BAD_PRECONDITIONER,                               \
+  _OPK_STATUS(22, OPK_NOT_POSITIVE_DEFINITE,                            \
+              "Operator is not psoitive definite")                      \
+  _OPK_STATUS(23, OPK_BAD_PRECONDITIONER,                               \
               "Preconditioner is not positive definite")                \
-  _OPK_STATUS(23, OPK_INFEASIBLE_BOUNDS, "Box set is infeasible")       \
-  _OPK_STATUS(24, OPK_WOULD_BLOCK,                                      \
+  _OPK_STATUS(24, OPK_INFEASIBLE_BOUNDS, "Box set is infeasible")       \
+  _OPK_STATUS(25, OPK_WOULD_BLOCK,                                      \
               "Variables cannot be improved (would block)")             \
-  _OPK_STATUS(25, OPK_UNDEFINED_VALUE, "Undefined value")
+  _OPK_STATUS(26, OPK_UNDEFINED_VALUE, "Undefined value")
 
 
 /**
@@ -403,6 +405,7 @@ opk_get_object_references(opk_object_t* obj);
 #define OPK_HOLD_VECTOR(vec)  ((opk_vector_t*)OPK_HOLD(vec))
 #define OPK_HOLD_LNSRCH(vec)  ((opk_lnsrch_t*)OPK_HOLD(vec))
 #define OPK_HOLD_OPERATOR(op) ((opk_operator_t*)OPK_HOLD(op))
+#define OPK_HOLD_BOUND(bnd)   ((opk_bound_t*)OPK_HOLD(bnd))
 
 /** @} */
 
@@ -1576,6 +1579,111 @@ opk_box_get_step_limits(double* smin, double* wolfe, double *smax,
  * @addtogroup ConstrainedVariableMetric
  * @{
  */
+
+/** Opaque type for a variable metric optimizer. */
+typedef struct _opk_vmlmn opk_vmlmn_t;
+
+/** Structure used to store the settings of a VMLMN optimizer. */
+typedef struct _opk_vmlmn_options {
+  double delta;   /**< Relative size for a small step. */
+  double epsilon; /**< Threshold to accept descent direction. */
+  double grtol;   /**< Relative threshold for the norm or the projected
+                       gradient (relative to the norm of the initial projected
+                       gradient) for convergence. */
+  double gatol;   /**< Absolute threshold for the norm or the projected
+                       gradient for convergence. */
+  double stpmin;  /**< Relative mimimum step length. */
+  double stpmax;  /**< Relative maximum step length. */
+} opk_vmlmn_options_t;
+
+/* Options for VMLMB. */
+#define OPK_EMULATE_BLMVM              (1 << 1) /**< Emulate Benson & Moré
+                                                     BLMVM method. */
+/**
+ * Create a reverse communication optimizer implementing a limited memory
+ * quasi-Newton method with bound constraints and quadratic backtracking line
+ * search.
+ *
+ * @param space  - The space to which belong the variables.
+ * @param m      - The number of previous steps to memorize (`m` > 0).
+ * @param flags  - Bitwise options: `OPK_EMULATE_BLMVM`.
+ * @param xl     - Optional lower bound for the variables; can be `NULL`
+ *                 if there are no lower bounds.
+ * @param xu     - Optional upper bound for the variables; can be `NULL`
+ *                 if there are no upper bounds.
+ * @param lnsrch - Optional line search method to use; can be `NULL`
+ *                 to use a default one.
+ */
+extern opk_vmlmn_t*
+opk_new_vmlmn_optimizer(opk_vspace_t* space,
+                        opk_index_t m,
+                        unsigned int flags,
+                        opk_bound_t* xl,
+                        opk_bound_t* xu,
+                        opk_lnsrch_t* lnsrch);
+
+/** The variants implemented by VMLMB. */
+typedef enum { OPK_LBFGS, OPK_VMLMN, OPK_BLMVM } opk_vmlmn_method_t;
+extern opk_vmlmn_method_t
+opk_get_vmlmn_method(opk_vmlmn_t* opt);
+
+extern const char*
+opk_get_vmlmn_method_name(opk_vmlmn_t* opt);
+
+extern opk_task_t
+opk_start_vmlmn(opk_vmlmn_t* opt, opk_vector_t* x);
+
+extern opk_task_t
+opk_iterate_vmlmn(opk_vmlmn_t* opt, opk_vector_t* x,
+                  double f, opk_vector_t* g);
+
+extern opk_task_t
+opk_get_vmlmn_task(opk_vmlmn_t* opt);
+
+extern opk_status_t
+opk_get_vmlmn_status(opk_vmlmn_t* opt);
+
+extern opk_index_t
+opk_get_vmlmn_iterations(opk_vmlmn_t* opt);
+
+extern opk_index_t
+opk_get_vmlmn_evaluations(opk_vmlmn_t* opt);
+
+extern opk_index_t
+opk_get_vmlmn_restarts(opk_vmlmn_t* opt);
+
+extern double
+opk_get_vmlmn_step(opk_vmlmn_t* opt);
+
+extern opk_vector_t*
+opk_get_vmlmn_s(opk_vmlmn_t* opt, opk_index_t k);
+
+extern opk_vector_t*
+opk_get_vmlmn_y(opk_vmlmn_t* opt, opk_index_t k);
+
+/**
+ * Query VMLMN optimizer parameters.
+ *
+ * @param dst - The structure where to store the parameters.
+ * @param src - The VMLMN optimizer from which to fetch the parameters; if
+ *              `NULL`, default parameters are retrieved.
+ *
+ * @return A standard status.
+ */
+extern opk_status_t
+opk_get_vmlmn_options(opk_vmlmn_options_t* dst, const opk_vmlmn_t* src);
+
+/**
+ * Set VMLMN optimizer parameters.
+ *
+ * @param dst - The VMLMN optimizer whose parameters to set.
+ * @param src - The structure with the new parameter values; if `NULL`, default
+ *              parameters are used.
+ *
+ * @return A standard status.
+ */
+extern opk_status_t
+opk_set_vmlmn_options(opk_vmlmn_t* dst, const opk_vmlmn_options_t* src);
 
 /** Opaque type for a variable metric optimizer. */
 typedef struct _opk_vmlmb opk_vmlmb_t;
