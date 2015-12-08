@@ -1,0 +1,192 @@
+#! /bin/sh
+#
+# Run CUTEst tests with OptimPack.
+#
+#------------------------------------------------------------------------------
+#
+# This file is part of OptimPack (https://github.com/emmt/OptimPack).
+#
+# Copyright (C) 2015 Éric Thiébaut
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to
+# deal in the Software without restriction, including without limitation the
+# rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+# sell copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+# IN THE SOFTWARE.
+#
+#------------------------------------------------------------------------------
+
+on_exit () {
+    true
+}
+
+trap on_exit 0
+
+progname=$0
+
+die () { echo >&2 "$progname: $*"; exit 1; }
+
+opt_value () { echo "$*" | sed -e 's/^--[^=]*=//'; }
+
+algorithm="vmlmn"
+verb=0
+mem=5
+gatol=1e-6
+grtol=0.0
+maxiter=-1
+maxeval=100000
+Powell=yes
+ShannoPhua=yes
+#OrenSpedicato      0       (use Oren & Spedicato method to guess the step length)
+#BarzilaiBorwein    0       (use Barzilai & Borwein method to guess the step length)
+rule=PolakRibierePolyak
+
+help () {
+    cat <<EOF
+usage: $progname [-h|--help] [OPTIONS] PROB
+
+Run CUTEst test for problem PROB.
+
+options:
+  --algorithm=ALG      Optimization algorithm to use.  Can be: nlcg, vmlm,
+                       lbfgs, vmlmb, blmvm or vmlmn.  Currently: "$algorithm".
+  --Powell=yes/no      Use Powell's prescription to impose beta >= 0.
+                       Currently: "$Powell".
+  --ShannoPhua=yes/no  Use Shanno & Phua method to guess the step length.
+                       Currently: "$ShannoPhua".
+  --rule=RULE          Conjugate gradient update rule.  Can be FletcherReeves,
+                       HestenesStiefel, PolakRibierePolyak, Fletcher,
+                       LiuStorey, DaiYuan, PerryShanno or
+                       HagerZhang. Currently: "$rule".
+  --gatol=VAL          Gradient absolute tolerance.  Currently: $gatol
+  --grtol=VAL          Gradient relative tolerance.  Currently: $grtol
+  --maxiter=NUM        Maximum number of iterations, infinite if negative.
+                       Currently: $maxiter
+  --maxeval=NUM        Maximum number of evaluations, infinite if negative.
+                       Currently: $maxeval
+  --verb=N             If N > 0, print information every N-th iterations.
+                       Currently: $verb
+  --mem=N              Number of previous steps to memorize. Currently: $mem
+  -h, --help           Print this help and exit.
+EOF
+}
+
+while test $# -ge 1; do
+    arg=$1
+    case "$arg" in
+        -h | --help )
+            help
+            exit 0
+            ;;
+        --algorithm=*)
+            algorithm=$(opt_value "$arg")
+            ;;
+        --rule=*)
+            rule=$(opt_value "$arg")
+            case "$rule" in
+                FletcherReeves | HestenesStiefel | PolakRibierePolyak | Fletcher | LiuStorey | DaiYuan | PerryShanno | HagerZhang)
+                    ;;
+                *)
+                    die "Unknown conjugate gradient rule: \"$rule\""
+            esac
+            ;;
+        --Powell=*)
+            Powell=$(opt_value "$arg")
+            ;;
+        --ShannoPhua=*)
+            ShannoPhua=$(opt_value "$arg")
+            ;;
+        --gatol=*)
+            gatol=$(opt_value "$arg")
+            ;;
+        --grtol=*)
+            grtol=$(opt_value "$arg")
+            ;;
+        --verb=*)
+            verb=$(opt_value "$arg")
+            ;;
+        --maxiter=*)
+            maxiter=$(opt_value "$arg")
+            ;;
+        --maxeval=*)
+            maxeval=$(opt_value "$arg")
+            ;;
+        --mem=*)
+            mem=$(opt_value "$arg")
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            break
+            ;;
+        -*)
+            die "Unknown option \"$arg\""
+    esac
+    shift
+done
+
+test $# -eq 1 || die "Missing problem name"
+problem=$1
+
+test "x$OPTIMPACK" != "x" || die "environment variable OPTIMPACK must be set"
+test "x$CUTEST"    != "x" || die "environment variable CUTEST must be set"
+test "x$ARCHDEFS"  != "x" || die "environment variable ARCHDEFS must be set"
+test "x$SIFDECODE" != "x" || die "environment variable SIFDECODE must be set"
+test "x$MYARCH"    != "x" || die "environment variable MYARCH must be set"
+test "x$MASTSIF"   != "x" || die "environment variable MASTSIF must be set"
+
+if test "$Powell" = "yes"; then
+    powell=1
+else
+    powell=0
+fi
+if test "$ShannoPhua" = "yes"; then
+    shannophua=1
+else
+    shannophua=0
+fi
+
+config=OPTIMPACK.SPC
+if test -e $config; then
+    result=`git status --porcelain $config 2>/dev/null`
+    if test "x$result" != "x"; then
+        die "Cannot overwrite git tracked file: $config"
+    fi
+fi
+
+cat<<EOF >"$config"
+algorithm          $algorithm
+Powell             $powell
+ShannoPhua         $shannophua
+gatol              $gatol
+grtol              $grtol
+maxiter            $maxiter
+maxeval            $maxeval
+verb               $verb
+mem                $mem
+$rule 1
+EOF
+
+exec runcutest -p optimpack -D $problem
+
+# Local Variables:
+# mode: sh
+# tab-width: 8
+# indent-tabs-mode: nil
+# fill-column: 78
+# coding: utf-8
+# End:
