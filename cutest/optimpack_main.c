@@ -94,7 +94,7 @@ gradnorm(const opk_vector_t* x, const opk_vector_t* g, opk_vector_t* gp,
     /* compute ||Projection(x_k - g_k) - x_k||_infty */
     opk_vaxpby(gp, 1, x, -1, g);
     if (opk_box_project_variables(gp, gp, xl, xu) != OPK_SUCCESS) {
-      printf("** Failed to project variables\n");
+      printf("# Failed to project variables\n");
       exit(-1);
     }
     opk_vaxpby(gp, 1, gp, -1, x);
@@ -140,6 +140,7 @@ int MAINENTRY(void)
   opk_nlcg_t*  nlcg  = NULL; /* non-linear conjugate gradient optimizer */
   opk_vmlm_t*  vmlm  = NULL; /* limited memory quasi-Newton optimizer */
   opk_vmlmb_t* vmlmb = NULL; /* idem with bound constraints */
+  opk_vmlmn_t* vmlmn = NULL; /* idem with bound constraints */
   opk_lbfgs_t* lbfgs = NULL; /* LBFGS optimizer */
   opk_task_t task;
 #define NLCG  1
@@ -147,7 +148,9 @@ int MAINENTRY(void)
 #define LBFGS 3
 #define VMLMB 4
 #define BLMVM 5
+#define VMLMN 6
   int algorithm = VMLMB;
+  unsigned int vmlmn_flags = 0;
   unsigned int nlcg_method = OPK_NLCG_DEFAULT;
   const char* algorithm_name;
   opk_bound_t* lower;
@@ -168,14 +171,14 @@ int MAINENTRY(void)
   ierr = 0;
   FORTRAN_open( &funit, fname, &ierr );
   if (ierr) {
-    printf("** Error opening file OUTSDIF.d.\nAborting.\n");
+    printf("# Error opening file OUTSDIF.d.\nAborting.\n");
     exit(1);
   }
 
   /* Determine problem size */
   CUTEST_cdimen(&status, &funit, &CUTEst_nvar, &CUTEst_ncon);
   if (status != 0) {
-    printf("** CUTEst error, status = %d, aborting\n", status);
+    printf("# CUTEst error, status = %d, aborting\n", status);
     exit(status);
   }
 
@@ -205,7 +208,7 @@ int MAINENTRY(void)
     CUTEST_usetup(&status, &funit, &iout, &io_buffer, &CUTEst_nvar, x, bl, bu);
   }
   if (status != 0) {
-    printf("** CUTEst error, status = %d, aborting\n", status);
+    printf("# CUTEst error, status = %d, aborting\n", status);
     exit(status);
   }
 
@@ -228,7 +231,7 @@ int MAINENTRY(void)
     CUTEST_unames(&status, &CUTEst_nvar, pname, vnames);
   }
   if (status != 0) {
-    printf("** CUTEst error, status = %d, aborting\n", status);
+    printf("# CUTEst error, status = %d, aborting\n", status);
     exit(status);
   }
 
@@ -265,9 +268,9 @@ int MAINENTRY(void)
   if (constrained) FREE(gnames);
 
 #if VERBOSE
-  printf("Variable names:\n");
+  printf("# Variable names:\n");
   for (i = 0; i < CUTEst_nvar; i++) {
-    printf("  %s\n", Vnames[i]);
+    printf("#  %s\n", Vnames[i]);
   }
 #endif
 
@@ -279,9 +282,9 @@ int MAINENTRY(void)
 
 #if VERBOSE
   if (constrained) {
-    printf("Constraint names:\n");
+    printf("# Constraint names:\n");
     for (i = 0; i < CUTEst_ncon; i++) {
-      printf("  %s\n", Gnames[i]);
+      printf("#  %s\n", Gnames[i]);
     }
   }
 #endif
@@ -295,9 +298,9 @@ int MAINENTRY(void)
   }
 
   if (constrained) {
-    printf ("** the problem %s has %i constraints\n",
+    printf("# the problem %s has %i constraints\n",
             pname,  CUTEst_ncon);
-    printf ("** current OptimPack is for unconstrained optimization\n");
+    printf("# current OptimPack is for unconstrained optimization\n");
     exit(-1);
   }
 
@@ -305,7 +308,7 @@ int MAINENTRY(void)
   getinfo(CUTEst_nvar, CUTEst_ncon, bl, bu, NULL, NULL, NULL, NULL, &vartypes);
   bounds = 0;
   for (i = 0; i < CUTEst_nvar; ++i) {
-    /*if (i < 10) printf("bl[%d] = %g / bu[%d] = %g\n", i, bl[i], i, bu[i]);*/
+    /*if (i < 10) printf("# bl[%d] = %g / bu[%d] = %g\n", i, bl[i], i, bu[i]);*/
     if (bl[i] > -CUTE_INF) {
       bounds |= 1;
     }
@@ -315,12 +318,12 @@ int MAINENTRY(void)
   }
 
 
-  /*printf ("Problem: %s (n = %i)\n", pname, CUTEst_nvar );*/
+  /*printf("# Problem: %s (n = %i)\n", pname, CUTEst_nvar );*/
 
   /* MALLOC(vnames, CUTEst_nvar*FSTRING_LEN, char);
      CUTEST_unames( &status, &CUTEst_nvar, pname, vnames);
      if( status ) {
-     printf("** CUTEst error, status = %d, aborting\n", status);
+     printf("# CUTEst error, status = %d, aborting\n", status);
      exit(status);
      }
      FREE(vnames);
@@ -353,10 +356,15 @@ int MAINENTRY(void)
           algorithm = VMLM;
         } else if (strcasecmp(str, "vmlmb") == 0) {
           algorithm = VMLMB;
+        } else if (strcasecmp(str, "vmlmn") == 0) {
+          algorithm = VMLMN;
+        } else if (strcasecmp(str, "blmvm") == 0) {
+          algorithm = VMLMN;
+          vmlmn_flags = OPK_EMULATE_BLMVM;
         } else if (strcasecmp(str, "lbfgs") == 0) {
           algorithm = LBFGS;
         } else {
-          printf("Unknown algorithm\n");
+          printf("# Unknown algorithm\n");
           exit(-1);
         }
         continue;
@@ -435,7 +443,7 @@ int MAINENTRY(void)
       }
       if (sscanf(line, " mem %d", &ival) == 1) {
         if (mem <= 0) {
-          printf("Illegal value for option MEM\n");
+          printf("# Illegal value for option MEM\n");
           exit(-1);
         }
         mem = ival;
@@ -471,24 +479,24 @@ int MAINENTRY(void)
     fclose(spec);
   }
   if (gatol < 0) {
-    printf("** Bad value for GATOL\n");
+    printf("# Bad value for GATOL\n");
     exit(-1);
   }
   if (grtol < 0) {
-    printf("** Bad value for GRTOL\n");
+    printf("# Bad value for GRTOL\n");
     exit(-1);
   }
 
   /* Check whether the problem has constraints */
   if (bounds != 0 && mem == 0) {
-    printf ("** Use VMLMB or BLMVM for bound constrained optimization\n");
+    printf("# Use VMLMB or BLMVM for bound constrained optimization\n");
     exit(-1);
   }
 
   /* Build vector space and populate it with work vectors. */
   vspace = opk_new_simple_double_vector_space(CUTEst_nvar);
   if (vspace == NULL) {
-    printf (" Failed to allocate vector space\n");
+    printf("# Failed to allocate vector space\n");
     exit(-1);
   }
   vx  = opk_wrap_simple_double_vector(vspace, x,  free, x);
@@ -496,7 +504,7 @@ int MAINENTRY(void)
   vbl = opk_wrap_simple_double_vector(vspace, bl, free, bl);
   vbu = opk_wrap_simple_double_vector(vspace, bu, free, bu);
   if (vx == NULL || vbl == NULL || vbu == NULL) {
-    printf("** Failed to wrap vectors\n");
+    printf("# Failed to wrap vectors\n");
     exit(-1);
   }
   if ((bounds & 1) == 0) {
@@ -504,7 +512,7 @@ int MAINENTRY(void)
   } else {
     lower = opk_new_bound(vspace, OPK_BOUND_VECTOR, vbl);
     if (lower == NULL) {
-      printf("** Failed to wrap lower bounds\n");
+      printf("# Failed to wrap lower bounds\n");
       exit(-1);
     }
   }
@@ -513,7 +521,7 @@ int MAINENTRY(void)
   } else {
     upper = opk_new_bound(vspace, OPK_BOUND_VECTOR, vbu);
     if (upper == NULL) {
-      printf("** Failed to wrap upper bounds\n");
+      printf("# Failed to wrap upper bounds\n");
       exit(-1);
     }
   }
@@ -522,43 +530,65 @@ int MAINENTRY(void)
   vgp = NULL;
   if (algorithm == VMLMB) {
     opk_vmlmb_options_t options;
-    algorithm_name = "VMLMB";
+    algorithm_name = "VMLMB-";
     vmlmb = opk_new_vmlmb_optimizer(vspace, mem);
     if (vmlmb == NULL) {
-      printf("** Failed to create VMLMB optimizer\n");
+      printf("# Failed to create VMLMB optimizer\n");
       exit(-1);
     }
     vgp = opk_vcreate(vspace);
     if (vgp == NULL) {
-      printf("** Failed to create projected gradient vector\n");
+      printf("# Failed to create projected gradient vector\n");
       exit(-1);
     }
     opk_get_vmlmb_options(&options, vmlmb);
-    options.gatol = gatol;
-    options.grtol = grtol;
+    options.gatol = 0.0;
+    options.grtol = 0.0;
     if (opk_set_vmlmb_options(vmlmb, &options) != OPK_SUCCESS) {
-      printf("** Bad VMLMB options\n");
+      printf("# Bad VMLMB options\n");
       exit(-1);
     }
     task = opk_start_vmlmb(vmlmb, vx, lower, upper);
+  } else if (algorithm == VMLMN) {
+    opk_vmlmn_options_t options;
+    vmlmn = opk_new_vmlmn_optimizer(vspace, mem, vmlmn_flags,
+                                    lower, upper, NULL);
+    if (vmlmn == NULL) {
+      printf("# Failed to create VMLMN optimizer\n");
+      exit(-1);
+    }
+    algorithm_name = opk_get_vmlmn_method_name(vmlmn);
+    vgp = opk_vcreate(vspace);
+    if (vgp == NULL) {
+      printf("# Failed to create projected gradient vector\n");
+      exit(-1);
+    }
+    opk_get_vmlmn_options(&options, vmlmn);
+    options.gatol = 0.0;
+    options.grtol = 0.0;
+    if (opk_set_vmlmn_options(vmlmn, &options) != OPK_SUCCESS) {
+      printf("# Bad VMLMN options\n");
+      exit(-1);
+    }
+    task = opk_start_vmlmn(vmlmn, vx);
   } else if (algorithm == VMLM) {
     opk_vmlm_options_t options;
     algorithm_name = "VMLM";
     if (bounds != 0) {
-      printf("** Algorithm %s cannot be used with bounds\n",
+      printf("# Algorithm %s cannot be used with bounds\n",
              algorithm_name);
       exit(-1);
     }
     vmlm = opk_new_vmlm_optimizer(vspace, mem);
     if (vmlm == NULL) {
-      printf("** Failed to create VMLM optimizer\n");
+      printf("# Failed to create VMLM optimizer\n");
       exit(-1);
     }
     opk_get_vmlm_options(&options, vmlm);
-    options.gatol = gatol;
-    options.grtol = grtol;
+    options.gatol = 0.0;
+    options.grtol = 0.0;
     if (opk_set_vmlm_options(vmlm, &options) != OPK_SUCCESS) {
-      printf("** Bad VMLM options\n");
+      printf("# Bad VMLM options\n");
       exit(-1);
     }
     task = opk_start_vmlm(vmlm, vx);
@@ -566,20 +596,20 @@ int MAINENTRY(void)
     opk_lbfgs_options_t options;
     algorithm_name = "LBFGS";
     if (bounds != 0) {
-      printf("** Algorithm %s cannot be used with bounds\n",
+      printf("# Algorithm %s cannot be used with bounds\n",
              algorithm_name);
       exit(-1);
     }
     lbfgs = opk_new_lbfgs_optimizer(vspace, mem);
     if (lbfgs == NULL) {
-      printf("** Failed to create LBFGS optimizer\n");
+      printf("# Failed to create LBFGS optimizer\n");
       exit(-1);
     }
     opk_get_lbfgs_options(&options, lbfgs);
-    options.gatol = gatol;
-    options.grtol = grtol;
+    options.gatol = 0.0;
+    options.grtol = 0.0;
     if (opk_set_lbfgs_options(lbfgs, &options) != OPK_SUCCESS) {
-      printf("** Bad LBFGS options\n");
+      printf("# Bad LBFGS options\n");
       exit(-1);
     }
     task = opk_start_lbfgs(lbfgs, vx);
@@ -587,25 +617,25 @@ int MAINENTRY(void)
     opk_nlcg_options_t options;
     algorithm_name = "NLCG";
     if (bounds != 0) {
-      printf("** Algorithm %s cannot be used with bounds\n",
+      printf("# Algorithm %s cannot be used with bounds\n",
              algorithm_name);
       exit(-1);
     }
     nlcg = opk_new_nlcg_optimizer(vspace, nlcg_method);
     if (nlcg == NULL) {
-      printf("** Failed to create NLCG optimizer\n");
+      printf("# Failed to create NLCG optimizer\n");
       exit(-1);
     }
     opk_get_nlcg_options(&options, nlcg);
-    options.gatol = gatol;
-    options.grtol = grtol;
+    options.gatol = 0.0;
+    options.grtol = 0.0;
     if (opk_set_nlcg_options(nlcg, &options) != OPK_SUCCESS) {
-      printf("** Bad NLCG options\n");
+      printf("# Bad NLCG options\n");
       exit(-1);
     }
     task = opk_start_nlcg(nlcg, vx);
   } else {
-    printf("** Bad algorithm\n");
+    printf("# Bad algorithm\n");
     exit(-1);
   }
 
@@ -617,16 +647,20 @@ int MAINENTRY(void)
   finalf = -1;
   finalgnorm = -1;
   gtest = -1;
+  if (verbose > 0) {
+    printf("# Iter.  Eval.  Reset            F               ||G||         Step\n");
+    printf("# --------------------------------------------------------------------\n");
+  }
   while (TRUE_) {
     if (task == OPK_TASK_COMPUTE_FG) {
       logical grad = TRUE_;
       if (maxeval > 0 && evaluations >= maxeval) {
-        printf ("** Too many evaluations (%d)\n", evaluations);
+        printf("# Too many evaluations (%d)\n", evaluations);
         break;
       }
       CUTEST_uofg(&status, &CUTEst_nvar, x, &f, g, &grad);
       if ((status == 1) || (status == 2)) {
-        printf("** CUTEst error, status = %d, aborting\n", status);
+        printf("# CUTEst error, status = %d, aborting\n", status);
         exit(status);
       }
       gnorm = gradnorm(vx, vg, vgp, lower, upper); /* FIXME: this adds some overhead */
@@ -653,6 +687,9 @@ int MAINENTRY(void)
         if (vmlmb != NULL) {
           alpha = opk_get_vmlmb_step(vmlmb);
           restarts = opk_get_vmlmb_restarts(vmlmb);
+        } else if (vmlmn != NULL) {
+          alpha = opk_get_vmlmn_step(vmlmn);
+          restarts = opk_get_vmlmn_restarts(vmlmn);
         } else if (vmlm != NULL) {
           alpha = opk_get_vmlm_step(vmlm);
           restarts = opk_get_vmlm_restarts(vmlm);
@@ -663,14 +700,14 @@ int MAINENTRY(void)
           alpha = opk_get_nlcg_step(nlcg);
           restarts = 0;
         }
-        fprintf(stderr, "%6d %6d %6ld %23.15e %11.3e %11.3e\n",
-                iterations, evaluations, (long)restarts, f, gnorm, alpha);
+        printf("  %6d %6d %6ld %23.15e %11.3e %11.3e\n",
+               iterations, evaluations, (long)restarts, f, gnorm, alpha);
       }
       if (task == OPK_TASK_FINAL_X) {
         break;
       }
       if (maxiter > 0 && iterations >= maxiter) {
-        printf ("** Too many iterations (%d)\n", iterations);
+        printf("# Too many iterations (%d)\n", iterations);
         break;
       }
     } else if (task != OPK_TASK_COMPUTE_FG) {
@@ -684,16 +721,20 @@ int MAINENTRY(void)
       } else {
         status = OPK_SUCCESS;
       }
+#if 0
       opk_vprint(stderr, " x", vx, 10);
       opk_vprint(stderr, " g", vg, 10);
       opk_vprint(stderr, "xl", vbl, 10);
       opk_vprint(stderr, "xu", vbu, 10);
-      printf ("** Algorithm exits with task = %d (%d: %s)\n", task,
-              status, opk_get_reason(status));
+#endif
+      printf("# Algorithm exits with task = %d (%d: %s)\n", task,
+             status, opk_get_reason(status));
       break;
     }
     if (vmlmb != NULL) {
       task = opk_iterate_vmlmb(vmlmb, vx, f, vg, lower, upper);
+    } else if (vmlmn != NULL) {
+      task = opk_iterate_vmlmn(vmlmn, vx, f, vg);
     } else if (vmlm != NULL) {
       task = opk_iterate_vmlm(vmlm, vx, f, vg);
     } else if (lbfgs != NULL) {
@@ -706,40 +747,40 @@ int MAINENTRY(void)
   /* Get CUTEst statistics */
   CUTEST_creport(&status, calls, cpu);
   if (status != 0) {
-    printf("** CUTEst error, status = %d, aborting\n", status);
+    printf("# CUTEst error, status = %d, aborting\n", status);
     exit(status);
   }
 
   /* Print statistics */
-  printf(" *********************** CUTEst statistics ************************\n");
-  printf(" Code used               : OptimPack/%s ", algorithm_name);
-  if (algorithm == VMLMB || algorithm == VMLM) {
+  printf("# *********************** CUTEst statistics ************************\n");
+  printf("#                Algorithm = OptimPack/%s ", algorithm_name);
+  if (algorithm == VMLMB || algorithm == VMLM || algorithm == VMLMN) {
     printf("(mem=%d)\n", mem);
   } else {
     char temp[OPK_NLCG_DESCRIPTION_MAX_SIZE];
     opk_get_nlcg_description(nlcg, temp);
     printf("(%s)\n", temp);
   }
-  printf(" Problem                 : %-s\n", pname);
-  printf(" # variables             = %-10d\n", CUTEst_nvar);
-  printf(" # bound constraints     = %-10d\n", vartypes.nbnds);
-  printf(" # iterations            = %d\n", iterations);
-  printf(" # objective functions   = %-15.7g\n", calls[0]);
-  printf(" # objective gradients   = %-15.7g\n", calls[1]);
-  printf(" # objective Hessians    = %-15.7g\n", calls[2]);
-  printf(" # Hessian-vector prdct  = %-15.7g\n", calls[3]);
-  printf(" Exit code               = %-10d\n", task);
-  printf(" Final f                 = %-15.7g\n", finalf);
-  printf(" Final ||g||             = %-15.7g\n", finalgnorm);
-  printf(" Set up time             = %-10.2f seconds\n", cpu[0]);
-  printf(" Solve time              = %-10.2f seconds\n", cpu[1]);
-  printf(" ******************************************************************\n");
+  printf("#                  Problem = %-s\n", pname);
+  printf("#                Variables = %-10d\n", CUTEst_nvar);
+  printf("#        Bound constraints = %-10d\n", vartypes.nbnds);
+  printf("#               Iterations = %d\n", iterations);
+  printf("# Objective function calls = %-15.7g\n", calls[0]);
+  printf("# Objective gradient calls = %-15.7g\n", calls[1]);
+  printf("#       Objective Hessians = %-15.7g\n", calls[2]);
+  printf("#  Hessian-vector products = %-15.7g\n", calls[3]);
+  printf("#                Exit code = %d (%s)\n", task, opk_get_reason(status));
+  printf("#                  Final f = %-15.7g\n", finalf);
+  printf("#              Final ||g|| = %-15.7g\n", finalgnorm);
+  printf("#              Set up time = %-10.2f seconds\n", cpu[0]);
+  printf("#               Solve time = %-10.2f seconds\n", cpu[1]);
+  printf("# ******************************************************************\n");
 
   ierr = 0;
   FORTRAN_close(&funit, &ierr);
   if (ierr != 0) {
-    printf("Error closing %s on unit %d.\n", fname, funit);
-    printf("Trying not to abort.\n");
+    printf("# Error closing %s on unit %d.\n", fname, funit);
+    printf("# Trying not to abort.\n");
   }
 
   /* Free workspace */
