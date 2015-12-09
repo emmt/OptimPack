@@ -925,9 +925,19 @@ typedef struct _opk_lnsrch opk_lnsrch_t;
 extern opk_lnsrch_t*
 opk_lnsrch_new_csrch(double ftol, double gtol, double xtol);
 
-/** Create a backtracking (Armijo) line search. */
+/**
+ * Create a backtracking line search.
+ *
+ * @param ftol - Parameter of the first Wolfe condition.  Must be in the
+ *               range (0,1/2); however a small value is recommended.
+ * @param amin - Smallest Parameter of the first Wolfe condition.  Must be in
+ *               the range (0,1); if larger of equal 1/2, a bisection step is
+ *               always take (as in Armijo's rule).
+ *
+ * @return  A line search object.
+ */
 extern opk_lnsrch_t*
-opk_lnsrch_new_backtrack(double ftol);
+opk_lnsrch_new_backtrack(double ftol, double amin);
 
 /**
  * Create a nonmonotone line search.

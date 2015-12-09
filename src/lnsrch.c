@@ -236,6 +236,7 @@ typedef struct _backtrack_lnsrch backtrack_lnsrch_t;
 struct _backtrack_lnsrch {
   opk_lnsrch_t base; /* Base type (must be the first member). */
   double ftol;
+  double amin;
 };
 
 static opk_lnsrch_task_t
@@ -249,22 +250,40 @@ backtrack_iterate(opk_lnsrch_t* ls,
                   double* stp_ptr, double f, double g)
 {
   backtrack_lnsrch_t* bls = (backtrack_lnsrch_t*)ls;
+  double stp = *stp_ptr;
 
   /* Check for convergence otherwise take a (safeguarded) bisection step unless
      already at the lower bound. */
-  if (f <= ls->finit + bls->ftol*(*stp_ptr)*ls->ginit) {
-    /* First Wolfe conditions satisfied. */
+  if (f <= ls->finit + bls->ftol*stp*ls->ginit) {
+    /* First Wolfe condition satisfied. */
     return success(ls, OPK_LNSRCH_CONVERGENCE);
   }
-  if (*stp_ptr <= ls->stpmin) {
-    *stp_ptr = ls->stpmin;
+  if (stp <= ls->stpmin) {
+    stp = ls->stpmin;
     return warning(ls, OPK_STEP_EQ_STPMIN);
   }
-  *stp_ptr = (*stp_ptr + ls->stpmin)*0.5;
-  if (*stp_ptr < ls->stpmin) {
-    /* Safeguard the step. */
-    *stp_ptr = ls->stpmin;
+  if (bls->amin >= 0.5) {
+    /* Bisection step. */
+    stp *= 0.5;
+  } else {
+    double q = -stp*ls->ginit;
+    double r = (f - (ls->finit - q))*2;
+    if (r <= 0) {
+      /* Bisection step. */
+      stp *= 0.5;
+    } else if (q <= bls->amin*r) {
+      /* Small step. */
+      stp *= bls->amin;
+    } else {
+      /* Quadratic step. */
+      stp *= q/r;
+    }
   }
+  if (stp < ls->stpmin) {
+    /* Safeguard the step. */
+    stp = ls->stpmin;
+  }
+  *stp_ptr = stp;
   return success(ls, OPK_LNSRCH_SEARCH);
 }
 
@@ -276,11 +295,11 @@ static opk_lnsrch_operations_t backtrack_operations = {
 };
 
 opk_lnsrch_t*
-opk_lnsrch_new_backtrack(double ftol)
+opk_lnsrch_new_backtrack(double ftol, double amin)
 {
   opk_lnsrch_t* ls;
 
-  if (ftol <= 0) {
+  if (ftol <= 0 || ftol > 0.5 || amin <= 0 || amin >= 1) {
     errno = EINVAL;
     return NULL;
   }
@@ -289,6 +308,7 @@ opk_lnsrch_new_backtrack(double ftol)
   if (ls != NULL) {
     backtrack_lnsrch_t* bls = (backtrack_lnsrch_t*)ls;
     bls->ftol = ftol;
+    bls->amin = amin;
   }
   return ls;
 }
