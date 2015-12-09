@@ -68,7 +68,7 @@ static const double GATOL = 0.0;
 
 /* Other default parameters. */
 static const double DELTA   = 5e-2;
-static const double EPSILON = 1e-2;
+static const double EPSILON = 0.0;
 
 struct _opk_vmlmb {
   opk_object_t base;       /**< Base type (must be the first member). */

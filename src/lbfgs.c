@@ -74,7 +74,7 @@ static const double GATOL = 0.0;
 
 /* Other default parameters. */
 static const double DELTA   = 5e-2;
-static const double EPSILON = 1e-2;
+static const double EPSILON = 0.0;
 static const int    SCALING = OPK_SCALING_OREN_SPEDICATO;
 
 struct _opk_lbfgs {
