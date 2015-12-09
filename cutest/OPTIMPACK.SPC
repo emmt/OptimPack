@@ -15,6 +15,8 @@ DaiYuan            0 (use Dai & Yuan conjugate gradient method)
 PerryShanno        0 (use Perry & Shanno conjugate gradient method)
 HagerZhang         0 (use Hager & Zhang conjugate gradient method)
 
+delta    5e-2 (relative size for a small step)
+epsilon  1e-2 (threshold to accept descent direction)
 gatol    1e-6 (required gradient absolute tolerance)
 grtol    0.0  (required gradient relative tolerance)
 maxiter   -1  (maximum number of iterations, infinite if negative)

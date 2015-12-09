@@ -158,6 +158,10 @@ int MAINENTRY(void)
   double f, gnorm, finalf, finalgnorm, gtest;
   double gatol = 1.0e-6;    /* required gradient absolute tolerance */
   double grtol = 0.0;       /* required gradient relative tolerance */
+  double delta = 5e-2;
+  double epsilon = 1e-2;
+  int delta_given = FALSE_;
+  int epsilon_given = FALSE_;
   int maxiter = -1;
   int maxeval = -1;
   int verbose = 0;
@@ -461,6 +465,16 @@ int MAINENTRY(void)
         verbose = ival;
         continue;
       }
+      if (sscanf(line, " delta %lf", &dval) == 1) {
+        delta = dval;
+        delta_given = TRUE_;
+        continue;
+      }
+      if (sscanf(line, " epsilon %lf", &dval) == 1) {
+        epsilon = dval;
+        epsilon_given = TRUE_;
+        continue;
+      }
       if (sscanf(line, " gatol %lf", &dval) == 1) {
         gatol = dval;
         continue;
@@ -544,6 +558,16 @@ int MAINENTRY(void)
     opk_get_vmlmb_options(&options, vmlmb);
     options.gatol = 0.0;
     options.grtol = 0.0;
+    if (delta_given) {
+      options.delta = delta;
+    } else {
+      delta = options.delta;
+    }
+    if (epsilon_given) {
+      options.epsilon = epsilon;
+    } else {
+      epsilon = options.epsilon;
+    }
     if (opk_set_vmlmb_options(vmlmb, &options) != OPK_SUCCESS) {
       printf("# Bad VMLMB options\n");
       exit(-1);
@@ -566,6 +590,16 @@ int MAINENTRY(void)
     opk_get_vmlmn_options(&options, vmlmn);
     options.gatol = 0.0;
     options.grtol = 0.0;
+    if (delta_given) {
+      options.delta = delta;
+    } else {
+      delta = options.delta;
+    }
+    if (epsilon_given) {
+      options.epsilon = epsilon;
+    } else {
+      epsilon = options.epsilon;
+    }
     if (opk_set_vmlmn_options(vmlmn, &options) != OPK_SUCCESS) {
       printf("# Bad VMLMN options\n");
       exit(-1);
@@ -587,6 +621,16 @@ int MAINENTRY(void)
     opk_get_vmlm_options(&options, vmlm);
     options.gatol = 0.0;
     options.grtol = 0.0;
+    if (delta_given) {
+      options.delta = delta;
+    } else {
+      delta = options.delta;
+    }
+    if (epsilon_given) {
+      options.epsilon = epsilon;
+    } else {
+      epsilon = options.epsilon;
+    }
     if (opk_set_vmlm_options(vmlm, &options) != OPK_SUCCESS) {
       printf("# Bad VMLM options\n");
       exit(-1);
@@ -608,6 +652,16 @@ int MAINENTRY(void)
     opk_get_lbfgs_options(&options, lbfgs);
     options.gatol = 0.0;
     options.grtol = 0.0;
+    if (delta_given) {
+      options.delta = delta;
+    } else {
+      delta = options.delta;
+    }
+    if (epsilon_given) {
+      options.epsilon = epsilon;
+    } else {
+      epsilon = options.epsilon;
+    }
     if (opk_set_lbfgs_options(lbfgs, &options) != OPK_SUCCESS) {
       printf("# Bad LBFGS options\n");
       exit(-1);
@@ -629,6 +683,16 @@ int MAINENTRY(void)
     opk_get_nlcg_options(&options, nlcg);
     options.gatol = 0.0;
     options.grtol = 0.0;
+    if (delta_given) {
+      options.delta = delta;
+    } else {
+      delta = options.delta;
+    }
+    if (epsilon_given) {
+      options.epsilon = epsilon;
+    } else {
+      epsilon = options.epsilon;
+    }
     if (opk_set_nlcg_options(nlcg, &options) != OPK_SUCCESS) {
       printf("# Bad NLCG options\n");
       exit(-1);
@@ -774,6 +838,8 @@ int MAINENTRY(void)
   printf("#              Final ||g|| = %-15.7g\n", finalgnorm);
   printf("#              Set up time = %-10.2f seconds\n", cpu[0]);
   printf("#               Solve time = %-10.2f seconds\n", cpu[1]);
+  printf("#      Relative small step = %g\n", delta);
+  printf("#        Descent threshold = %g\n", epsilon);
   printf("# ******************************************************************\n");
 
   ierr = 0;

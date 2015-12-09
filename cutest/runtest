@@ -43,6 +43,8 @@ opt_value () { echo "$*" | sed -e 's/^--[^=]*=//'; }
 algorithm="vmlmn"
 verb=0
 mem=5
+delta=5e-2
+epsilon=1e-2
 gatol=1e-6
 grtol=0.0
 maxiter=-1
@@ -70,6 +72,8 @@ options:
                        HestenesStiefel, PolakRibierePolyak, Fletcher,
                        LiuStorey, DaiYuan, PerryShanno or
                        HagerZhang. Currently: "$rule".
+  --delta=VAL          Relative size for a small step.  Currently: $delta
+  --epsilon=VAL        Threshold to accept descent direction.  Currently: $epsilon
   --gatol=VAL          Gradient absolute tolerance.  Currently: $gatol
   --grtol=VAL          Gradient relative tolerance.  Currently: $grtol
   --maxiter=NUM        Maximum number of iterations, infinite if negative.
@@ -107,6 +111,12 @@ while test $# -ge 1; do
             ;;
         --ShannoPhua=*)
             ShannoPhua=$(opt_value "$arg")
+            ;;
+        --delta=*)
+            delta=$(opt_value "$arg")
+            ;;
+        --epsilon=*)
+            epsilon=$(opt_value "$arg")
             ;;
         --gatol=*)
             gatol=$(opt_value "$arg")
@@ -172,6 +182,8 @@ cat<<EOF >"$config"
 algorithm          $algorithm
 Powell             $powell
 ShannoPhua         $shannophua
+delta              $delta
+epsilon            $epsilon
 gatol              $gatol
 grtol              $grtol
 maxiter            $maxiter
