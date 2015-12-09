@@ -44,7 +44,7 @@ algorithm="vmlmn"
 verb=0
 mem=5
 delta=5e-2
-epsilon=1e-2
+epsilon=0.0
 gatol=1e-6
 grtol=0.0
 maxiter=-1
@@ -193,7 +193,8 @@ mem                $mem
 $rule 1
 EOF
 
-exec runcutest -p optimpack -D $problem
+exec runcutest -p optimpack -D $problem \
+    | sed 's/^\( *\([^ #0-9]\|$\)\)/# \1/'
 
 # Local Variables:
 # mode: sh
