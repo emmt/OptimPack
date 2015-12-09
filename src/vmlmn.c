@@ -97,6 +97,7 @@ static const double STPMAX = 1E+20;
 static const double SFTOL = 0.0001;
 static const double SGTOL = 0.9;
 static const double SXTOL = DBL_EPSILON;
+static const double SAMIN = 0.1;
 
 /* Default parameters for the global convergence. */
 static const double GRTOL = 1E-6;
@@ -338,7 +339,7 @@ opk_new_vmlmn_optimizer(opk_vspace_t* space,
     opt->lnsrch = OPK_HOLD_LNSRCH(lnsrch);
   } else {
     if (bounds != 0) {
-      opt->lnsrch = opk_lnsrch_new_nonmonotone(1, SFTOL, 0.1, 0.9);
+      opt->lnsrch = opk_lnsrch_new_backtrack(SFTOL, SAMIN);
     } else {
       opt->lnsrch = opk_lnsrch_new_csrch(SFTOL, SGTOL, SXTOL);
     }
