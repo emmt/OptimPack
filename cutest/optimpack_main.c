@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 #include <strings.h>
 #include <time.h>
 
@@ -143,6 +144,7 @@ int MAINENTRY(void)
   opk_vmlmn_t* vmlmn = NULL; /* idem with bound constraints */
   opk_lbfgs_t* lbfgs = NULL; /* LBFGS optimizer */
   opk_task_t task;
+  opk_status_t final_status;
 #define NLCG  1
 #define VMLM  2
 #define LBFGS 3
@@ -712,14 +714,31 @@ int MAINENTRY(void)
   finalgnorm = -1;
   gtest = -1;
   if (verbose > 0) {
+    char str[256];
+    int len1, len2, off;
+    strcpy(str, "--------------------------------------------------------------------");
+    len1 = strlen(pname);
+    len2 = strlen(str);
+    off = (len2/2) - (len1/2);
+    if (off < 3) {
+      off = 3;
+    }
+    str[off] = '{';
+    str[off+1] = ' ';
+    strcpy(&str[off+2], pname);
+    str[off+len1+2] = ' ';
+    str[off+len1+3] = '}';
+    printf("# %s\n", str);
     printf("# Iter.  Eval.  Reset            F               ||G||         Step\n");
     printf("# --------------------------------------------------------------------\n");
   }
+  final_status = OPK_SUCCESS;
   while (TRUE_) {
     if (task == OPK_TASK_COMPUTE_FG) {
       logical grad = TRUE_;
-      if (maxeval > 0 && evaluations >= maxeval) {
+      if (maxeval > 0 && evaluations > maxeval) {
         printf("# Too many evaluations (%d)\n", evaluations);
+        final_status = OPK_TOO_MANY_EVALUATIONS;
         break;
       }
       CUTEST_uofg(&status, &CUTEst_nvar, x, &f, g, &grad);
@@ -739,6 +758,19 @@ int MAINENTRY(void)
         finalf = f;
         finalgnorm = gnorm;
       }
+    } else if (task != OPK_TASK_NEW_X) {
+      /* Either algorithm converged, or an exception (error or warning)
+         occured. */
+      if (vmlmb != NULL) {
+        final_status = opk_get_vmlmb_status(vmlmb);
+      } else if (vmlmn != NULL) {
+        final_status = opk_get_vmlmn_status(vmlmn);
+      } else if (vmlm != NULL) {
+        final_status = opk_get_vmlm_status(vmlm);
+      } else if (lbfgs != NULL) {
+        final_status = opk_get_lbfgs_status(lbfgs);
+      }
+      task = OPK_TASK_FINAL_X; /* to force terminating */
     }
     if (task == OPK_TASK_NEW_X || task == OPK_TASK_FINAL_X) {
       if (evaluations > 1) {
@@ -772,28 +804,9 @@ int MAINENTRY(void)
       }
       if (maxiter > 0 && iterations >= maxiter) {
         printf("# Too many iterations (%d)\n", iterations);
+        final_status = OPK_TOO_MANY_ITERATIONS;
         break;
       }
-    } else if (task != OPK_TASK_COMPUTE_FG) {
-      opk_status_t status;
-      if (vmlmb != NULL) {
-        status = opk_get_vmlmb_status(vmlmb);
-      } else if (vmlm != NULL) {
-        status = opk_get_vmlm_status(vmlm);
-      } else if (lbfgs != NULL) {
-        status = opk_get_lbfgs_status(lbfgs);
-      } else {
-        status = OPK_SUCCESS;
-      }
-#if 0
-      opk_vprint(stderr, " x", vx, 10);
-      opk_vprint(stderr, " g", vg, 10);
-      opk_vprint(stderr, "xl", vbl, 10);
-      opk_vprint(stderr, "xu", vbu, 10);
-#endif
-      printf("# Algorithm exits with task = %d (%d: %s)\n", task,
-             status, opk_get_reason(status));
-      break;
     }
     if (vmlmb != NULL) {
       task = opk_iterate_vmlmb(vmlmb, vx, f, vg, lower, upper);
@@ -807,6 +820,12 @@ int MAINENTRY(void)
       task = opk_iterate_nlcg(nlcg, vx, f, vg);
     }
   }
+#if 0
+  opk_vprint(stderr, " x", vx, 10);
+  opk_vprint(stderr, " g", vg, 10);
+  opk_vprint(stderr, "xl", vbl, 10);
+  opk_vprint(stderr, "xu", vbu, 10);
+#endif
 
   /* Get CUTEst statistics */
   CUTEST_creport(&status, calls, cpu);
@@ -833,7 +852,8 @@ int MAINENTRY(void)
   printf("# Objective gradient calls = %-15.7g\n", calls[1]);
   printf("#       Objective Hessians = %-15.7g\n", calls[2]);
   printf("#  Hessian-vector products = %-15.7g\n", calls[3]);
-  printf("#                Exit code = %d (%s)\n", task, opk_get_reason(status));
+  printf("#                Exit code = %d (%s)\n", final_status,
+         opk_get_reason(final_status));
   printf("#                  Final f = %-15.7g\n", finalf);
   printf("#              Final ||g|| = %-15.7g\n", finalgnorm);
   printf("#              Set up time = %-10.2f seconds\n", cpu[0]);
