@@ -261,7 +261,9 @@ OPK_BEGIN_C_DECLS
   _OPK_STATUS(24, OPK_INFEASIBLE_BOUNDS, "Box set is infeasible")       \
   _OPK_STATUS(25, OPK_WOULD_BLOCK,                                      \
               "Variables cannot be improved (would block)")             \
-  _OPK_STATUS(26, OPK_UNDEFINED_VALUE, "Undefined value")
+  _OPK_STATUS(26, OPK_UNDEFINED_VALUE, "Undefined value")               \
+  _OPK_STATUS(27, OPK_TOO_MANY_EVALUATIONS, "Too many evaluations")     \
+  _OPK_STATUS(28, OPK_TOO_MANY_ITERATIONS, "Too many iterations")
 
 
 /**
