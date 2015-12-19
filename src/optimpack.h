@@ -43,7 +43,6 @@
  * @defgroup LineSearch      Line search methods.
  * @defgroup NLCG            Non-linear conjugate gradient methods.
  * @defgroup VariableMetric  Variable metric methods.
- * @defgroup ConstrainedVariableMetric  Variable metric methods with convex constraints.
  * @defgroup Error           Reporting of errors.
  * @defgroup TrustRegion     Trust region methods.
  * @defgroup Utilities       Miscellaneous utility functions and macros.
@@ -1238,271 +1237,6 @@ opk_set_nlcg_options(opk_nlcg_t* dst, const opk_nlcg_options_t* src);
 /** @} */
 
 /*---------------------------------------------------------------------------*/
-/* BFGS OPERATOR */
-
-/**
- * @defgroup BGFS      BFGS operator
- * @ingroup VariableMetric
- * @{
- *
- * Implement quasi-Newton approximation of the inverse Hessian.
- *
- * The approximation of the inverse of Hessian is based on BFGS (Broyden,
- * Fletcher, Goldfarb & Shanno) updates using the 2-loop recursive algorithm of
- * Strang (described in Nocedal, 1980) combined with a preconditioner (initial
- * approximation of the inverse Hessian) or automatic scalings (along the ideas
- * of Gilbert & Lemaréchal (1989); and Shanno).
- */
-
-/** Opaque type to store a limited memory BFGS operator.  This type inherits
-    from the `opk_operator_t` object.  */
-typedef struct _opk_bfgs_operator opk_bfgs_operator_t;
-
-/** Rules for scaling the inverse Hessian approximation. */
-typedef enum {
-  OPK_SCALING_NONE             = 0,
-  OPK_SCALING_OREN_SPEDICATO   = 1, /**< gamma = <s,y>/<y,y> */
-  OPK_SCALING_BARZILAI_BORWEIN = 2  /**< gamma = <s,s>/<s,y> */
-} opk_bfgs_scaling_t;
-
-/**
- * Create a new limited memory BFGS operator.
- *
- * @param vspace - The input and output vector space of the operator.
- * @param m       - The maximum number of previous steps to memorize.
- * @param scaling - The rule for scaling the approximation of the
- *                  inverse Hessian.
- */
-extern opk_bfgs_operator_t*
-opk_new_bfgs_operator(opk_vspace_t* vspace, opk_index_t m,
-                       opk_bfgs_scaling_t scaling);
-
-/** Forget all memorized steps in limited memory BFGS operator. */
-extern void
-opk_reset_bfgs_operator(opk_bfgs_operator_t* op);
-
-/**
- * Query a memorized variable difference from a limited memory BFGS operator.
- *
- * It is the caller responsibility to use proper arguments.
- *
- * @param op - A limited memory BFGS operator.
- * @param k - The index of the memorized step to consider.
- *
- * @return s_k
- */
-extern opk_vector_t*
-opk_get_bfgs_s(opk_bfgs_operator_t* op, opk_index_t k);
-
-/**
- * Query a memorized gradient difference from a limited memory BFGS operator.
- *
- * It is the caller responsibility to use proper arguments.
- *
- * @param op - A limited memory BFGS operator.
- * @param k - The index of the memorized step to consider.
- *
- * @return y_k
- */
-extern opk_vector_t*
-opk_get_bfgs_y(opk_bfgs_operator_t* op, opk_index_t k);
-
-extern void
-opk_set_bfgs_operator_preconditioner(opk_bfgs_operator_t* op,
-                                     opk_operator_t* B0);
-
-/**
- * Update LBFGS operator with a new pair of variables and gradient
- * differences.
- * @param x1 - The new variables.
- * @param x0 - The previous variables.
- * @param g1 - The gradient at {@code x1}.
- * @param g0 - The gradient at {@code x0}.
- * @throws IncorrectSpaceException
- */
-extern void
-opk_update_bfgs_operator(opk_bfgs_operator_t* op,
-                         const opk_vector_t* x1,
-                         const opk_vector_t* x0,
-                         const opk_vector_t* g1,
-                         const opk_vector_t* g0);
-
-extern void
-opk_set_bfgs_operator_preconditioner(opk_bfgs_operator_t* op,
-                                     opk_operator_t* H0);
-
-/** @} */
-
-/*---------------------------------------------------------------------------*/
-/* VARIABLE METRIC OPTIMIZATION METHOD */
-
-/**
- * @addtogroup VariableMetric
- * @{
- */
-
-/**
- * @addtogroup LBFGS
- * @{
- */
-
-/** Opaque type for a variable metric optimizer. */
-typedef struct _opk_lbfgs opk_lbfgs_t;
-
-/** Structure used to store the settings of an LBFGS optimizer. */
-typedef struct _opk_lbfgs_options {
-  double delta;   /**< Relative size for a small step. */
-  double epsilon; /**< Threshold to accept descent direction. */
-  double grtol;   /**< Relative threshold for the norm or the gradient
-                       (relative to the norm of the initial gradient) for
-                       convergence. */
-  double gatol;   /**< Absolute threshold for the norm or the gradient for
-                       convergence. */
-  double stpmin;  /**< Relative mimimum step length. */
-  double stpmax;  /**< Relative maximum step length. */
-} opk_lbfgs_options_t;
-
-extern opk_lbfgs_t*
-opk_new_lbfgs_optimizer_with_line_search(opk_vspace_t* space,
-                                         opk_index_t m,
-                                         opk_lnsrch_t* lnsrch);
-
-extern opk_lbfgs_t*
-opk_new_lbfgs_optimizer(opk_vspace_t* space, opk_index_t m);
-
-extern opk_task_t
-opk_start_lbfgs(opk_lbfgs_t* opt, opk_vector_t* x);
-
-extern opk_task_t
-opk_iterate_lbfgs(opk_lbfgs_t* opt, opk_vector_t* x,
-                  double f, opk_vector_t* g);
-
-extern opk_task_t
-opk_get_lbfgs_task(opk_lbfgs_t* opt);
-
-extern opk_status_t
-opk_get_lbfgs_status(opk_lbfgs_t* opt);
-
-extern opk_index_t
-opk_get_lbfgs_iterations(opk_lbfgs_t* opt);
-
-extern opk_index_t
-opk_get_lbfgs_evaluations(opk_lbfgs_t* opt);
-
-extern opk_index_t
-opk_get_lbfgs_restarts(opk_lbfgs_t* opt);
-
-extern double
-opk_get_lbfgs_step(opk_lbfgs_t* opt);
-
-/**
- * Query LBFGS optimizer parameters.
- *
- * @param dst - The structure where to store the parameters.
- * @param src - The LBFGS optimizer from which to fetch the parameters; if
- *              `NULL`, default parameters are retrieved.
- *
- * @return A standard status.
- */
-extern opk_status_t
-opk_get_lbfgs_options(opk_lbfgs_options_t* dst, const opk_lbfgs_t* src);
-
-/**
- * Set LBFGS optimizer parameters.
- *
- * @param dst - The LBFGS optimizer whose parameters to set.
- * @param src - The structure with the new parameter values; if `NULL`, default
- *              parameters are used.
- *
- * @return A standard status.
- */
-extern opk_status_t
-opk_set_lbfgs_options(opk_lbfgs_t* dst, const opk_lbfgs_options_t* src);
-
-/** @} */
-
-/**
- * @addtogroup VMLM
- * @{
- */
-
-/** Opaque type for a VMLM optimizer. */
-typedef struct _opk_vmlm opk_vmlm_t;
-
-/** Structure used to store the settings of a VMLM optimizer. */
-typedef struct _opk_vmlm_options {
-  double delta;   /**< Relative size for a small step. */
-  double epsilon; /**< Threshold to accept descent direction. */
-  double grtol;   /**< Relative threshold for the norm or the gradient
-                       (relative to the norm of the initial gradient) for
-                       convergence. */
-  double gatol;   /**< Absolute threshold for the norm or the gradient for
-                       convergence. */
-  double stpmin;  /**< Relative mimimum step length. */
-  double stpmax;  /**< Relative maximum step length. */
-  opk_bfgs_scaling_t scaling; /**< Scaling rule for the initial BFGS approximation. */
-} opk_vmlm_options_t;
-
-extern opk_vmlm_t*
-opk_new_vmlm_optimizer(opk_vspace_t* vspace, opk_index_t m);
-
-extern opk_vmlm_t*
-opk_new_vmlm_optimizer_with_line_search(opk_vspace_t* vspace,
-                                        opk_index_t m,
-                                        opk_lnsrch_t* lnsrch);
-
-extern opk_task_t
-opk_start_vmlm(opk_vmlm_t* opt, opk_vector_t* x);
-
-extern opk_task_t
-opk_iterate_vmlm(opk_vmlm_t* opt, opk_vector_t* x,
-                 double f, opk_vector_t* g);
-
-extern opk_task_t
-opk_get_vmlm_task(opk_vmlm_t* opt);
-
-extern opk_status_t
-opk_get_vmlm_status(opk_vmlm_t* opt);
-
-extern opk_index_t
-opk_get_vmlm_iterations(opk_vmlm_t* opt);
-
-extern opk_index_t
-opk_get_vmlm_evaluations(opk_vmlm_t* opt);
-
-extern opk_index_t
-opk_get_vmlm_restarts(opk_vmlm_t* opt);
-
-extern double
-opk_get_vmlm_step(opk_vmlm_t* opt);
-
-/**
- * Query VMLM optimizer parameters.
- *
- * @param dst - The structure where to store the parameters.
- * @param src - The VMLM optimizer from which to fetch the parameters; if
- *              `NULL`, default parameters are retrieved.
- *
- * @return A standard status.
- */
-extern opk_status_t
-opk_get_vmlm_options(opk_vmlm_options_t* dst, const opk_vmlm_t* src);
-
-/**
- * Set VMLM optimizer parameters.
- *
- * @param dst - The VMLM optimizer whose parameters to set.
- * @param src - The structure with the new parameter values; if `NULL`, default
- *              parameters are used.
- *
- * @return A standard status.
- */
-extern opk_status_t
-opk_set_vmlm_options(opk_vmlm_t* dst, const opk_vmlm_options_t* src);
-
-/** @} */
-
-/*---------------------------------------------------------------------------*/
 /* SEPARABLE BOUND CONSTRAINTS */
 
 /**
@@ -1585,120 +1319,22 @@ opk_box_get_step_limits(double* smin, double* wolfe, double *smax,
 /** @} */
 
 /*---------------------------------------------------------------------------*/
-/* VARIABLE METRIC OPTIMIZATION METHOD WITH BOUND CONSTRAINTS */
+/* VARIABLE METRIC OPTIMIZATION METHOD WITH OPTIONAL BOUND CONSTRAINTS */
 
 /**
- * @addtogroup ConstrainedVariableMetric
+ * @addtogroup VariableMetric
  * @{
  */
 
 /** Opaque type for a variable metric optimizer. */
-typedef struct _opk_vmlmn opk_vmlmn_t;
-
-/** Structure used to store the settings of a VMLMN optimizer. */
-typedef struct _opk_vmlmn_options {
-  double delta;   /**< Relative size for a small step. */
-  double epsilon; /**< Threshold to accept descent direction. */
-  double grtol;   /**< Relative threshold for the norm or the projected
-                       gradient (relative to the norm of the initial projected
-                       gradient) for convergence. */
-  double gatol;   /**< Absolute threshold for the norm or the projected
-                       gradient for convergence. */
-  double stpmin;  /**< Relative mimimum step length. */
-  double stpmax;  /**< Relative maximum step length. */
-} opk_vmlmn_options_t;
-
-/* Options for VMLMB. */
-#define OPK_EMULATE_BLMVM              (1 << 1) /**< Emulate Benson & Moré
-                                                     BLMVM method. */
-/**
- * Create a reverse communication optimizer implementing a limited memory
- * quasi-Newton method with bound constraints and quadratic backtracking line
- * search.
- *
- * @param space  - The space to which belong the variables.
- * @param m      - The number of previous steps to memorize (`m` > 0).
- * @param flags  - Bitwise options: `OPK_EMULATE_BLMVM`.
- * @param xl     - Optional lower bound for the variables; can be `NULL`
- *                 if there are no lower bounds.
- * @param xu     - Optional upper bound for the variables; can be `NULL`
- *                 if there are no upper bounds.
- * @param lnsrch - Optional line search method to use; can be `NULL`
- *                 to use a default one.
- */
-extern opk_vmlmn_t*
-opk_new_vmlmn_optimizer(opk_vspace_t* space,
-                        opk_index_t m,
-                        unsigned int flags,
-                        opk_bound_t* xl,
-                        opk_bound_t* xu,
-                        opk_lnsrch_t* lnsrch);
-
-/** The variants implemented by VMLMB. */
-typedef enum { OPK_LBFGS, OPK_VMLMN, OPK_BLMVM } opk_vmlmn_method_t;
-extern opk_vmlmn_method_t
-opk_get_vmlmn_method(opk_vmlmn_t* opt);
-
-extern const char*
-opk_get_vmlmn_method_name(opk_vmlmn_t* opt);
-
-extern opk_task_t
-opk_start_vmlmn(opk_vmlmn_t* opt, opk_vector_t* x);
-
-extern opk_task_t
-opk_iterate_vmlmn(opk_vmlmn_t* opt, opk_vector_t* x,
-                  double f, opk_vector_t* g);
-
-extern opk_task_t
-opk_get_vmlmn_task(opk_vmlmn_t* opt);
-
-extern opk_status_t
-opk_get_vmlmn_status(opk_vmlmn_t* opt);
-
-extern opk_index_t
-opk_get_vmlmn_iterations(opk_vmlmn_t* opt);
-
-extern opk_index_t
-opk_get_vmlmn_evaluations(opk_vmlmn_t* opt);
-
-extern opk_index_t
-opk_get_vmlmn_restarts(opk_vmlmn_t* opt);
-
-extern double
-opk_get_vmlmn_step(opk_vmlmn_t* opt);
-
-extern opk_vector_t*
-opk_get_vmlmn_s(opk_vmlmn_t* opt, opk_index_t k);
-
-extern opk_vector_t*
-opk_get_vmlmn_y(opk_vmlmn_t* opt, opk_index_t k);
-
-/**
- * Query VMLMN optimizer parameters.
- *
- * @param dst - The structure where to store the parameters.
- * @param src - The VMLMN optimizer from which to fetch the parameters; if
- *              `NULL`, default parameters are retrieved.
- *
- * @return A standard status.
- */
-extern opk_status_t
-opk_get_vmlmn_options(opk_vmlmn_options_t* dst, const opk_vmlmn_t* src);
-
-/**
- * Set VMLMN optimizer parameters.
- *
- * @param dst - The VMLMN optimizer whose parameters to set.
- * @param src - The structure with the new parameter values; if `NULL`, default
- *              parameters are used.
- *
- * @return A standard status.
- */
-extern opk_status_t
-opk_set_vmlmn_options(opk_vmlmn_t* dst, const opk_vmlmn_options_t* src);
-
-/** Opaque type for a variable metric optimizer. */
 typedef struct _opk_vmlmb opk_vmlmb_t;
+
+/** Rules for scaling the inverse Hessian approximation. */
+typedef enum {
+  OPK_SCALING_NONE             = 0,
+  OPK_SCALING_OREN_SPEDICATO   = 1, /**< gamma = <s,y>/<y,y> */
+  OPK_SCALING_BARZILAI_BORWEIN = 2  /**< gamma = <s,s>/<s,y> */
+} opk_bfgs_scaling_t;
 
 /** Structure used to store the settings of a VMLMB optimizer. */
 typedef struct _opk_vmlmb_options {
@@ -1713,41 +1349,47 @@ typedef struct _opk_vmlmb_options {
   double stpmax;  /**< Relative maximum step length. */
 } opk_vmlmb_options_t;
 
+/* Options for VMLMB. */
+#define OPK_EMULATE_BLMVM              (1 << 1) /**< Emulate Benson & Moré
+                                                     BLMVM method. */
 /**
  * Create a reverse communication optimizer implementing a limited memory
- * quasi-Newton method with bound constraints and quadratic backtracking line
- * search.
+ * quasi-Newton method.
  *
- * @param vspace - The space to which belong the variables.
- * @param m      - The number of previous steps to memorize.
+ * The optimzer may account for bound constraints.
+ *
+ * @param space  - The space to which belong the variables.
+ * @param m      - The number of previous steps to memorize (`m` > 0).
+ * @param flags  - Bitwise options: `OPK_EMULATE_BLMVM`.
+ * @param xl     - Optional lower bound for the variables; can be `NULL`
+ *                 if there are no lower bounds.
+ * @param xu     - Optional upper bound for the variables; can be `NULL`
+ *                 if there are no upper bounds.
+ * @param lnsrch - Optional line search method to use; can be `NULL`
+ *                 to use a default one.
  */
 extern opk_vmlmb_t*
-opk_new_vmlmb_optimizer(opk_vspace_t* space, opk_index_t m);
+opk_new_vmlmb_optimizer(opk_vspace_t* space,
+                        opk_index_t m,
+                        unsigned int flags,
+                        opk_bound_t* xl,
+                        opk_bound_t* xu,
+                        opk_lnsrch_t* lnsrch);
 
+/** The variants implemented by VMLMB. */
+typedef enum { OPK_LBFGS, OPK_VMLMB, OPK_BLMVM } opk_vmlmb_method_t;
+extern opk_vmlmb_method_t
+opk_get_vmlmb_method(opk_vmlmb_t* opt);
 
-/**
- * Create a reverse communication optimizer implementing a limited memory
- * quasi-Newton method with bound constraints and specific line search.
- *
- * @param vspace - The space to which belong the variables.
- * @param m      - The number of previous steps to memorize.
- *                 restart is the steepest descent scaled to have this
- *                 length.
- * @param lnsrch - The line search method to use.
- */
-extern opk_vmlmb_t*
-opk_new_vmlmb_optimizer_with_line_search(opk_vspace_t* space,
-                                         opk_index_t m,
-                                         opk_lnsrch_t* lnsrch);
+extern const char*
+opk_get_vmlmb_method_name(opk_vmlmb_t* opt);
 
 extern opk_task_t
-opk_start_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
-                const opk_bound_t* xl, const opk_bound_t* xu);
+opk_start_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x);
 
 extern opk_task_t
 opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
-                  double f, opk_vector_t* g,
-                  const opk_bound_t* xl, const opk_bound_t* xu);
+                  double f, opk_vector_t* g);
 
 extern opk_task_t
 opk_get_vmlmb_task(opk_vmlmb_t* opt);
@@ -1766,6 +1408,12 @@ opk_get_vmlmb_restarts(opk_vmlmb_t* opt);
 
 extern double
 opk_get_vmlmb_step(opk_vmlmb_t* opt);
+
+extern opk_vector_t*
+opk_get_vmlmb_s(opk_vmlmb_t* opt, opk_index_t k);
+
+extern opk_vector_t*
+opk_get_vmlmb_y(opk_vmlmb_t* opt, opk_index_t k);
 
 /**
  * Query VMLMB optimizer parameters.

@@ -1,11 +1,34 @@
 /*
  * vmlmb.c --
  *
- * Limited memory variable metric method with bound constraints for OptimPack
- * library.  The method has been first described in:
+ * Limited memory variable metric method possibly with optional bound
+ * constraints for OptimPack library.
  *
- *     Thiébaut, É. "Optimization issues in blind deconvolution algorithms,"
- *     SPIE Conf. Astronomical Data Analysis II, Vol. 4847, 174-183 (2002).
+ * Three distinct methods are implemented: VMLM (also known as L-BFGS), VMLM-B
+ * and BLMVM.  All methods use a limited memory BFGS approximation of the
+ * inverse Hessian which has been first described by Nocedal (1980) under the
+ * name VMLM (for Variable Metric Limited Memory) and popularized under the
+ * name L-BFGS (for Limited memory BFGS) by Lyu and Nocedal (1989).  VMLM-B and
+ * BLMVM implement bound constraints.  BLMVM, invented by Benson & Moré (2001),
+ * uses the projected gradient to update the BFGS approximation.  VMLM-B,
+ * described by Thiébaut (2002), apply the L-BFGS recursion in the subspace of
+ * the free variables.  These two latter methods are the competitors of
+ * L-BFGS-B.
+ *
+ * References:
+ *  - J. Nocedal, "Updating Quasi-Newton Matrices with Limited Storage",
+ *    Mathematics of Computation, Vol. 35, pp. 773-782 (1980)
+ *
+ *  - D. Liu and J. Nocedal, "On the limited memory BFGS method for large scale
+ *    optimization", Mathematical Programming B 45, 503-528 (1989).
+ *
+ *  - S.J. Benson, & J. Moré, "A Limited-Memory Variable-Metric Algorithm for
+ *    Bound-Constrained Minimization", Tech. Report ANL/MCS-P909-0901,
+ *    Mathematics and Computer Science Division, Argonne National Laboratory
+ *    (2001).
+ *
+ *  - É. Thiébaut, "Optimization issues in blind deconvolution algorithms",
+ *    SPIE Conf. Astronomical Data Analysis II, Vol. 4847, 174-183 (2002).
  *
  *-----------------------------------------------------------------------------
  *
@@ -43,6 +66,18 @@
 
 #include "optimpack-private.h"
 
+#define OPK_UPDATE_AS_SOON_AS_POSSIBLE (1 << 0) /**< Update LBFGS approximation
+                                                     as soon as possible
+                                                     (before returnning
+                                                     OPK_FINAL_X or OPK_NEW_X).
+                                                     This is useful for
+                                                     hierarchical optimization
+                                                     in an ADMM scheme. */
+#define OPK_EMULATE_BLMVM              (1 << 1) /**< Emulate Benson & Moré
+                                                     BLMVM method. */
+
+
+
 #define SAVE_MEMORY 1 /* save memory to use 2 + 2m vectors instead of 4 + 2m */
 
 #define TRUE                          OPK_TRUE
@@ -59,8 +94,10 @@
    LBFGS algorithm by Jorge Nocedal but other values may be more suitable. */
 static const double STPMIN = 1E-20;
 static const double STPMAX = 1E+20;
-static const double SFTOL = 1E-4;
+static const double SFTOL = 0.0001;
 static const double SGTOL = 0.9;
+static const double SXTOL = DBL_EPSILON;
+static const double SAMIN = 0.1;
 
 /* Default parameters for the global convergence. */
 static const double GRTOL = 1E-6;
@@ -69,25 +106,27 @@ static const double GATOL = 0.0;
 /* Other default parameters. */
 static const double DELTA   = 5e-2;
 static const double EPSILON = 0.0;
+static const opk_bfgs_scaling_t SCALING = OPK_SCALING_OREN_SPEDICATO;
 
 struct _opk_vmlmb {
   opk_object_t base;       /**< Base type (must be the first member). */
   double delta;            /**< Relative size for a small step. */
   double epsilon;          /**< Threshold to accept descent direction. */
   double grtol;            /**< Relative threshold for the norm or the
-                                projected gradient (relative to GPINIT the norm
-                                of the initial projected gradient) for
+                                (projected) gradient (relative to GINIT the
+                                norm of the initial (projected) gradient) for
                                 convergence. */
   double gatol;            /**< Absolute threshold for the norm or the
-                                projected gradient for convergence. */
-  double ginit;            /**< Euclidean norm or the initial projected
+                                (projected) gradient for convergence. */
+  double ginit;            /**< Euclidean norm or the initial (projected)
                             * gradient. */
   double f0;               /**< Function value at x0. */
-  double gpnorm;           /**< Euclidean norm of the projected gradient at the
-                                last tested step. */
+  double gnorm;            /**< Euclidean norm of the (projected) gradient at
+                                the last tested step. */
   double stp;              /**< Current step length. */
   double stpmin;           /**< Relative mimimum step length. */
   double stpmax;           /**< Relative maximum step length. */
+  double bsmin;            /**< Step size to the first encountered bound. */
   opk_vspace_t* vspace;    /**< Variable space. */
   opk_lnsrch_t* lnsrch;    /**< Line search method. */
   opk_vector_t* x0;        /**< Variables at the start of the line search. */
@@ -96,7 +135,14 @@ struct _opk_vmlmb {
                                 as: x1 = x0 - stp*d with stp > 0. */
   opk_vector_t* w;         /**< Vector whose elements are set to 1 for free
                                 variables and 0 otherwise. */
-  opk_vector_t* tmp;       /**< Scratch work vector. */
+  opk_vector_t* tmp;       /**< Scratch work vector sued to store the effective
+                                step size and the projected gradient (for the
+                                BLMVM method). */
+  opk_bound_t* xl;         /**< Lower bound (or `NULL`). */
+  opk_bound_t* xu;         /**< Upper bound (or `NULL`). */
+  int bounds;              /**< Type of bounds. */
+  int method;              /**< The method to use/emulate. */
+  unsigned int flags;      /**< Bitwise options. */
   opk_index_t evaluations; /**< Number of functions (and gradients)
                                 evaluations. */
   opk_index_t iterations;  /**< Number of iterations (successful steps
@@ -121,11 +167,7 @@ struct _opk_vmlmb {
 static double
 max3(double a1, double a2, double a3)
 {
-  if (a3 >= a2) {
-    return (a3 >= a1 ? a3 : a1);
-  } else {
-    return (a2 >= a1 ? a2 : a1);
-  }
+  return (a3 >= a2 ? MAX(a1, a3) : MAX(a1, a2));
 }
 
 static int
@@ -151,6 +193,8 @@ finalize_vmlmb(opk_object_t* obj)
   OPK_DROP(opt->d);
   OPK_DROP(opt->w);
   OPK_DROP(opt->tmp);
+  OPK_DROP(opt->xl);
+  OPK_DROP(opt->xu);
   if (opt->s != NULL) {
     for (k = 0; k < opt->m; ++k) {
       OPK_DROP(opt->s[k]);
@@ -174,18 +218,6 @@ slot(const opk_vmlmb_t* opt, opk_index_t j)
   return (opt->updates - j)%opt->m;
 }
 
-opk_vector_t*
-opk_get_vmlmb_s(opk_vmlmb_t* opt, opk_index_t k)
-{
-  return (0 <= k && k <= opt->mp ? opt->s[slot(opt, k)] : NULL);
-}
-
-opk_vector_t*
-opk_get_vmlmb_y(opk_vmlmb_t* opt, opk_index_t k)
-{
-  return (0 <= k && k <= opt->mp ? opt->y[slot(opt, k)] : NULL);
-}
-
 static opk_task_t
 success(opk_vmlmb_t* opt, opk_task_t task)
 {
@@ -203,16 +235,20 @@ failure(opk_vmlmb_t* opt, opk_status_t status)
 }
 
 opk_vmlmb_t*
-opk_new_vmlmb_optimizer_with_line_search(opk_vspace_t* space,
-                                         opk_index_t m,
-                                         opk_lnsrch_t* lnsrch)
+opk_new_vmlmb_optimizer(opk_vspace_t* space,
+                        opk_index_t m,
+                        unsigned int flags,
+                        opk_bound_t* xl,
+                        opk_bound_t* xu,
+                        opk_lnsrch_t* lnsrch)
 {
   opk_vmlmb_t* opt;
   size_t s_offset, y_offset, beta_offset, rho_offset, size;
   opk_index_t k;
+  int bounds;
 
   /* Check the input arguments for errors. */
-  if (space == NULL || lnsrch == NULL) {
+  if (space == NULL) {
     errno = EFAULT;
     return NULL;
   }
@@ -222,6 +258,35 @@ opk_new_vmlmb_optimizer_with_line_search(opk_vspace_t* space,
   }
   if (m > space->size) {
     m = space->size;
+  }
+  bounds = 0;
+  if (xl != NULL) {
+    if (xl->owner != space) {
+      errno = EINVAL;
+      return NULL;
+    }
+    if (xl->type == OPK_BOUND_SCALAR) {
+      bounds += 1;
+    } else if (xl->type == OPK_BOUND_VECTOR) {
+      bounds += 2;
+    } else {
+      /* Discard unused bound. */
+      xl = NULL;
+    }
+  }
+  if (xu != NULL) {
+    if (xu->owner != space) {
+      errno = EINVAL;
+      return NULL;
+    }
+    if (xu->type == OPK_BOUND_SCALAR) {
+      bounds += 3;
+    } else if (xu->type == OPK_BOUND_VECTOR) {
+      bounds += 6;
+    } else {
+      /* Discard unused bound. */
+      xu = NULL;
+    }
   }
 
   /* Allocate enough memory for the workspace and its arrays. */
@@ -234,12 +299,27 @@ opk_new_vmlmb_optimizer_with_line_search(opk_vspace_t* space,
   if (opt == NULL) {
     return NULL;
   }
-  opt->s     = ADDRESS(opk_vector_t*, opt,    s_offset);
-  opt->y     = ADDRESS(opk_vector_t*, opt,    y_offset);
-  opt->beta  = ADDRESS(double,        opt, beta_offset);
-  opt->rho   = ADDRESS(double,        opt,  rho_offset);
-  opt->m     = m;
-  opt->gamma = 1.0;
+  opt->s      = ADDRESS(opk_vector_t*, opt,    s_offset);
+  opt->y      = ADDRESS(opk_vector_t*, opt,    y_offset);
+  opt->beta   = ADDRESS(double,        opt, beta_offset);
+  opt->rho    = ADDRESS(double,        opt,  rho_offset);
+  opt->m      = m;
+  opt->gamma  = 1.0;
+  opt->bounds = bounds;
+  opt->flags  = flags;
+  if (opt->bounds == 0) {
+    opt->method = OPK_LBFGS;
+  } else if ((flags & OPK_EMULATE_BLMVM) != 0) {
+    /* For the BLMVM method, the scratch vector is used to store the
+       projected gradient. */
+    opt->method = OPK_BLMVM;
+    opt->tmp = opk_vcreate(space);
+    if (opt->tmp == NULL) {
+      goto error;
+    }
+  } else {
+    opt->method = OPK_VMLMB;
+  }
   opk_set_vmlmb_options(opt, NULL);
 
   /* Allocate work vectors.  If saving memory, x0 and g0 will be weak
@@ -255,7 +335,24 @@ opk_new_vmlmb_optimizer_with_line_search(opk_vspace_t* space,
     }
   }
   opt->vspace = OPK_HOLD_VSPACE(space);
-  opt->lnsrch = OPK_HOLD_LNSRCH(lnsrch);
+  if (lnsrch != NULL) {
+    opt->lnsrch = OPK_HOLD_LNSRCH(lnsrch);
+  } else {
+    if (bounds != 0) {
+      opt->lnsrch = opk_lnsrch_new_backtrack(SFTOL, SAMIN);
+    } else {
+      opt->lnsrch = opk_lnsrch_new_csrch(SFTOL, SGTOL, SXTOL);
+    }
+    if (opt->lnsrch == NULL) {
+      goto error;
+    }
+  }
+  if (xl != NULL) {
+    opt->xl = OPK_HOLD_BOUND(xl);
+  }
+  if (xu != NULL) {
+    opt->xu = OPK_HOLD_BOUND(xu);
+  }
 #if ! SAVE_MEMORY
   opt->x0 = opk_vcreate(space);
   if (opt->x0 == NULL) {
@@ -270,9 +367,11 @@ opk_new_vmlmb_optimizer_with_line_search(opk_vspace_t* space,
   if (opt->d == NULL) {
     goto error;
   }
-  opt->w = opk_vcreate(space);
-  if (opt->w == NULL) {
-    goto error;
+  if (opt->bounds != 0) {
+    opt->w = opk_vcreate(space);
+    if (opt->w == NULL) {
+      goto error;
+    }
   }
 
   /* Enforce calling opk_vmlmb_start and return the optimizer. */
@@ -284,47 +383,22 @@ opk_new_vmlmb_optimizer_with_line_search(opk_vspace_t* space,
   return NULL;
 }
 
-opk_vmlmb_t*
-opk_new_vmlmb_optimizer(opk_vspace_t* space, opk_index_t m)
-{
-  opk_lnsrch_t* lnsrch;
-  opk_vmlmb_t* opt;
-
-  lnsrch = opk_lnsrch_new_nonmonotone(1, SFTOL, 0.1, 0.9);
-  if (lnsrch == NULL) {
-    return NULL;
-  }
-  opt = opk_new_vmlmb_optimizer_with_line_search(space, m, lnsrch);
-  OPK_DROP(lnsrch); /* the line search is now owned by the optimizer */
-  return opt;
-}
-
-static opk_task_t
-project_variables(opk_vmlmb_t* opt,
-                  opk_vector_t* x,
-                  const opk_bound_t* xl,
-                  const opk_bound_t* xu)
-{
-  opk_status_t status = opk_box_project_variables(x, x, xl, xu);
-  if (status != OPK_SUCCESS) {
-    return failure(opt, status);
-  } else {
-    return success(opt, OPK_TASK_COMPUTE_FG);
-  }
-}
-
 opk_task_t
-opk_start_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
-                const opk_bound_t* xl, const opk_bound_t* xu)
+opk_start_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x)
 {
   opt->iterations = 0;
   opt->evaluations = 0;
   opt->restarts = 0;
   opt->updates = 0;
   opt->mp = 0;
-  return project_variables(opt, x, xl, xu);
+  if (opt->bounds != 0) {
+    opk_status_t status = opk_box_project_variables(x, x, opt->xl, opt->xu);
+    if (status != OPK_SUCCESS) {
+      return failure(opt, status);
+    }
+  }
+  return success(opt, OPK_TASK_COMPUTE_FG);
 }
-
 
 /* Define a few macros to make the code more readable. */
 #define S(k)                           opt->s[k]
@@ -340,16 +414,125 @@ opk_start_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
 #define NORM2(x)                       opk_vnorm2(x)
 #define WNORM2(x)                      sqrt(WDOT(x, x))
 
+/* Update L-BFGS approximation of the Hessian. */
+static void
+update(opk_vmlmb_t* opt,
+       const opk_vector_t* x,
+       const opk_vector_t* g)
+{
+  double sty, yty;
+  opk_index_t k;
+
+  k = slot(opt, 0);
+  AXPBY(S(k), 1, x, -1, opt->x0);
+  AXPBY(Y(k), 1, g, -1, opt->g0);
+  if (opt->method != OPK_VMLMB) {
+    /* Compute initial inverse Hessian approximation. */
+    sty = DOT(Y(k), S(k));
+    if (sty <= 0) {
+      RHO(k) = 0;
+    } else {
+      RHO(k) = 1/sty;
+      yty = DOT(Y(k), Y(k));
+      if (yty > 0) {
+        opt->gamma = sty/yty;
+      }
+    }
+  }
+  ++opt->updates;
+  if (opt->mp < opt->m) {
+    ++opt->mp;
+  }
+}
+
+/* Apply the L-BFGS Strang's two-loop recursion to compute a search
+   direction. */
+static opk_status_t
+apply(opk_vmlmb_t* opt, const opk_vector_t* g)
+{
+  double sty, yty;
+  opk_index_t j, k;
+
+  if (opt->mp < 1) {
+    /* Will use the steepest descent direction. */
+    return OPK_NOT_POSITIVE_DEFINITE;
+  }
+  COPY(opt->d, g);
+  if (opt->method != OPK_VMLMB) {
+    /* Apply the original L-BFGS Strang's two-loop recursion. */
+    for (j = 1; j <= opt->mp; ++j) {
+      k = slot(opt, j);
+      if (RHO(k) > 0) {
+        BETA(k) = RHO(k)*DOT(opt->d, S(k));
+        UPDATE(opt->d, -BETA(k), Y(k));
+      }
+    }
+    if (opt->gamma != 1) {
+      /* Apply initial inverse Hessian approximation. */
+      SCALE(opt->d, opt->gamma);
+    }
+    for (j = opt->mp; j >= 1; --j) {
+      k = slot(opt, j);
+      if (RHO(k) > 0) {
+        UPDATE(opt->d, BETA(k) - RHO(k)*DOT(opt->d, Y(k)), S(k));
+      }
+    }
+  } else {
+    /* Apply L-BFGS Strang's two-loop recursion restricted to the subspace of
+       free variables. */
+    opt->gamma = 0;
+    for (j = 1; j <= opt->mp; ++j) {
+      k = slot(opt, j);
+      sty = WDOT(Y(k), S(k));
+      if (sty <= 0) {
+        RHO(k) = 0;
+        continue;
+      }
+      RHO(k) = 1/sty;
+      BETA(k) = RHO(k)*WDOT(opt->d, S(k));
+      UPDATE(opt->d, -BETA(k), Y(k));
+      if (opt->gamma == 0) {
+        yty = WDOT(Y(k), Y(k));
+        if (yty > 0) {
+          opt->gamma = sty/yty;
+        }
+      }
+    }
+    if (opt->gamma != 1) {
+      if (opt->gamma <= 0) {
+        /* Force using the steepest descent direction. */
+        return OPK_NOT_POSITIVE_DEFINITE;
+      }
+      SCALE(opt->d, opt->gamma);
+    }
+    for (j = opt->mp; j >= 1; --j) {
+      k = slot(opt, j);
+      if (RHO(k) > 0) {
+        UPDATE(opt->d, BETA(k) - RHO(k)*WDOT(opt->d, Y(k)), S(k));
+      }
+    }
+  }
+
+  if (opt->bounds != 0) {
+    /* Enforce search direction to belong to the subset of the free
+       variables. */
+    opk_vproduct(opt->d, opt->w, opt->d);
+  }
+
+  return OPK_SUCCESS;
+}
+
 opk_task_t
 opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
-                  double f, opk_vector_t* g,
-                  const opk_bound_t* xl, const opk_bound_t* xu)
+                  double f, opk_vector_t* g)
 {
-  double dtg, yty, sty;
-  double smax, smin, swolfe;
-  opk_index_t j, k;
+  double dtg;
+  opk_index_t k;
   opk_status_t status;
   opk_lnsrch_task_t lnsrch_task;
+  opk_bool_t bounded, final;
+
+  bounded = (opt->bounds != 0);
 
   switch (opt->task) {
 
@@ -359,142 +542,133 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
        point. */
     ++opt->evaluations;
 
-    /* Determine the set of free variables (FIXME: should return number of free
-       variables, -1 in case of error). */
-    status = opk_box_get_free_variables(opt->w, x, xl, xu, g, OPK_ASCENT);
-    if (status != OPK_SUCCESS) {
-      return failure(opt, status);
-    }
-
-    /* Check for global convergence. */
-    opt->gpnorm = WNORM2(g);
-    if (opt->evaluations == 1) {
-      opt->ginit = opt->gpnorm;
-    }
-    if (opt->gpnorm <= max3(0.0, opt->gatol, opt->grtol*opt->ginit)) {
-      return success(opt, OPK_TASK_FINAL_X);
-    }
-
     if (opt->evaluations > 1) {
       /* A line search is in progress, check whether it has converged. */
       if (opk_lnsrch_use_deriv(opt->lnsrch)) {
-        /* Compute effective step and directional derivative. */
-        if (opt->tmp == NULL) {
-          opt->tmp = opk_vcreate(opt->vspace);
-          if (opt->tmp == NULL) {
+        if (bounded) {
+          /* Compute the directional derivative as the inner product between
+             the effective step and the gradient. */
+#if 0
+          if (opt->tmp == NULL &&
+              (opt->tmp = opk_vcreate(opt->vspace)) == NULL) {
             return failure(opt, OPK_INSUFFICIENT_MEMORY);
           }
+          AXPBY(opt->tmp, 1, x, -1, opt->x0);
+          dtg = DOT(opt->tmp, g)/opt->stp;
+#else
+          dtg = (DOT(x, g) - DOT(opt->x0, g))/opt->stp;
+#endif
+        } else {
+          /* Compute the directional derivative. */
+          dtg = -opk_vdot(opt->d, g);
         }
-        AXPBY(opt->tmp, 1, x, -1, opt->x0);
-        dtg = DOT(opt->tmp, g)/opt->stp;
       } else {
         /* Line search does not need directional derivative. */
         dtg = 0;
       }
       lnsrch_task = opk_lnsrch_iterate(opt->lnsrch, &opt->stp, f, dtg);
       if (lnsrch_task == OPK_LNSRCH_SEARCH) {
-        /* Line search has not yet converged. */
-        goto new_try;
+        /* Line search has not yet converged, break to compute a new trial
+           point along the search direction. */
+        break;
       }
       if (lnsrch_task != OPK_LNSRCH_CONVERGENCE) {
         status = opk_lnsrch_get_status(opt->lnsrch);
-        if (status != OPK_ROUNDING_ERRORS_PREVENT_PROGRESS) {
+        if (lnsrch_task != OPK_LNSRCH_WARNING ||
+            status != OPK_ROUNDING_ERRORS_PREVENT_PROGRESS) {
           return failure(opt, status);
         }
       }
       ++opt->iterations;
     }
-    return success(opt, OPK_TASK_NEW_X);
+
+    if (bounded) {
+      /* Determine the set of free variables. */
+      status = opk_box_get_free_variables(opt->w, x, opt->xl, opt->xu,
+                                          g, OPK_ASCENT);
+      if (status != OPK_SUCCESS) {
+        return failure(opt, status);
+      }
+    }
+
+    /* Check for global convergence. */
+    if (opt->method == OPK_VMLMB) {
+      /* Compute the Euclidean norm of the projected gradient. */
+      opt->gnorm = WNORM2(g);
+    } else if (opt->method == OPK_BLMVM) {
+      /* Compute the projected gradient and its norm. */
+      opk_vproduct(opt->tmp, opt->w, g);
+      opt->gnorm = NORM2(opt->tmp);
+    } else {
+      /* Compute the Euclidean norm of the gradient. */
+      opt->gnorm = NORM2(g);
+    }
+    if (opt->evaluations == 1) {
+      opt->ginit = opt->gnorm;
+    }
+    final = (opt->gnorm <= max3(0.0, opt->gatol, opt->grtol*opt->ginit));
+    return success(opt, (final ? OPK_TASK_FINAL_X : OPK_TASK_NEW_X));
 
   case OPK_TASK_NEW_X:
   case OPK_TASK_FINAL_X:
 
+    /* Compute a new search direction. */
     if (opt->iterations >= 1) {
       /* Update L-BFGS approximation of the Hessian. */
-      k = slot(opt, 0);
-      opk_vaxpby(S(k), 1, x, -1, opt->x0);
-      opk_vaxpby(Y(k), 1, g, -1, opt->g0);
-      ++opt->updates;
-      if (opt->mp < opt->m) {
-        ++opt->mp;
+      update(opt, x, (opt->method == OPK_BLMVM ? opt->tmp : g));
+    }
+    if (apply(opt, g) == OPK_SUCCESS) {
+      /* We take care of checking whether -D is a sufficient descent direction
+         (that is to say that D is a sufficient ascent direction).  As shown by
+         Zoutendijk, this is true if cos(theta) = (D/|D|)'.(G/|G|) is larger or
+         equal EPSILON > 0, where G is the gradient at X and D the (ascent for
+         us) search direction. */
+      dtg = -DOT(opt->d, g);
+      if (opt->epsilon > 0 &&
+          dtg > -opt->epsilon*NORM2(opt->d)*opt->gnorm) {
+        /* We do not have a sufficient descent direction.  Set the directional
+           derivative to zero to force using the steepest descent direction. */
+        dtg = 0.0;
       }
+    } else {
+      /* The L-BFGS approximation is unset (first iteration) or failed to
+         produce a direction.  Set the directional derivative to zero to use
+         the steepest descent direction. */
+      dtg = 0.0;
     }
 
-    /* Compute a search direction.  We take care of checking whether -D is a
-       sufficient descent direction (here D is a sufficient ascent direction).
-       As shown by Zoutendijk, this is true if cos(theta) = (D/|D|)'.(G/|G|) is
-       larger or equal EPSILON > 0, where G is the gradient at X and D the
-       descent direction. */
-    dtg = 0;
-    if (opt->mp >= 1) {
-      /* Apply the L-BFGS Strang's two-loop recursion to compute a search
-         direction. */
-      opt->gamma = 0;
-      COPY(opt->d, g);
-      for (j = 1; j <= opt->mp; ++j) {
-        k = slot(opt, j);
-        sty = WDOT(Y(k), S(k));
-        if (sty <= 0) {
-          RHO(k) = 0;
-          continue;
-        }
-        RHO(k) = 1/sty;
-        BETA(k) = RHO(k)*WDOT(opt->d, S(k));
-        UPDATE(opt->d, -BETA(k), Y(k));
-        if (opt->gamma == 0) {
-          yty = WDOT(Y(k), Y(k));
-          if (yty > 0) {
-            opt->gamma = sty/yty;
-          }
-        }
-      }
-      if (opt->gamma > 0) {
-        /* Apply initial inverse Hessian approximation. */
-        if (opt->gamma != 1) {
-          SCALE(opt->d, opt->gamma);
-        }
-
-        /* Proceed with the second loop of Strang's recursion. */
-        for (j = opt->mp; j >= 1; --j) {
-          k = slot(opt, j);
-          if (RHO(k) > 0) {
-            UPDATE(opt->d, BETA(k) - RHO(k)*WDOT(opt->d, Y(k)), S(k));
-          }
-        }
-
-        /* Enforce search direction to belong to the subset of the free
-           variables. */
-        opk_vproduct(opt->d, opt->w, opt->d);
-
-        /* Check whether the algorithm has produced a sufficient descent
-           direction. */
-        dtg = -DOT(opt->d, g);
-        if (opt->epsilon > 0 &&
-            dtg > -opt->epsilon*NORM2(opt->d)*opt->gpnorm) {
-          /* Set DTG to zero to indicate that we do not have a sufficient
-             descent direction. */
-          dtg = 0;
-        }
-      }
-    }
+    /* Determine the initial step length. */
     if (dtg < 0) {
-      /* Use search direction produced by L-BFGS recursion and an initial unit
-         step. */
+      /* A sufficient descent direction has been produced by L-BFGS recursion.
+         An initial unit step will be used. */
       opt->stp = 1.0;
     } else {
-      /* Use (projected) steepest projected ascent. */
+      /* First iteration or L-BFGS recursion failed to produce a sufficient
+         descent direction, use the (projected) gradient as a search
+         direction. */
       if (opt->mp > 0) {
         /* L-BFGS recursion did not produce a sufficient descent direction. */
         ++opt->restarts;
         opt->mp = 0;
       }
-      opk_vproduct(opt->d, opt->w, g);
-      dtg = -opt->gpnorm*opt->gpnorm;
+      if (opt->method == OPK_VMLMB) {
+        /* Use the projected gradient. */
+        opk_vproduct(opt->d, opt->w, g);
+      } else if (opt->method == OPK_BLMVM) {
+        /* Use the projected gradient (which has aready been computed and
+         * stored in the scratch vector). */
+        opk_vcopy(opt->d, opt->tmp);
+      } else {
+        /* Use the gradient. */
+        opk_vcopy(opt->d, g);
+      }
+      dtg = -opt->gnorm*opt->gnorm;
       if (f != 0) {
         opt->stp = 2*fabs(f/dtg);
       } else {
-        double dnorm = opt->gpnorm;
-        double xnorm = WNORM2(x);
+        /* Use a small step compared to X. */
+        double dnorm = opt->gnorm;
+        double xnorm = (bounded ? WNORM2(x) : NORM2(x));
         if (xnorm > 0) {
           opt->stp = opt->delta*xnorm/dnorm;
         } else {
@@ -503,17 +677,22 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
       }
     }
 
-    /* Shortcut the step length. */
-    status = opk_box_get_step_limits(&smin, &swolfe, &smax,
-                                     x, xl, xu, opt->d, OPK_ASCENT);
-    if (status != OPK_SUCCESS) {
-      return failure(opt, status);
-    }
-    if (smax <= 0) {
-      return failure(opt, OPK_WOULD_BLOCK);
-    }
-    if (opt->stp > smax) {
-      opt->stp = smax;
+    if (bounded) {
+      /* Shortcut the step length. */
+      double bsmin, bsmax, wolfe;
+      status = opk_box_get_step_limits(&bsmin, &wolfe, &bsmax,
+                                       x, opt->xl, opt->xu,
+                                       opt->d, OPK_ASCENT);
+      if (status != OPK_SUCCESS) {
+        return failure(opt, status);
+      }
+      if (bsmax <= 0) {
+        return failure(opt, OPK_WOULD_BLOCK);
+      }
+      if (opt->stp > bsmax) {
+        opt->stp = bsmax;
+      }
+      opt->bsmin = bsmin;
     }
 
     /* Save current point. */
@@ -526,15 +705,17 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
     }
 #endif
     COPY(opt->x0, x);
-    COPY(opt->g0, g);
+    COPY(opt->g0, (opt->method == OPK_BLMVM ? opt->tmp : g));
     opt->f0 = f;
 
-    /* Start line search. */
+    /* Start the line search and break to take the first step along the line
+       search. */
     if (opk_lnsrch_start(opt->lnsrch, f, dtg, opt->stp,
-                         opt->stpmin, opt->stpmax) != OPK_LNSRCH_SEARCH) {
+                         opt->stp*opt->stpmin,
+                         opt->stp*opt->stpmax) != OPK_LNSRCH_SEARCH) {
       return failure(opt, opk_lnsrch_get_status(opt->lnsrch));
     }
-    goto new_try;
+    break;
 
   default:
 
@@ -543,9 +724,15 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
 
   }
 
- new_try:
+  /* Compute a new trial point along the line search. */
   opk_vaxpby(x, 1, opt->x0, -opt->stp, opt->d);
-  return project_variables(opt, x, xl, xu);
+  if (opt->bounds != 0 && opt->stp > opt->bsmin) {
+    opk_status_t status = opk_box_project_variables(x, x, opt->xl, opt->xu);
+    if (status != OPK_SUCCESS) {
+      return failure(opt, status);
+    }
+  }
+  return success(opt, OPK_TASK_COMPUTE_FG);
 }
 
 opk_task_t
@@ -558,6 +745,23 @@ opk_status_t
 opk_get_vmlmb_status(opk_vmlmb_t* opt)
 {
   return opt->status;
+}
+
+opk_vmlmb_method_t
+opk_get_vmlmb_method(opk_vmlmb_t* opt)
+{
+  return opt->method;
+}
+
+const char*
+opk_get_vmlmb_method_name(opk_vmlmb_t* opt)
+{
+  switch (opt->method) {
+  case OPK_LBFGS: return "VMLM/L-BFGS";
+  case OPK_VMLMB: return "VMLMB";
+  case OPK_BLMVM: return "BLMVM";
+  default: return "*** unknown method ***";
+  }
 }
 
 opk_index_t
@@ -582,6 +786,18 @@ double
 opk_get_vmlmb_step(opk_vmlmb_t* opt)
 {
   return (opt == NULL ? -1.0 : opt->stp);
+}
+
+opk_vector_t*
+opk_get_vmlmb_s(opk_vmlmb_t* opt, opk_index_t k)
+{
+  return (0 <= k && k <= opt->mp ? opt->s[slot(opt, k)] : NULL);
+}
+
+opk_vector_t*
+opk_get_vmlmb_y(opk_vmlmb_t* opt, opk_index_t k)
+{
+  return (0 <= k && k <= opt->mp ? opt->y[slot(opt, k)] : NULL);
 }
 
 opk_status_t
