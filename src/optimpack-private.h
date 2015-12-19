@@ -290,7 +290,7 @@ struct _opk_vspace_operations {
                              const opk_vector_t* d, opk_orientation_t orient);
 
   opk_status_t (*boxsteplimits)(opk_vspace_t* space,
-                                double* smin, double* wolfe, double* smax,
+                                double* smin1, double* smin2, double* smax,
                                 const opk_vector_t* x,
                                 const void* xl, const void* xu, int bound,
                                 const opk_vector_t* d,
