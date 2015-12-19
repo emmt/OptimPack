@@ -54,7 +54,8 @@ For problems of small to moderate size, **OptimPack** provides:
   **COBYLA** accounts for general inequality constraints.  **BOBYQA** accounts
   for bound constraints on the variables.
 
-- Brent's method for the minimization of an univariate function.
+- Brent's method for the minimization of an univariate function (see
+  Ref. [14]).
 
 
 ## OptimPack Bindings
