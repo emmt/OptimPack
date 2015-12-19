@@ -598,6 +598,7 @@ void Y_opk_init(int argc)
   GET_GLOBAL(description);
   GET_GLOBAL(dims);
   GET_GLOBAL(evaluations);
+  GET_GLOBAL(flags);
   GET_GLOBAL(iterations);
   GET_GLOBAL(mem);
   GET_GLOBAL(name);
