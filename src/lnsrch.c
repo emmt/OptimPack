@@ -515,7 +515,7 @@ csrch_start(opk_lnsrch_t* ls)
 
 static opk_lnsrch_task_t
 csrch_iterate(opk_lnsrch_t* ls,
-              double* stp_ptr, double f1, double g1)
+              double* stp_ptr, double f, double g)
 {
   double ftest;
   csrch_lnsrch_t* cls;
@@ -528,16 +528,16 @@ csrch_iterate(opk_lnsrch_t* ls,
 
   /* Test for convergence. */
   ftest = cls->base.finit + (*stp_ptr)*cls->gtest;
-  if (f1 <= ftest && fabs(g1) <= -cls->gtol*cls->base.ginit) {
+  if (f <= ftest && fabs(g) <= -cls->gtol*cls->base.ginit) {
     /* Strong Wolfe conditions satisfied. */
     return success(ls, OPK_LNSRCH_CONVERGENCE);
   }
 
   /* Test for warnings. */
-  if (*stp_ptr == cls->base.stpmin && (f1 > ftest || g1 >= cls->gtest)) {
+  if (*stp_ptr == cls->base.stpmin && (f > ftest || g >= cls->gtest)) {
     return warning(ls, OPK_STEP_EQ_STPMIN);
   }
-  if (*stp_ptr == cls->base.stpmax && f1 <= ftest && g1 <= cls->gtest) {
+  if (*stp_ptr == cls->base.stpmax && f <= ftest && g <= cls->gtest) {
     return warning(ls, OPK_STEP_EQ_STPMAX);
   }
   if (cls->brackt && cls->stmax - cls->stmin <= cls->xtol * cls->stmax) {
@@ -547,23 +547,23 @@ csrch_iterate(opk_lnsrch_t* ls,
     return warning(ls, OPK_ROUNDING_ERRORS_PREVENT_PROGRESS);
   }
 
-  /* If psi(stp) <= 0 and f'(stp) >= 0 for some step, then the
+  /* If psi(stp) <= 0 and psi'(stp) >= 0 for some step, then the
      algorithm enters the second stage. */
-  if (cls->stage == 1 && f1 <= ftest && g1 >= 0.0) {
+  if (cls->stage == 1 && f <= ftest && g >= 0.0) {
     cls->stage = 2;
   }
 
   /* A modified function is used to predict the step during the first stage if
      a lower function value has been obtained but the decrease is not
      sufficient. */
-  if (cls->stage == 1 && f1 <= cls->fx && f1 > ftest) {
+  if (cls->stage == 1 && f <= cls->fx && f > ftest) {
     /* Define the modified function and derivative values and call CSTEP to
        update STX, STY, and to compute the new step.  Then restore the
        function and derivative values for F.*/
-    double fm = f1 - *stp_ptr * cls->gtest;
+    double fm = f - *stp_ptr * cls->gtest;
     double fxm = cls->fx - cls->stx * cls->gtest;
     double fym = cls->fy - cls->sty * cls->gtest;
-    double gm = g1 - cls->gtest;
+    double gm = g - cls->gtest;
     double gxm = cls->gx - cls->gtest;
     double gym = cls->gy - cls->gtest;
     result = opk_cstep(&cls->stx, &fxm, &gxm,
@@ -581,7 +581,7 @@ csrch_iterate(opk_lnsrch_t* ls,
     /* Call CSTEP to update STX, STY, and to compute the new step. */
     result = opk_cstep(&cls->stx, &cls->fx, &cls->gx,
                        &cls->sty, &cls->fy, &cls->gy,
-                       stp_ptr, f1, g1,
+                       stp_ptr, f, g,
                        &cls->brackt, cls->stmin, cls->stmax);
     if (result != OPK_SUCCESS) {
       return failure(ls, result);
@@ -815,8 +815,6 @@ static double max3(double val1, double val2, double val3)
   return result;
 }
 
-/* FIXME: add a reference to the documentation and check history. */
-
 /**
  * Compute a safeguarded step for a line search.
  *
@@ -824,68 +822,78 @@ static double max3(double val1, double val2, double val3)
  * an interval that contains a step that satisfies a sufficient decrease and a
  * curvature condition.
  *
- * The parameter stx contains the step with the least function value. If
- * brackt is true, then a minimizer has been bracketed in an interval
- * with endpoints stx and sty.  The parameter stp contains the current step.
- * The subroutine assumes that if brackt is true then:
+ * The parameter `stx` contains the step with the least function value.  If
+ * `*brackt_ptr` is true, then a minimizer has been bracketed in an interval
+ * with endpoints `stx` and `sty`.  The parameter `stp` contains the current
+ * step.  The routine assumes that if `*brackt_ptr` is true then:
  *
  *       min(stx,sty) < stp < max(stx,sty),
  *
- * and that the derivative at stx is negative in the direction of the step;
+ * and that the derivative at `stx` is negative in the direction of the step;
  * that is:
  *
  *      dx*(stp - stx) < 0
  *
+ * The algorithm is described in:
+ *
+ * > Jorge J. Moré and David J. Thuente, "*Line search algorithms with
+ * > guaranteed sufficient decrease*" in ACM Transactions on Mathematical
+ * > Software (TOMS) Volume 20, Issue 3, Pages 286-307 (September 1994).
  *
  * @param stx_ptr
- *        A pointer to stx.  On entry, stx is the best step obtained so far
+ *        A pointer to `stx`.  On entry, `stx` is the best step obtained so far
  *        and is an endpoint of the interval that contains the minimizer.  On
- *        exit, stx is the updated best step.
+ *        exit, `stx` is the updated best step.
  *
  * @param fx_ptr
- *        A pointer to fx.  On entry, fx is the function at stx.  On exit, fx
- *        is the function at stx.
+ *        A pointer to `fx`.  On entry, `fx` is the function at `stx`.  On
+ *        exit, `fx` is the function at `stx`.
  *
  * @param dx_ptr
- *        A pointer to dx.  On entry, dx is the derivative of the function at
- *        stx. The derivative must be negative in the direction of the step,
- *        that is, dx and stp - stx must have opposite signs.  On exit, dx is
- *        the derivative of the function at stx.
+ *        A pointer to `dx`.  On entry, `dx` is the derivative of the function
+ *        at `stx`.  The derivative must be negative in the direction of the
+ *        step, that is, `dx` and `stp - stx` must have opposite signs.  On
+ *        exit, `dx` is the derivative of the function at `stx`.
  *
  * @param sty_ptr
- *        A pointer to sty.  On entry, sty is the second endpoint of the
- *        interval that contains the minimizer.  On exit, sty is the updated
+ *        A pointer to `sty`.  On entry, `sty` is the second endpoint of the
+ *        interval that contains the minimizer.  On exit, `sty` is the updated
  *        endpoint of the interval that contains the minimizer.
  *
  * @param fy_ptr
- *        A pointer to fy.  On entry, fy is the function at sty.  On exit, fy
- *        is the function at sty.
+ *        A pointer to `fy`.  On entry, `fy` is the function at `sty`.  On
+ *        exit, `fy` is the function at `sty`.
  *
  * @param dy_ptr
- *        A pointer to dy.  On entry, dy is the derivative of the function at
- *        sty.  On exit, dy is the derivative of the function at sty.
+ *        A pointer to `dy`.  On entry, `dy` is the derivative of the function
+ *        at `sty`.  On exit, `dy` is the derivative of the function at `sty`.
  *
  * @param stp_ptr
- *        A pointer to stp. On entry, stp is the current step. If the value at
- *        brackt_ptr is true, then on input, stp must be between stx and sty.
- *        On exit, stp is a new trial step.
+ *        A pointer to `stp`.  On entry, `stp` is the current step.  If the
+ *        value at `brackt_ptr` is true, then on input, `stp` must be between
+ *        `stx` and `sty`.  On exit, `stp` is a new trial step.
  *
  * @param fp
- *        The value of the function at stp on entry.
+ *        The value of the function at `stp` on entry.
  *
  * @param dp
- *        The the derivative of the function at stp on entry.
+ *        The the derivative of the function at `stp` on entry.
  *
  * @param brackt_ptr
- *        A pointer to the boolean variable brackt.  On entry, brackt
- *        specifies if a minimizer has been bracketed.  Initially brackt must
- *        be set to false On exit, brackt specifies if a minimizer has been
- *        bracketed.  When a minimizer is bracketed brackt is set to true.
+ *        A pointer to a boolean variable.  Initially this variable must be set
+ *        to false.  On exit, its value specifies if a minimizer has been
+ *        bracketed.
  *
- * @return `OPK_SUCCESS` on success; `OPK_SETP_OUTSIDE_BRACKET` if `brackt` is
- *    true but the step is outside the bracket endpoints; `OPK_NOT_A_DESCENT`
- *    if the descent condition is violated; `OPK_STPMIN_GT_STPMAX` if `stpmin`
- *    is greater than `stpmax`.
+ * @param stpmin
+ *        A nonnegative lower bound for the step length.
+ *
+ * @param stpmax
+ *        A nonnegative upper bound for the step length.
+ *
+ * @return `OPK_SUCCESS` on success; `OPK_STEP_OUTSIDE_BRACKET` if
+ *    `*brackt_ptr` is true but the step is outside the bracket endpoints;
+ *    `OPK_NOT_A_DESCENT` if the descent condition is violated;
+ *    `OPK_STPMIN_GT_STPMAX` if `stpmin` is greater than `stpmax`.
  *
  * @history
  * MINPACK-1 Project. June 1983
@@ -902,11 +910,6 @@ opk_cstep(double* stx_ptr, double* fx_ptr, double* dx_ptr,
           double* stp_ptr, double  fp,     double  dp,
           int* brackt_ptr, double stpmin, double stpmax)
 {
-  /* Constants. */
-  const double ZERO = 0.0;
-  const double TWO = 2.0;
-  const double THREE = 3.0;
-
   /* Get values of input/output variables. */
   double stx = *stx_ptr, fx = *fx_ptr, dx = *dx_ptr;
   double sty = *sty_ptr, fy = *fy_ptr, dy = *dy_ptr;
@@ -923,14 +926,15 @@ opk_cstep(double* stx_ptr, double* fx_ptr, double* dx_ptr,
   if ((*brackt_ptr) && (stx < sty ? (stp <= stx || stp >= sty)
                                   : (stp <= sty || stp >= stx))) {
     return OPK_STEP_OUTSIDE_BRACKET;
-  } else if (dx*(stp - stx) >= ZERO) {
+  } else if (dx*(stp - stx) >= 0) {
     return OPK_NOT_A_DESCENT;
   } else if (stpmin > stpmax) {
     return OPK_STPMIN_GT_STPMAX;
   }
 
-  /* Determine if the derivatives have opposite signs. */
-  opposite = ((dp < ZERO && dx > ZERO) || (dp > ZERO && dx < ZERO));
+  /* Determine if the derivatives have opposite signs (note that DX cannot be
+     zero). */
+  opposite = ((dp < 0 && dx > 0) || (dp > 0 && dx < 0));
 
   if (fp > fx) {
     /* First case.  A higher function value.  The minimum is bracketed.  If
@@ -938,7 +942,7 @@ opk_cstep(double* stx_ptr, double* fx_ptr, double* dx_ptr,
        is taken, otherwise the average of the cubic and quadratic steps is
        taken. */
     *brackt_ptr = TRUE;
-    theta = THREE*(fx - fp)/(stp - stx) + dx + dp;
+    theta = 3*(fx - fp)/(stp - stx) + dx + dp;
     s = max3(fabs(theta), fabs(dx), fabs(dp));
     temp = theta/s;
     gamma = s*sqrt(temp*temp - (dx/s)*(dp/s));
@@ -947,11 +951,11 @@ opk_cstep(double* stx_ptr, double* fx_ptr, double* dx_ptr,
     q = ((gamma - dx) + gamma) + dp;
     r = p/q;
     stpc = stx + r*(stp - stx);
-    stpq = stx + ((dx/((fx - fp)/(stp - stx) + dx))/TWO)*(stp - stx);
+    stpq = stx + ((dx/((fx - fp)/(stp - stx) + dx))/2)*(stp - stx);
     if (fabs(stpc - stx) < fabs(stpq - stx)) {
       stpf = stpc;
     } else {
-      stpf = stpc + (stpq - stpc)/TWO;
+      stpf = stpc + (stpq - stpc)/2;
     }
   } else if (opposite) {
     /* Second case.  A lower function value and derivatives of opposite sign.
@@ -959,7 +963,7 @@ opk_cstep(double* stx_ptr, double* fx_ptr, double* dx_ptr,
        the secant (quadratic) step, the cubic step is taken, otherwise the
        secant step is taken. */
     *brackt_ptr = TRUE;
-    theta = THREE*(fx - fp)/(stp - stx) + dx + dp;
+    theta = 3*(fx - fp)/(stp - stx) + dx + dp;
     s = max3(fabs(theta), fabs(dx), fabs(dp));
     temp = theta/s;
     gamma = s*sqrt(temp*temp - (dx/s)*(dp/s));
@@ -981,20 +985,20 @@ opk_cstep(double* stx_ptr, double* fx_ptr, double* dx_ptr,
        the minimum of the cubic is beyond STP.  Otherwise the cubic step is
        defined to be the secant step.  The case GAMMA = 0 only arises if the
        cubic does not tend to infinity in the direction of the step. */
-    theta = THREE*(fx - fp)/(stp - stx) + dx + dp;
+    theta = 3*(fx - fp)/(stp - stx) + dx + dp;
     s = max3(fabs(theta), fabs(dx), fabs(dp));
     temp = theta/s;
     temp = temp*temp - (dx/s)*(dp/s);
-    if (temp > ZERO) {
+    if (temp > 0) {
       gamma = s*sqrt(temp);
       if (stp > stx) gamma = -gamma;
     } else {
-      gamma = ZERO;
+      gamma = 0;
     }
     p = (gamma - dp) + theta;
     q = (gamma + (dx - dp)) + gamma;
     r = p/q;
-    if (r < ZERO && gamma != ZERO) {
+    if (r < 0 && gamma != 0) {
       stpc = stp + r*(stx - stp);
     } else if (stp > stx) {
       stpc = stpmax;
@@ -1034,7 +1038,7 @@ opk_cstep(double* stx_ptr, double* fx_ptr, double* dx_ptr,
        not bracketed, the step is either STPMIN or STPMAX, otherwise the cubic
        step is taken. */
     if (*brackt_ptr) {
-      theta = THREE*(fp - fy)/(sty - stp) + dy + dp;
+      theta = 3*(fp - fy)/(sty - stp) + dy + dp;
       s = max3(fabs(theta), fabs(dy), fabs(dp));
       temp = theta/s;
       gamma = s*sqrt(temp*temp - (dy/s)*(dp/s));
