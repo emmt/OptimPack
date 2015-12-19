@@ -57,42 +57,38 @@ func opkt_rosenbrock_fg(x, gx)
   return sum(t1*t1) + sum(t2*t2);
 }
 
-func opkt_rosenbrock(n, single=, vmlm=) {
+func opkt_rosenbrock(n, single=, nlcg=, flags=)
+{
+  if (n%2 == 1) error, "number of variables must be even";
   type = (single ? float : double);
   x0 = array(type, n);
   opkt_rosenbrock_xinit, x0;
-  x = opk_minimize(opkt_rosenbrock_fg, x0, vmlm=vmlm, verb=1n);
+  x = opk_minimize(opkt_rosenbrock_fg, x0, nlcg=nlcg, flags=flags, verb=1n);
 }
 
-func opkt_nonnegative(m, n, mem=, single=, scale=, verb=, maxiter=, maxeval=)
+func opkt_nonnegative(m, n, mem=, single=, flags=, verb=, maxiter=, maxeval=)
 {
   type = (single ? float : double);
   H = type(random_n(m, n));
   x0 = type(max(random_n(n), 0.0));
-  std = 0.1; // noise level
+  std = 0.3; // noise level
   w = array(type(1.0/std^2), m);
   y = H(,+)*x0(+) + type(std*random_n(m));
   A = H(+,)*(w*H)(+,);
   b = H(+,)*(w*y)(+);
   mem = 5;
-  opt = opk_vmlmc(n, mem, 1.0 /*0.1*sqrt(n)*/, single=single);
-  task = opk_start(opt);
-  x = array(type, n);
-  gx = array(type, n);
-  d = array(type, n);
-  fx = type(0.0);
+  dims = dimsof(x0);
+  opt = opk_vmlmb(dims, mem=mem, single=single, flags=flags, lower=0);
+  x = array(type, dims);
+  gx = array(type, dims);
+  fx = type(0);
+  task = opk_start(opt, x);
   for (;;) {
-    if (task == OPK_TASK_PROJECT_X) {
-      x = max(x, 0.0);
-    } else if (task == OPK_TASK_COMPUTE_FG) {
+    if (task == OPK_TASK_COMPUTE_FG) {
       r = H(,+)*x(+) - y;
       wr = w*r;
       fx = 0.5*sum(wr*r);
       gx = H(+,)*wr(+);
-      free_vars = double((gx < 0.0)|(x > 0.0));
-    } else if (task == OPK_TASK_PROJECT_D) {
-      d *= free_vars;
-      dnorm = sqrt(sum(d*d));
     } else if (task == OPK_TASK_NEW_X || task == OPK_TASK_FINAL_X) {
       iter = opt.iterations;
       eval = opt.evaluations;
@@ -112,9 +108,9 @@ func opkt_nonnegative(m, n, mem=, single=, scale=, verb=, maxiter=, maxeval=)
             "----------------------------------------------------------------";
         }
         if (last || (iter%verb) == 0) {
-          write, format="%6d %6d %6d %6d  %+24.15E  %10.3E  %10.3E\n",
+          write, format="%6d %6d %6d %6d  %+24.15E  %10.3E\n",
             iter, eval, opt.restarts, opt.projections, fx,
-            sqrt(sum(d*d)), dnorm;
+            sqrt(sum(gx*gx)); // FIXME: use projected gradient
         }
       }
       if (last != 0) {
@@ -137,7 +133,7 @@ func opkt_nonnegative(m, n, mem=, single=, scale=, verb=, maxiter=, maxeval=)
     } else {
       error, "unexpected task";
     }
-    task = opk_iterate(opt, x, fx, gx, d);
+    task = opk_iterate(opt, x, fx, gx);
   }
   window, 20;
   fma;
@@ -156,7 +152,7 @@ func opkt_nonnegative(m, n, mem=, single=, scale=, verb=, maxiter=, maxeval=)
     // Use former version of OptimPack.
     ws = h_save(H, y, w);
     x1 = array(type, n);
-    x1 = op_mnb(_opkt_nonnegative, x1, extra=ws, xmin=type(0),
+    x1 = op_mnb(_opkt_nonnegative, x1, xmin=type(0), extra=ws,
                 mem=mem, verb=1);
     plp, x1, color="cyan", symbol='+';
   }
