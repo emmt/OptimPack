@@ -421,9 +421,9 @@ finalize_nlcg(opk_object_t* obj)
 /* PUBLIC INTERFACE */
 
 opk_nlcg_t*
-opk_new_nlcg_optimizer_with_line_search(opk_vspace_t* vspace,
-                                        unsigned int flags,
-                                        opk_lnsrch_t* lnsrch)
+opk_new_nlcg_optimizer(opk_vspace_t* vspace,
+                       unsigned int flags,
+                       opk_lnsrch_t* lnsrch)
 {
   opk_nlcg_t* opt;
   opk_bool_t g0_needed, y_needed;
