@@ -147,7 +147,7 @@ int MAINENTRY(void)
 #define VMLMB 2
   int algorithm = VMLMB;
   unsigned int vmlmb_flags = 0;
-  unsigned int nlcg_method = OPK_NLCG_DEFAULT;
+  unsigned int nlcg_flags = OPK_NLCG_DEFAULT;
   const char* algorithm_name;
   opk_bound_t* lower;
   opk_bound_t* upper;
@@ -349,7 +349,7 @@ int MAINENTRY(void)
     double dval;
     int powell = FALSE_;
     unsigned int autostep = 0;
-    nlcg_method = OPK_NLCG_POLAK_RIBIERE_POLYAK;
+    nlcg_flags = OPK_NLCG_POLAK_RIBIERE_POLYAK;
     while (fgets(line, MAXLINE, spec) != (char*)NULL) {
       /* determine the parameter and its value */
       line[MAXLINE] = 0;
@@ -406,49 +406,49 @@ int MAINENTRY(void)
       }
       if (sscanf(line, " FletcherReeves %d", &ival) == 1) {
         if (ival != 0) {
-          nlcg_method = OPK_NLCG_FLETCHER_REEVES;
+          nlcg_flags = OPK_NLCG_FLETCHER_REEVES;
         }
         continue;
       }
       if (sscanf(line, " HestenesStiefel %d", &ival) == 1) {
         if (ival != 0) {
-          nlcg_method = OPK_NLCG_HESTENES_STIEFEL;
+          nlcg_flags = OPK_NLCG_HESTENES_STIEFEL;
         }
         continue;
       }
       if (sscanf(line, " PolakRibierePolyak %d", &ival) == 1) {
         if (ival != 0) {
-          nlcg_method = OPK_NLCG_POLAK_RIBIERE_POLYAK;
+          nlcg_flags = OPK_NLCG_POLAK_RIBIERE_POLYAK;
         }
         continue;
       }
       if (sscanf(line, " Fletcher %d", &ival) == 1) {
         if (ival != 0) {
-          nlcg_method = OPK_NLCG_FLETCHER;
+          nlcg_flags = OPK_NLCG_FLETCHER;
         }
         continue;
       }
       if (sscanf(line, " LiuStorey %d", &ival) == 1) {
         if (ival != 0) {
-          nlcg_method = OPK_NLCG_LIU_STOREY;
+          nlcg_flags = OPK_NLCG_LIU_STOREY;
         }
         continue;
       }
       if (sscanf(line, " DaiYuan %d", &ival) == 1) {
         if (ival != 0) {
-          nlcg_method = OPK_NLCG_DAI_YUAN;
+          nlcg_flags = OPK_NLCG_DAI_YUAN;
         }
         continue;
       }
       if (sscanf(line, " PerryShanno %d", &ival) == 1) {
         if (ival != 0) {
-          nlcg_method = OPK_NLCG_PERRY_SHANNO;
+          nlcg_flags = OPK_NLCG_PERRY_SHANNO;
         }
         continue;
       }
       if (sscanf(line, " HagerZhang %d", &ival) == 1) {
         if (ival != 0) {
-          nlcg_method = OPK_NLCG_HAGER_ZHANG;
+          nlcg_flags = OPK_NLCG_HAGER_ZHANG;
         }
         continue;
       }
@@ -492,10 +492,10 @@ int MAINENTRY(void)
       }
     }
     if (powell) {
-      nlcg_method |= OPK_NLCG_POWELL;
+      nlcg_flags |= OPK_NLCG_POWELL;
     }
     if (autostep != 0) {
-      nlcg_method |= autostep;
+      nlcg_flags |= autostep;
     }
     fclose(spec);
   }
@@ -589,11 +589,7 @@ int MAINENTRY(void)
              algorithm_name);
       exit(-1);
     }
-    if (lnsrch != NULL) {
-      nlcg = opk_new_nlcg_optimizer_with_line_search(vspace, nlcg_method, lnsrch);
-    } else {
-      nlcg = opk_new_nlcg_optimizer(vspace, nlcg_method);
-    }
+    nlcg = opk_new_nlcg_optimizer(vspace, nlcg_flags, lnsrch);
     if (nlcg == NULL) {
       printf("# Failed to create NLCG optimizer\n");
       exit(-1);
