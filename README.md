@@ -1,5 +1,5 @@
 # OptimPack
-# (version 3.0.0a)
+# (version 3.0.0)
 
 ![Travis build status](http://travis-ci.org/emmt/OptimPack.png)
 
@@ -8,8 +8,15 @@ library is mostly targeted at vary large problems (*e.g.* as the ones
 encountered in image restoration) but also provide routines for problems of
 smaller size.
 
+This document provides a general overview of **OptimPack**, for more
+specific information, see:
 
-## large scale problems
+- [Software installation.](./INSTALL.md)
+- [Developer notes.](./NOTES.md)
+- [Software changes and history.](./CHANGES.md)
+
+
+## Large scale problems
 
 For large scale problems involving millions of variables (or more),
 **OptimPack** provides:
@@ -133,46 +140,6 @@ programming languages:
 
 14. R.P. Brent, "*Algorithms for Minimization without Derivatives*,"
     Prentice-Hall, Inc. (1973).
-
-## Installation
-
-### OptimPack library
-
-OptimPack uses standard GNU *autotools* to ease the building and
-installation of the the library (either shared and static versions are
-supported).  The whole process can be as short as the following three
-steps:
-
-1. Building can be done from the OptimPack distribution directory or from
-   any *build* directory.  From the build directory run the `configure`
-   script of OptimPack:
-
-        path_to_distribution_directory/configure
-
-   There are many options, so you may run `configure --help` first to
-   figure out.
-
-   If you directly clone OptimPack from GitHub, you'll have to generate the
-   `configure` script before:
-
-        ./autogen.sh
-
-   Note that this requires that you have installed a recent version of the
-   *autotools* (`autoconf`, `automake` and `libtool`).
-
-2. Compile the library:
-
-        make
-
-3. Install the library:
-
-        make install
-
-
-### Yorick plugin
-
-To install Yorick plugin you must go to the `yorick` subdirectory of the
-distribution and follow instrutions there.
 
 
 ## Authors
