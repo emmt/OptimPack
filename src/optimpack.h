@@ -920,7 +920,7 @@ typedef enum {
  * @{
  */
 
-/** Opaque linesearch type.  This sub-type inherits from `opk_object_t`. */
+/** Opaque line search type.  This sub-type inherits from `opk_object_t`. */
 typedef struct _opk_lnsrch opk_lnsrch_t;
 
 /** Create a Moré and Thuente cubic line search. */
@@ -984,9 +984,9 @@ typedef enum {
 } opk_lnsrch_task_t;
 
 /**
- * Start a new linesearch.
+ * Start a new line search.
  *
- * @param ls     - The linesearch object.
+ * @param ls     - The line search object.
  * @param f0     - The function value at the start of the line search (that
  *                 is, for a step of length 0).
  * @param df0    - The dirctional derivative at the start of the line search.
@@ -996,7 +996,7 @@ typedef enum {
  * @param stpmax - The maximum allowed step length (must be greater than
  *                 `stpmin`).
  *
- * @return The linesearch task, which is normally `OPK_LNSRCH_SEARCH` (zero).
+ * @return The line search task, which is normally `OPK_LNSRCH_SEARCH` (zero).
  *         A different value (strictly negative) indicate an error.
  */
 extern int
@@ -1006,7 +1006,7 @@ opk_lnsrch_start(opk_lnsrch_t* ls, double f0, double df0,
 /**
  * Check whether line search has converged or update the step size.
  *
- * @param ls      - The linesearch object.
+ * @param ls      - The line search object.
  * @param stp_ptr - The address at which the step length is stored.  On entry,
  *                  it must be the current step length; on exit, it is updated
  *                  with the next step to try (unless the line search is
