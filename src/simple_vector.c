@@ -673,7 +673,7 @@ boxfreevar(opk_vspace_t* space, opk_vector_t* dstvec,
 
 static opk_status_t
 boxsteplimits(opk_vspace_t* space,
-              double* smin, double* wolfe, double* smax,
+              double* smin1, double* smin2, double* smax,
               const opk_vector_t* xvec,
               const void* lower, const void* upper, int bound,
               const opk_vector_t* dvec, int orient)
@@ -833,8 +833,8 @@ boxsteplimits(opk_vspace_t* space,
 #undef BOXED
 #undef VALUE
 
-  if (smin  != NULL) *smin  = s1;
-  if (wolfe != NULL) *wolfe = s2;
+  if (smin1 != NULL) *smin1 = s1;
+  if (smin2 != NULL) *smin2 = s2;
   if (smax  != NULL) *smax  = s3;
   return OPK_SUCCESS;
 }
