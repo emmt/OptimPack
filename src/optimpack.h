@@ -1109,8 +1109,11 @@ typedef struct _opk_nlcg_options {
  * macro `OPK_DROP()` when no longer needed.
  *
  * @param vspace   The vector space of the unknowns.
- * @param method   A bitwise combination of the non-linear conjugate gradient
+ * @param flags    A bitwise combination of the non-linear conjugate gradient
  *                 update method and options.
+ * @param lnsrch - Optional line search method to use; can be `NULL` to use a
+ *                 default one.  Note that the optimizer will hold a reference
+ *                 to the line search object.
  *
  * @return The address of a new optimizer instance, or NULL in case of error.
  *         Global variable errno may be ENOMEM if there is not enough memory
@@ -1118,15 +1121,9 @@ typedef struct _opk_nlcg_options {
  *         NULL.
  */
 extern opk_nlcg_t*
-opk_new_nlcg_optimizer(opk_vspace_t* vspace, unsigned int method);
+opk_new_nlcg_optimizer(opk_vspace_t* vspace, unsigned int flags,
+                       opk_lnsrch_t* lnsrch);
 
-/*
- * Note that the optimizer will hold a reference to the line search object.
- */
-extern opk_nlcg_t*
-opk_new_nlcg_optimizer_with_line_search(opk_vspace_t* vspace,
-                                        unsigned int method,
-                                        opk_lnsrch_t* lnsrch);
 extern opk_task_t
 opk_start_nlcg(opk_nlcg_t* opt, opk_vector_t* x);
 
@@ -1167,7 +1164,7 @@ extern opk_index_t
 opk_get_nlcg_evaluations(opk_nlcg_t* opt);
 
 extern unsigned int
-opk_get_nlcg_method(opk_nlcg_t* opt);
+opk_get_nlcg_flags(opk_nlcg_t* opt);
 
 extern opk_task_t
 opk_get_nlcg_task(opk_nlcg_t* opt);
@@ -1368,8 +1365,14 @@ typedef struct _opk_vmlmb_options {
  *                 if there are no lower bounds.
  * @param xu     - Optional upper bound for the variables; can be `NULL`
  *                 if there are no upper bounds.
- * @param lnsrch - Optional line search method to use; can be `NULL`
- *                 to use a default one.
+ * @param lnsrch - Optional line search method to use; can be `NULL` to use a
+ *                 default one.  Note that the optimizer will hold a reference
+ *                 to the line search object.
+ *
+ * @return The address of a new optimizer instance, or NULL in case of error.
+ *         Global variable errno may be ENOMEM if there is not enough memory
+ *         or EINVAL if one of the arguments is invalid or EFAULT if vspace is
+ *         NULL.
  */
 extern opk_vmlmb_t*
 opk_new_vmlmb_optimizer(opk_vspace_t* space,
@@ -1393,6 +1396,9 @@ opk_start_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x);
 extern opk_task_t
 opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
                   double f, opk_vector_t* g);
+
+extern unsigned int
+opk_get_vmlmb_flags(opk_vmlmb_t* opt);
 
 extern opk_task_t
 opk_get_vmlmb_task(opk_vmlmb_t* opt);

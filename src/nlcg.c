@@ -121,7 +121,7 @@ struct _opk_nlcg {
   opk_index_t iterations; /* Number of iterations. */
   opk_index_t restarts;   /* Number of algorithm restarts. */
   opk_index_t evaluations;/* Number of function and gradient evaluations. */
-  unsigned int method;    /* Conjugate gradient method. */
+  unsigned int flags;     /* Conjugate gradient method and options. */
   opk_status_t status;    /* Current error status. */
   opk_task_t task;        /* Pending caller task. */
   opk_bool_t fmin_given;  /* Indicate whether FMIN is specified. */
@@ -200,7 +200,7 @@ update1(opk_nlcg_t* opt,
         const opk_vector_t* g,
         double beta)
 {
-  if ((opt->method & OPK_NLCG_POWELL) == OPK_NLCG_POWELL && beta < 0) {
+  if ((opt->flags & OPK_NLCG_POWELL) == OPK_NLCG_POWELL && beta < 0) {
     ++opt->restarts;
     beta = 0;
   }
@@ -422,7 +422,7 @@ finalize_nlcg(opk_object_t* obj)
 
 opk_nlcg_t*
 opk_new_nlcg_optimizer_with_line_search(opk_vspace_t* vspace,
-                                        unsigned int method,
+                                        unsigned int flags,
                                         opk_lnsrch_t* lnsrch)
 {
   opk_nlcg_t* opt;
@@ -436,10 +436,10 @@ opk_new_nlcg_optimizer_with_line_search(opk_vspace_t* vspace,
     errno = EFAULT;
     return NULL;
   }
-  if (method == 0) {
-    method = OPK_NLCG_DEFAULT;
+  if (flags == 0) {
+    flags = OPK_NLCG_DEFAULT;
   }
-  switch ((method & 0xff)) {
+  switch ((flags & 0xff)) {
   case OPK_NLCG_FLETCHER_REEVES:
     update = update_Fletcher_Reeves;
     g0_needed = FALSE;
@@ -485,6 +485,7 @@ opk_new_nlcg_optimizer_with_line_search(opk_vspace_t* vspace,
     return NULL;
   }
 
+
   /* We allocate enough memory for the workspace and instanciate it. */
   opt = (opk_nlcg_t*)opk_allocate_object(finalize_nlcg, sizeof(opk_nlcg_t));
   if (opt == NULL) {
@@ -492,9 +493,16 @@ opk_new_nlcg_optimizer_with_line_search(opk_vspace_t* vspace,
   }
   opt->update = update;
   opt->vspace = OPK_HOLD_VSPACE(vspace);
-  opt->lnsrch = OPK_HOLD_LNSRCH(lnsrch);
+  if (lnsrch != NULL) {
+    opt->lnsrch = OPK_HOLD_LNSRCH(lnsrch);
+  } else {
+    opt->lnsrch = opk_lnsrch_new_csrch(SFTOL, SGTOL, SXTOL);
+    if (opt->lnsrch == NULL) {
+      goto error;
+    }
+  }
   opt->fmin_given = FALSE;
-  opt->method = method;
+  opt->flags = flags;
   opt->update_Hager_Zhang_orig = FALSE;
   opk_set_nlcg_options(opt, NULL);
 
@@ -527,21 +535,6 @@ opk_new_nlcg_optimizer_with_line_search(opk_vspace_t* vspace,
  error:
   OPK_DROP(opt);
   return NULL;
-}
-
-opk_nlcg_t*
-opk_new_nlcg_optimizer(opk_vspace_t* vspace, unsigned int method)
-{
-  opk_lnsrch_t* lnsrch;
-  opk_nlcg_t* opt;
-
-  lnsrch = opk_lnsrch_new_csrch(SFTOL, SGTOL, SXTOL);
-  if (lnsrch == NULL) {
-    return NULL;
-  }
-  opt = opk_new_nlcg_optimizer_with_line_search(vspace, method, lnsrch);
-  OPK_DROP(lnsrch); /* the line search is now owned by the optimizer */
-  return opt;
 }
 
 double
@@ -609,9 +602,9 @@ opk_get_nlcg_evaluations(opk_nlcg_t* opt)
 }
 
 unsigned int
-opk_get_nlcg_method(opk_nlcg_t* opt)
+opk_get_nlcg_flags(opk_nlcg_t* opt)
 {
-  return (opt != NULL ? opt->method : -1);
+  return (opt != NULL ? opt->flags : -1);
 }
 
 opk_status_t
@@ -621,7 +614,7 @@ opk_get_nlcg_description(opk_nlcg_t* opt, char* str)
   if (opt == NULL || str == NULL) {
     return OPK_ILLEGAL_ADDRESS;
   }
-  switch (opt->method & 0xff) {
+  switch (opt->flags & 0xff) {
   case OPK_NLCG_FLETCHER_REEVES:
     strcpy(str, "Fletcher & Reeves");
     break;
@@ -651,13 +644,13 @@ opk_get_nlcg_description(opk_nlcg_t* opt, char* str)
     return OPK_CORRUPTED_WORKSPACE;
   }
   strcat(str, " updates");
-  if ((opt->method & OPK_NLCG_POWELL) == OPK_NLCG_POWELL) {
+  if ((opt->flags & OPK_NLCG_POWELL) == OPK_NLCG_POWELL) {
     and = TRUE;
     strcat(str, " with Powell restarts");
   } else {
     and = FALSE;
   }
-  if ((opt->method & OPK_NLCG_SHANNO_PHUA) == OPK_NLCG_SHANNO_PHUA) {
+  if ((opt->flags & OPK_NLCG_SHANNO_PHUA) == OPK_NLCG_SHANNO_PHUA) {
     strcat(str, (and ? " and" : " with"));
     strcat(str, " Shanno & Phua step size");
   }
@@ -823,7 +816,7 @@ opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x,
       /* The recursion yields a sufficient descent direction (not all methods
          warrant that).  Compute an initial step size ALPHA along the new
          direction. */
-      if ((opt->method & OPK_NLCG_SHANNO_PHUA) == OPK_NLCG_SHANNO_PHUA) {
+      if ((opt->flags & OPK_NLCG_SHANNO_PHUA) == OPK_NLCG_SHANNO_PHUA) {
         /* Initial step size is such that:
            <alpha_{k+1}*d_{k+1},g_{k+1}> = <alpha_{k}*d_{k},g_{k}> */
         opt->alpha *= (opt->dtg0/opt->dtg);

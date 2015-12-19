@@ -735,6 +735,12 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
   return success(opt, OPK_TASK_COMPUTE_FG);
 }
 
+extern unsigned int
+opk_get_vmlmb_flags(opk_vmlmb_t* opt)
+{
+  return opt->flags;
+}
+
 opk_task_t
 opk_get_vmlmb_task(opk_vmlmb_t* opt)
 {
