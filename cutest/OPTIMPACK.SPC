@@ -1,4 +1,4 @@
-algorithm          vmlm  (nlcg/vmlm/lbfgs/vmlmb/blmvm/vmlmn)
+algorithm          vmlmb   (optimization method, one of: nlcg, vmlmb, or blmvm)
 
 Powell             1       (use Powell's prescription to impose beta >= 0)
 
