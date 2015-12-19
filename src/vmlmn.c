@@ -546,15 +546,20 @@ opk_iterate_vmlmn(opk_vmlmn_t* opt, opk_vector_t* x,
       /* A line search is in progress, check whether it has converged. */
       if (opk_lnsrch_use_deriv(opt->lnsrch)) {
         if (bounded) {
-          /* Compute effective step and directional derivative. */
+          /* Compute the directional derivative as the inner product between
+             the effective step and the gradient. */
+#if 0
           if (opt->tmp == NULL &&
               (opt->tmp = opk_vcreate(opt->vspace)) == NULL) {
             return failure(opt, OPK_INSUFFICIENT_MEMORY);
           }
           AXPBY(opt->tmp, 1, x, -1, opt->x0);
           dtg = DOT(opt->tmp, g)/opt->stp;
+#else
+          dtg = (DOT(x, g) - DOT(opt->x0, g))/opt->stp;
+#endif
         } else {
-          /* Compute directional derivative. */
+          /* Compute the directional derivative. */
           dtg = -opk_vdot(opt->d, g);
         }
       } else {
