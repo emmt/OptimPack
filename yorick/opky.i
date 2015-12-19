@@ -239,6 +239,10 @@ func opk_minimize(fg, x0, mem=, nlcg=, flags=, single=, verb=, lower=, upper=)
       fx = fg(x, gx);
     } else if (task == OPK_TASK_NEW_X) {
       if (verb) {
+        if (opt.evaluations == 1) {
+          write, format="# %s - %s\n",
+            opt.name, opt.description;
+        }
         write, format="%4d  %4d  %.16E\n",
           opt.iterations, opt.evaluations, fx;
       }
