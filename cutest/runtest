@@ -41,6 +41,7 @@ die () { echo >&2 "$progname: $*"; exit 1; }
 opt_value () { echo "$*" | sed -e 's/^--[^=]*=//'; }
 
 algorithm="vmlmn"
+linesearch="cubic"
 verb=0
 mem=5
 delta=5e-2
@@ -64,6 +65,8 @@ Run CUTEst test for problem PROB.
 options:
   --algorithm=ALG      Optimization algorithm to use.  Can be: nlcg, vmlm,
                        lbfgs, vmlmb, blmvm or vmlmn.  Currently: "$algorithm".
+  --linesearch=LS      Line search method.  can be: Armijo, cubic or quadratic.
+                       Currently: "$linesearch".
   --Powell=yes/no      Use Powell's prescription to impose beta >= 0.
                        Currently: "$Powell".
   --ShannoPhua=yes/no  Use Shanno & Phua method to guess the step length.
@@ -96,6 +99,15 @@ while test $# -ge 1; do
             ;;
         --algorithm=*)
             algorithm=$(opt_value "$arg")
+            ;;
+        --linesearch=*)
+            linesearch=$(opt_value "$arg")
+            case "$linesearch" in
+                quadratic | Armijo | cubic )
+                    ;;
+                *)
+                    die "Unknown line search method: \"$linesearch\""
+            esac
             ;;
         --rule=*)
             rule=$(opt_value "$arg")
@@ -180,6 +192,7 @@ fi
 
 cat<<EOF >"$config"
 algorithm          $algorithm
+linesearch         $linesearch
 Powell             $powell
 ShannoPhua         $shannophua
 delta              $delta
