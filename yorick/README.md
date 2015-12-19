@@ -1,4 +1,4 @@
-# OptimPack Yorick Plug-in
+# OptimPack plug-in for Yorick
 
 This is Yorick plug-in for OptimPack.
 
