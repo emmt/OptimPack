@@ -20,8 +20,8 @@ TGT=$(DEFAULT_TGT)
 PKG_NAME=opky
 PKG_I=${srcdir}/opky.i
 
-OBJS=opky.o algebra.o fltvector.o dblvector.o error.o lbfgs.o nlcg.o lnsrch.o \
-	 vmlm.o vmlmb.o cobyla.o ycobyla.o newuoa.o ynewuoa.o
+OBJS=opky.o algebra.o fltvector.o dblvector.o error.o nlcg.o lnsrch.o \
+	 vmlmb.o cobyla.o ycobyla.o newuoa.o ynewuoa.o
 
 # change to give the executable a name other than yorick
 PKG_EXENAME=yorick
@@ -114,12 +114,6 @@ nlcg.o: $(OPK_SRC)/nlcg.c $(OPK_HEADERS)
 	$(CC) $(OPK_CFLAGS) -o $@ -c $<
 
 lnsrch.o: $(OPK_SRC)/lnsrch.c $(OPK_HEADERS)
-	$(CC) $(OPK_CFLAGS) -o $@ -c $<
-
-lbfgs.o: $(OPK_SRC)/lbfgs.c $(OPK_HEADERS)
-	$(CC) $(OPK_CFLAGS) -o $@ -c $<
-
-vmlm.o: $(OPK_SRC)/vmlm.c $(OPK_HEADERS)
 	$(CC) $(OPK_CFLAGS) -o $@ -c $<
 
 vmlmb.o: $(OPK_SRC)/vmlmb.c $(OPK_HEADERS)

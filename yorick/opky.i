@@ -39,42 +39,14 @@ local OPK_NLCG_PERRY_SHANNO, OPK_NLCG_HAGER_ZHANG;
 local OPK_NLCG_POWELL, OPK_NLCG_SHANNO_PHUA;
 local OPK_NLCG_DEFAULT;
 extern opk_nlcg;
-/* DOCUMENT opt = opk_nlcg(n);
-         or opt = opk_nlcg(n, m);
+/* DOCUMENT opt = opk_nlcg(dims, flags=..., single=...);
 
      The function opk_nlcg() creates a new instance of OPKY reverse
      communication optimizer implementing a non-linear conjugate gradient
-     method.  N is the size of the problem.
+     method.  DIMS is the dimension list of the variables of the problem.
 
-     Keyword METHOD may be set with the non-linear conjugate gradient method to
-     use.
-
-     Keyword SINGLE may be set true to use single precision floating point
-     variables.  The default is to use double precision floating point
-     variables.
-
-     The dot notation can be used to query some members of the optimizer
-     instance:
-         opt.method      - the name of the optimization method;
-         opt.size        - the size of the problem;
-         opt.single      - single precision?
-         opt.task        - current pending task;
-         opt.iterations  - number of iterations;
-         opt.evaluations - number of function (and gradient) evaluations;
-         opt.restarts    - number of restarts;
-
-   SEE ALSO: opk_iterate, opk_task, opk_start, opk_vmlm, opk_vmlmc.
- */
-
-extern opk_lbfgs;
-extern opk_vmlm;
-/* DOCUMENT opt = opk_vmlm(n, m);
-         or opt = opk_lbfgs(n, m);
-
-     The functions opk_vmlm() and opk_lbfgs() create a new instance of OPKY
-     reverse communication optimizer implementing a limited memory variant of
-     the BFGS variable metric method.  N is the size of the problem and M is
-     the number of previous steps to memorize.
+     Keyword FLAGS may be set to specify a specific variant of the non-linear
+     conjugate gradient method (see below for more details).
 
      Keyword SINGLE may be set true to use single precision floating point
      variables.  The default is to use double precision floating point
@@ -82,26 +54,64 @@ extern opk_vmlm;
 
      The dot notation can be used to query some members of the optimizer
      instance:
-         opt.method      - the name of the optimization method;
+         opt.flags       - the name of the optimization method;
          opt.size        - the size of the problem;
+         opt.dims        - the dimensions of the problem;
          opt.single      - single precision?
          opt.task        - current pending task;
+         opt.status      - last optimizer status;
+         opt.reason      - textual explanation about last failure;
          opt.iterations  - number of iterations;
          opt.evaluations - number of function (and gradient) evaluations;
          opt.restarts    - number of restarts;
 
-   SEE ALSO: opk_iterate, opk_task, opk_start, opk_vmlmc, opk_nlcg.
+     The FLAGS keyword can be set with one of the following rules to compute
+     the search direction:
+
+         OPK_NLCG_FLETCHER_REEVES
+         OPK_NLCG_HESTENES_STIEFEL
+         OPK_NLCG_POLAK_RIBIERE_POLYAK
+         OPK_NLCG_FLETCHER
+         OPK_NLCG_LIU_STOREY
+         OPK_NLCG_DAI_YUAN
+         OPK_NLCG_PERRY_SHANNO
+         OPK_NLCG_HAGER_ZHANG
+
+     The rule can be combined (bitwise or'ed) with:
+
+         OPK_NLCG_POWELL
+
+     to force beta >= 0 (according to Powell's prescription) and with one of:
+
+         OPK_NLCG_SHANNO_PHUA
+         OPK_NLCG_OREN_SPEDICATO
+         OPK_NLCG_BARZILAI_BORWEIN
+
+     to specify how to compute the initial step size from the previous
+     iteration.
+
+
+   SEE ALSO: opk_iterate, opk_task, opk_start, opk_vmlmb.
  */
 
+local OPK_EMULATE_BLMVM;
 extern opk_vmlmb;
-/* DOCUMENT opt = opk_vmlmb(n, m, xmin=..., xmax=...);
+/* DOCUMENT opt = opk_vmlmb(dims, mem=..., lower=..., upper=..., flags=...,
+                                  single=...);
 
-     The function opk_vmlmc() creates a new instance of OPKY reverse
-     communication optimizer implementing a limited memory variant of the BFGS
-     variable metric method for solving an optimization problem with convex
-     constraints.  N is the size of the problem, M is the number of previous
-     steps to memorize and SCL is a scaling parameter.  SCL is the Euclidean
-     norm of the search direction at first iterate or after a restart.
+     The function opk_vmlmb() creates a new instance of OPKY reverse
+     communication optimizer implementing VMLM-B algorithm.  This algorithm is
+     a limited memory variant of the BFGS variable metric (quasi-Newton) method
+     for solving an optimization problem with optional bound constraints.  DIMS
+     is the dimension list of the variables of the problem.
+
+     Keyword MEM can be set to specify the number of previous steps to
+     memorize.  By defalust MEM=5 is used
+
+     Keywords LOWER and UPPER may be used to set lower and/or upper bounds for
+     the variables.  Their value can be nothing (no bound), a scalar (same
+     bound value for all variables), or an array (to specify a different bound
+     value for each variables).
 
      Keyword SINGLE may be set true to use single precision floating point
      variables.  The default is to use double precision floating point
@@ -109,28 +119,29 @@ extern opk_vmlmb;
 
      The dot notation can be used to query some members of the optimizer
      instance:
-         opt.method      - the name of the optimization method;
          opt.size        - the size of the problem;
+         opt.dims        - the dimensions of the problem;
          opt.single      - single precision?
          opt.task        - current pending task;
+         opt.status      - last optimizer status;
+         opt.reason      - textual explanation about last failure;
          opt.iterations  - number of iterations;
          opt.evaluations - number of function (and gradient) evaluations;
          opt.restarts    - number of restarts;
          opt.projections - number of projections;
 
-   SEE ALSO: opk_iterate, opk_task, opk_start, opk_vmlm, opk_nlcg.
+   SEE ALSO: opk_iterate, opk_task, opk_start, opk_nlcg.
  */
 
 
 extern opk_iterate;
 /* DOCUMENT task = opk_iterate(opt, x, fx, gx);
-         or task = opk_iterate(opt, x, fx, gx, d);
      Proceed with next iteration for the optimizer OPT.  X stores the current
      variables, FX is the function value at X and GX is the gradient of the
      function at X.  For constrained optimization, D is an additional work
      array.  See opk_task() for the interpretation of the returned value.
 
-   SEE ALSO: opk_nlcg, opk_vmlm, opk_task, opk_start.
+   SEE ALSO: opk_nlcg, opk_vmlmb, opk_task, opk_start.
  */
 
 extern opk_start;
@@ -138,33 +149,42 @@ extern opk_start;
      Start or re-start the reverse communication optimizer OPT with initial
      variables X.  See opk_task() for the interpretaion of the returned value.
 
-   SEE ALSO: opk_nlcg, opk_vmlm, opk_task, opk_iterate.
+   SEE ALSO: opk_nlcg, opk_vmlmb, opk_task, opk_iterate.
 */
 
 local OPK_TASK_ERROR, OPK_TASK_WARNING;
 local OPK_TASK_COMPUTE_FG;
-local OPK_TASK_PROJECT_X, OPK_TASK_PROJECT_D;
 local OPK_TASK_NEW_X, OPK_TASK_FINAL_X;
-extern opk_task;
-/* DOCUMENT task = opk_task(opt);
+extern opk_get_task;
+/* DOCUMENT task = opk_get_task(opt);
      Query the current pending task for the reverse communication optimizer
      OPT.  The possible values for the returned value are:
 
         OPK_TASK_ERROR      - an error has occured;
-        OPK_TASK_PROJECT_X  - project the variables into the feasible set;
         OPK_TASK_COMPUTE_FG - caller must compute the function value and its
                               gradient for the current variable and call
                               opk_iterate again;
-        OPK_TASK_PROJECT_D  - project the direction D;
         OPK_TASK_NEW_X      - new improved variables are available for
                               examination before calling opk_iterate again;
         OPK_TASK_FINAL_X    - the method has converged;
         OPK_TASK_WARNING    - the method has terminated with a warning;
 
-   SEE ALSO: opk_nlcg, opk_vmlm, opk_iterate, opk_start.
+   SEE ALSO: opk_nlcg, opk_vmlmb, opk_iterate, opk_start.
 */
 
-func opk_minimize(fg, x0, m, vmlm=, nlcg=, single=, verb=)
+extern opk_get_status;
+extern opk_get_reason;
+/* DOCUMENT status = opk_get_status(opt);
+         or reason = opk_get_reason(status);
+
+     Query the last status of optimizer OPT and the textual reason for a given
+     status value.
+
+
+   SEE ALSO: opk_nlcg, opk_vmlmb, opk_iterate, opk_start.
+*/
+
+func opk_minimize(fg, x0, mem=, nlcg=, flags=, single=, verb=, lower=, upper=)
 /* DOCUMENT x = opk_minimize(fg, x0);
 
      This driver minimizes a smooth multi-variate function.  FG is a function
@@ -182,7 +202,11 @@ func opk_minimize(fg, x0, m, vmlm=, nlcg=, single=, verb=)
      store the gradient and may result in costly conversions if the function FG
      is not designed to work at the assumed precision.
 
-   SEE ALSO: opk_nlcg, opk_vmlm.
+     Keyword NLCG can be set with a non-zero value indicating which non-linear
+     conjugate gradient method to use.  By default, a variable metric method is
+     used.
+
+   SEE ALSO: opk_nlcg, opk_vmlmb.
  */
 {
   TRUE = 1n;
@@ -190,8 +214,8 @@ func opk_minimize(fg, x0, m, vmlm=, nlcg=, single=, verb=)
   if (identof(x0) > Y_DOUBLE) {
     error, "bad data type for X0";
   }
-  if (vmlm && nlcg) {
-    error, "only one of the keywords VMLM or NLCG can be set";
+  if (nlcg && !(is_void(mem) && is_void(lower) && is_void(upper))) {
+    error, "keywords MEM, LOWER and UPPER cannot be used for a non-linear conjugate gradient method";
   }
   if (single) {
     type = float;
@@ -203,12 +227,11 @@ func opk_minimize(fg, x0, m, vmlm=, nlcg=, single=, verb=)
   x = type(unref(x0));
   gx = array(type, dimsof(x));
   n = numberof(x);
-  if (vmlm) {
-    if (is_void(m)) m = 5;
-    opt = opk_vmlm(n, m, single=single);
+  if (nlcg) {
+    opt = opk_nlcg(n, flags=flags, single=single);
   } else {
-    if (is_void(m)) m = OPK_NLCG_DEFAULT;
-    opt = opk_nlcg(n, m, single=single);
+    opt = opk_vmlmb(n, mem=mem, single=single, lower=lower, upper=upper,
+                    flags=flags);
   }
   task = opk_start(opt, x);
   while (TRUE) {
@@ -694,3 +717,5 @@ extern newuoa_init;
    SEE ALSO: newuoa_create.
  */
 newuoa_init;
+
+/*---------------------------------------------------------------------------*/
