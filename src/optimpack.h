@@ -1406,6 +1406,10 @@ opk_get_vmlmb_task(opk_vmlmb_t* opt);
 extern opk_status_t
 opk_get_vmlmb_status(opk_vmlmb_t* opt);
 
+#define OPK_VMLMB_DESCRIPTION_MAX_SIZE 80
+extern opk_status_t
+opk_get_vmlmb_description(opk_vmlmb_t* opt, char* str);
+
 extern opk_index_t
 opk_get_vmlmb_iterations(opk_vmlmb_t* opt);
 

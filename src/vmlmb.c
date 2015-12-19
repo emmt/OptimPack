@@ -735,23 +735,12 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
   return success(opt, OPK_TASK_COMPUTE_FG);
 }
 
-extern unsigned int
+unsigned int
 opk_get_vmlmb_flags(opk_vmlmb_t* opt)
 {
   return opt->flags;
 }
 
-opk_task_t
-opk_get_vmlmb_task(opk_vmlmb_t* opt)
-{
-  return opt->task;
-}
-
-opk_status_t
-opk_get_vmlmb_status(opk_vmlmb_t* opt)
-{
-  return opt->status;
-}
 
 opk_vmlmb_method_t
 opk_get_vmlmb_method(opk_vmlmb_t* opt)
@@ -768,6 +757,40 @@ opk_get_vmlmb_method_name(opk_vmlmb_t* opt)
   case OPK_BLMVM: return "BLMVM";
   default: return "*** unknown method ***";
   }
+}
+
+opk_status_t
+opk_get_vmlmb_description(opk_vmlmb_t* opt, char* str)
+{
+  switch (opt->method) {
+
+  case OPK_LBFGS:
+    sprintf(str, "variable metric method with %ld memorized step(s)",
+            (long)opt->m);
+    return OPK_SUCCESS;
+
+  case OPK_VMLMB:
+  case OPK_BLMVM:
+    sprintf(str, "variable metric method with %ld memorized step(s) and bounds",
+            (long)opt->m);
+    return OPK_SUCCESS;
+
+  default:
+    strcat(str, "*** unknown method ***");
+    return OPK_CORRUPTED_WORKSPACE;
+  }
+}
+
+opk_task_t
+opk_get_vmlmb_task(opk_vmlmb_t* opt)
+{
+  return opt->task;
+}
+
+opk_status_t
+opk_get_vmlmb_status(opk_vmlmb_t* opt)
+{
+  return opt->status;
 }
 
 opk_index_t
