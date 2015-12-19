@@ -432,7 +432,7 @@ opk_new_nlcg_optimizer(opk_vspace_t* vspace,
                 const opk_vector_t* g);
 
   /* Check the input arguments for errors. */
-  if (vspace == NULL || lnsrch == NULL) {
+  if (vspace == NULL) {
     errno = EFAULT;
     return NULL;
   }
