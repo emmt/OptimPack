@@ -143,6 +143,7 @@ int MAINENTRY(void)
   opk_vmlmb_t* vmlmb = NULL; /* idem with bound constraints */
   opk_vmlmn_t* vmlmn = NULL; /* idem with bound constraints */
   opk_lbfgs_t* lbfgs = NULL; /* LBFGS optimizer */
+  opk_lnsrch_t* lnsrch = NULL; /* Line search method */
   opk_task_t task;
   opk_status_t final_status;
 #define NLCG  1
@@ -162,6 +163,10 @@ int MAINENTRY(void)
   double grtol = 0.0;       /* required gradient relative tolerance */
   double delta = 5e-2;
   double epsilon = 1e-2;
+  double sftol = 1e-4;
+  double sgtol = 0.9;
+  double sxtol = 1e-15;
+  double samin = 0.1;
   int delta_given = FALSE_;
   int epsilon_given = FALSE_;
   int maxiter = -1;
@@ -375,6 +380,19 @@ int MAINENTRY(void)
         }
         continue;
       }
+      if (sscanf(line, " linesearch %s", str) == 1) {
+        if (strcasecmp(str, "quadratic") == 0) {
+          lnsrch = opk_lnsrch_new_backtrack(sftol, samin);
+        } else if (strcasecmp(str, "Armijo") == 0) {
+          lnsrch = opk_lnsrch_new_backtrack(sftol, 0.5);
+        } else if (strcasecmp(str, "cubic") == 0) {
+          lnsrch = opk_lnsrch_new_csrch(sftol, sgtol, sxtol);
+        } else {
+          printf("# Unknown line search method\n");
+          exit(-1);
+        }
+        continue;
+      }
       if (sscanf(line, " Powell %d", &ival) == 1) {
         if (ival != 0) {
           powell = TRUE_;
@@ -547,7 +565,11 @@ int MAINENTRY(void)
   if (algorithm == VMLMB) {
     opk_vmlmb_options_t options;
     algorithm_name = "VMLMB-";
-    vmlmb = opk_new_vmlmb_optimizer(vspace, mem);
+    if (lnsrch != NULL) {
+      vmlmb = opk_new_vmlmb_optimizer_with_line_search(vspace, mem, lnsrch);
+    } else {
+      vmlmb = opk_new_vmlmb_optimizer(vspace, mem);
+    }
     if (vmlmb == NULL) {
       printf("# Failed to create VMLMB optimizer\n");
       exit(-1);
@@ -578,7 +600,7 @@ int MAINENTRY(void)
   } else if (algorithm == VMLMN) {
     opk_vmlmn_options_t options;
     vmlmn = opk_new_vmlmn_optimizer(vspace, mem, vmlmn_flags,
-                                    lower, upper, NULL);
+                                    lower, upper, lnsrch);
     if (vmlmn == NULL) {
       printf("# Failed to create VMLMN optimizer\n");
       exit(-1);
@@ -615,7 +637,11 @@ int MAINENTRY(void)
              algorithm_name);
       exit(-1);
     }
-    vmlm = opk_new_vmlm_optimizer(vspace, mem);
+    if (lnsrch != NULL) {
+      vmlm = opk_new_vmlm_optimizer_with_line_search(vspace, mem, lnsrch);
+    } else {
+      vmlm = opk_new_vmlm_optimizer(vspace, mem);
+    }
     if (vmlm == NULL) {
       printf("# Failed to create VMLM optimizer\n");
       exit(-1);
@@ -646,7 +672,11 @@ int MAINENTRY(void)
              algorithm_name);
       exit(-1);
     }
-    lbfgs = opk_new_lbfgs_optimizer(vspace, mem);
+    if (lnsrch != NULL) {
+      lbfgs = opk_new_lbfgs_optimizer_with_line_search(vspace, mem, lnsrch);
+    } else {
+      lbfgs = opk_new_lbfgs_optimizer(vspace, mem);
+    }
     if (lbfgs == NULL) {
       printf("# Failed to create LBFGS optimizer\n");
       exit(-1);
@@ -677,7 +707,11 @@ int MAINENTRY(void)
              algorithm_name);
       exit(-1);
     }
-    nlcg = opk_new_nlcg_optimizer(vspace, nlcg_method);
+    if (lnsrch != NULL) {
+      nlcg = opk_new_nlcg_optimizer_with_line_search(vspace, nlcg_method, lnsrch);
+    } else {
+      nlcg = opk_new_nlcg_optimizer(vspace, nlcg_method);
+    }
     if (nlcg == NULL) {
       printf("# Failed to create NLCG optimizer\n");
       exit(-1);
@@ -737,26 +771,26 @@ int MAINENTRY(void)
     if (task == OPK_TASK_COMPUTE_FG) {
       logical grad = TRUE_;
       if (maxeval > 0 && evaluations > maxeval) {
-        printf("# Too many evaluations (%d)\n", evaluations);
         final_status = OPK_TOO_MANY_EVALUATIONS;
-        break;
-      }
-      CUTEST_uofg(&status, &CUTEst_nvar, x, &f, g, &grad);
-      if ((status == 1) || (status == 2)) {
-        printf("# CUTEst error, status = %d, aborting\n", status);
-        exit(status);
-      }
-      gnorm = gradnorm(vx, vg, vgp, lower, upper); /* FIXME: this adds some overhead */
-      ++evaluations;
-      if (evaluations == 1) {
-        gtest = gatol + grtol*gnorm;
-      }
-      if (gnorm <= gtest) {
-        task = OPK_TASK_FINAL_X;
-      }
-      if (evaluations == 1 || f < finalf) {
-        finalf = f;
-        finalgnorm = gnorm;
+        task = OPK_TASK_FINAL_X; /* to force terminating */
+      } else {
+        CUTEST_uofg(&status, &CUTEst_nvar, x, &f, g, &grad);
+        if ((status == 1) || (status == 2)) {
+          printf("# CUTEst error, status = %d, aborting\n", status);
+          exit(status);
+        }
+        gnorm = gradnorm(vx, vg, vgp, lower, upper); /* FIXME: this adds some overhead */
+        ++evaluations;
+        if (evaluations == 1) {
+          gtest = gatol + grtol*gnorm;
+        }
+        if (gnorm <= gtest) {
+          task = OPK_TASK_FINAL_X;
+        }
+        if (evaluations == 1 || f < finalf) {
+          finalf = f;
+          finalgnorm = gnorm;
+        }
       }
     } else if (task != OPK_TASK_NEW_X) {
       /* Either algorithm converged, or an exception (error or warning)
@@ -803,7 +837,6 @@ int MAINENTRY(void)
         break;
       }
       if (maxiter > 0 && iterations >= maxiter) {
-        printf("# Too many iterations (%d)\n", iterations);
         final_status = OPK_TOO_MANY_ITERATIONS;
         break;
       }
@@ -838,7 +871,7 @@ int MAINENTRY(void)
   printf("# *********************** CUTEst statistics ************************\n");
   printf("#                Algorithm = OptimPack/%s ", algorithm_name);
   if (algorithm == VMLMB || algorithm == VMLM || algorithm == VMLMN) {
-    printf("(mem=%d)\n", mem);
+    printf("(mem=%d)\n", OPK_MIN(CUTEst_nvar, mem));
   } else {
     char temp[OPK_NLCG_DESCRIPTION_MAX_SIZE];
     opk_get_nlcg_description(nlcg, temp);
@@ -848,16 +881,16 @@ int MAINENTRY(void)
   printf("#                Variables = %-10d\n", CUTEst_nvar);
   printf("#        Bound constraints = %-10d\n", vartypes.nbnds);
   printf("#               Iterations = %d\n", iterations);
-  printf("# Objective function calls = %-15.7g\n", calls[0]);
-  printf("# Objective gradient calls = %-15.7g\n", calls[1]);
-  printf("#       Objective Hessians = %-15.7g\n", calls[2]);
-  printf("#  Hessian-vector products = %-15.7g\n", calls[3]);
+  printf("# Objective function calls = %.0f\n", calls[0]);
+  printf("# Objective gradient calls = %.0f\n", calls[1]);
+  printf("#       Objective Hessians = %.0f\n", calls[2]);
+  printf("#  Hessian-vector products = %.0f\n", calls[3]);
   printf("#                Exit code = %d (%s)\n", final_status,
          opk_get_reason(final_status));
-  printf("#                  Final f = %-15.7g\n", finalf);
-  printf("#              Final ||g|| = %-15.7g\n", finalgnorm);
-  printf("#              Set up time = %-10.2f seconds\n", cpu[0]);
-  printf("#               Solve time = %-10.2f seconds\n", cpu[1]);
+  printf("#                  Final f = %-23.15e\n", finalf);
+  printf("#              Final ||g|| = %-15.7e\n", finalgnorm);
+  printf("#              Set up time = %#-14.6f seconds\n", cpu[0]);
+  printf("#               Solve time = %#-14.6f seconds\n", cpu[1]);
   printf("#      Relative small step = %g\n", delta);
   printf("#        Descent threshold = %g\n", epsilon);
   printf("# ******************************************************************\n");
