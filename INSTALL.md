@@ -36,4 +36,4 @@ steps:
 ### Yorick plugin
 
 To install Yorick plugin you must go to the `yorick` subdirectory of the
-distribution and follow the instrutions there.
+distribution and follow the instrutions [there](./yorick/README.md).
