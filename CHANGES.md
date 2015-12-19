@@ -3,6 +3,23 @@
 This describe the most important (user visible) changes in **OptimPack**.
 
 
+## Version 3.0.0
+
+This is version 3.0.0 of OptimPack library released on the XXX of
+December 2015.
+
+Download: [optimpack-3.0.0.tar.gz](https://github.com/emmt/OptimPack/releases/download/v3.0.0b/optimpack-3.0.0.tar.gz)
+
+Most important changes:
+
+- Major update of the **VMLM-B** optimizer for bound constraints optimization.
+  This optimizer can be used without bounds and is then similar to Nocedal's
+  **VMLM** or Liu & Nocedal's **L-BFGS** algorithms.  It can also emulates the
+  Benson & Moré's **BLMVM** algorithm.  This optimizer supersedes (and
+  replaces) all quasi-Newton (variable metric) algorithms that were implemeted
+  in OptimPack.
+
+
 ## Version 3.0.0b
 
 This is beta pre-3.0.0 version of OptimPack library released on the 19th of
