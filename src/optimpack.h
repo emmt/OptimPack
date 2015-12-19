@@ -1172,6 +1172,9 @@ opk_get_nlcg_method(opk_nlcg_t* opt);
 extern opk_task_t
 opk_get_nlcg_task(opk_nlcg_t* opt);
 
+extern opk_status_t
+opk_get_nlcg_status(opk_nlcg_t* opt);
+
 #define OPK_NLCG_DESCRIPTION_MAX_SIZE 80
 extern opk_status_t
 opk_get_nlcg_description(opk_nlcg_t* opt, char* str);

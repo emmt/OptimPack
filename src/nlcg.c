@@ -670,6 +670,12 @@ opk_get_nlcg_task(opk_nlcg_t* opt)
   return opt->task;
 }
 
+opk_status_t
+opk_get_nlcg_status(opk_nlcg_t* opt)
+{
+  return opt->status;
+}
+
 double
 opk_get_nlcg_beta(opk_nlcg_t* opt)
 {
