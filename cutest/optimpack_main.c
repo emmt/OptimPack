@@ -392,6 +392,7 @@ int MAINENTRY(void)
         }
         continue;
       }
+#if 0
       if (sscanf(line, " OrenSpedicato %d", &ival) == 1) {
         if (ival != 0) {
           autostep = OPK_NLCG_OREN_SPEDICATO;
@@ -404,6 +405,7 @@ int MAINENTRY(void)
         }
         continue;
       }
+#endif
       if (sscanf(line, " FletcherReeves %d", &ival) == 1) {
         if (ival != 0) {
           nlcg_flags = OPK_NLCG_FLETCHER_REEVES;

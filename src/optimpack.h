@@ -1221,8 +1221,6 @@ opk_set_nlcg_options(opk_nlcg_t* dst, const opk_nlcg_options_t* src);
 /* The rule can be combined (bitwise or'ed) with one of the following bits to
    compute the initial step size from the previous iteration: */
 #define OPK_NLCG_SHANNO_PHUA         (1<<9)
-#define OPK_NLCG_OREN_SPEDICATO      (2<<9)
-#define OPK_NLCG_BARZILAI_BORWEIN    (3<<9)
 
 /* For instance: (OPK_NLCG_POLAK_RIBIERE_POLYAK | OPK_NLCG_POWELL) merely
    corresponds to PRP+ (Polak, Ribiere, Polyak) while (OPK_NLCG_PERRY_SHANNO |
