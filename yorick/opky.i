@@ -54,9 +54,9 @@ extern opk_nlcg;
 
      The dot notation can be used to query some members of the optimizer
      instance:
-         opt.flags       - the name of the optimization method;
-         opt.size        - the size of the problem;
-         opt.dims        - the dimensions of the problem;
+         opt.flags       - name of the optimization method;
+         opt.size        - size of the problem;
+         opt.dims        - dimensions of the problem;
          opt.single      - single precision?
          opt.task        - current pending task;
          opt.status      - last optimizer status;
@@ -68,27 +68,24 @@ extern opk_nlcg;
      The FLAGS keyword can be set with one of the following rules to compute
      the search direction:
 
-         OPK_NLCG_FLETCHER_REEVES
-         OPK_NLCG_HESTENES_STIEFEL
-         OPK_NLCG_POLAK_RIBIERE_POLYAK
-         OPK_NLCG_FLETCHER
-         OPK_NLCG_LIU_STOREY
-         OPK_NLCG_DAI_YUAN
-         OPK_NLCG_PERRY_SHANNO
-         OPK_NLCG_HAGER_ZHANG
+         OPK_NLCG_HESTENES_STIEFEL     - Hestenes & Stiefel (1952)
+         OPK_NLCG_FLETCHER_REEVES      - Fletcher & Reeves (1964)
+         OPK_NLCG_POLAK_RIBIERE_POLYAK - Polak, Ribiere & Polyak (1969)
+         OPK_NLCG_FLETCHER             - conjugate descent (Fletcher, 1987)
+         OPK_NLCG_LIU_STOREY           - Liu & Storey (1991)
+         OPK_NLCG_DAI_YUAN             - Dai & Yan (1999)
+         OPK_NLCG_PERRY_SHANNO         - Perry & Shanno
+         OPK_NLCG_HAGER_ZHANG          - Hager & Zhang (2005)
 
      The rule can be combined (bitwise or'ed) with:
 
          OPK_NLCG_POWELL
 
-     to force beta >= 0 (according to Powell's prescription) and with one of:
+     to force beta >= 0 (Powell's prescription) and with:
 
          OPK_NLCG_SHANNO_PHUA
-         OPK_NLCG_OREN_SPEDICATO
-         OPK_NLCG_BARZILAI_BORWEIN
 
-     to specify how to compute the initial step size from the previous
-     iteration.
+     to compute the initial step according to Shanno & Phua (in CONMIN, 1878).
 
 
    SEE ALSO: opk_iterate, opk_task, opk_start, opk_vmlmb.
@@ -106,7 +103,7 @@ extern opk_vmlmb;
      is the dimension list of the variables of the problem.
 
      Keyword MEM can be set to specify the number of previous steps to
-     memorize.  By defalust MEM=5 is used
+     memorize.  By default MEM=5 is used
 
      Keywords LOWER and UPPER may be used to set lower and/or upper bounds for
      the variables.  Their value can be nothing (no bound), a scalar (same
