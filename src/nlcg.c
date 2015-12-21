@@ -201,7 +201,6 @@ update1(opk_nlcg_t* opt,
         double beta)
 {
   if ((opt->flags & OPK_NLCG_POWELL) == OPK_NLCG_POWELL && beta < 0) {
-    ++opt->restarts;
     beta = 0;
   }
   if ((opt->beta = beta) == 0) {
