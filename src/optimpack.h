@@ -1145,6 +1145,9 @@ opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x,
 extern double
 opk_get_nlcg_step(opk_nlcg_t* opt);
 
+extern double
+opk_get_nlcg_gnorm(opk_nlcg_t* opt);
+
 extern opk_status_t
 opk_get_nlcg_fmin(opk_nlcg_t* opt, double* fmin);
 
@@ -1419,6 +1422,9 @@ opk_get_vmlmb_restarts(opk_vmlmb_t* opt);
 
 extern double
 opk_get_vmlmb_step(opk_vmlmb_t* opt);
+
+extern double
+opk_get_vmlmb_gnorm(opk_vmlmb_t* opt);
 
 extern opk_vector_t*
 opk_get_vmlmb_s(opk_vmlmb_t* opt, opk_index_t k);

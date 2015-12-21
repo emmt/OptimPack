@@ -543,6 +543,12 @@ opk_get_nlcg_step(opk_nlcg_t* opt)
   return (opt == NULL ? -1.0 : opt->alpha);
 }
 
+double
+opk_get_nlcg_gnorm(opk_nlcg_t* opt)
+{
+  return (opt == NULL ? -1.0 : opt->gnorm);
+}
+
 opk_status_t
 opk_get_nlcg_fmin(opk_nlcg_t* opt, double* fmin)
 {

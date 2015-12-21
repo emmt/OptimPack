@@ -817,6 +817,12 @@ opk_get_vmlmb_step(opk_vmlmb_t* opt)
   return (opt == NULL ? -1.0 : opt->stp);
 }
 
+double
+opk_get_vmlmb_gnorm(opk_vmlmb_t* opt)
+{
+  return (opt == NULL ? -1.0 : opt->gnorm);
+}
+
 opk_vector_t*
 opk_get_vmlmb_s(opk_vmlmb_t* opt, opk_index_t k)
 {
