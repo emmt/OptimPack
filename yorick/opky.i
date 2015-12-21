@@ -64,6 +64,8 @@ extern opk_nlcg;
          opt.iterations  - number of iterations;
          opt.evaluations - number of function (and gradient) evaluations;
          opt.restarts    - number of restarts;
+         opt.step        - current step length;
+         opt.gnorm       - Euclidean norm of the gradient;
 
      The FLAGS keyword can be set with one of the following rules to compute
      the search direction:
@@ -103,7 +105,7 @@ extern opk_vmlmb;
      is the dimension list of the variables of the problem.
 
      Keyword MEM can be set to specify the number of previous steps to
-     memorize.  By default MEM=5 is used
+     memorize.  By default, MEM=5 is used.
 
      Keywords LOWER and UPPER may be used to set lower and/or upper bounds for
      the variables.  Their value can be nothing (no bound), a scalar (same
@@ -126,6 +128,8 @@ extern opk_vmlmb;
          opt.evaluations - number of function (and gradient) evaluations;
          opt.restarts    - number of restarts;
          opt.projections - number of projections;
+         opt.step        - current step length;
+         opt.gnorm       - Euclidean norm of the (projected) gradient;
 
    SEE ALSO: opk_iterate, opk_task, opk_start, opk_nlcg.
  */
@@ -181,8 +185,11 @@ extern opk_get_reason;
    SEE ALSO: opk_nlcg, opk_vmlmb, opk_iterate, opk_start.
 */
 
-func opk_minimize(fg, x0, mem=, nlcg=, flags=, single=, verb=, lower=, upper=)
+func opk_minimize(fg, x0, &fx, &gx,
+                  mem=, nlcg=, flags=, single=, lower=, upper=,
+                  maxiter=, maxeval=, verb=)
 /* DOCUMENT x = opk_minimize(fg, x0);
+         or x = opk_minimize(fg, x0, fx, gx);
 
      This driver minimizes a smooth multi-variate function.  FG is a function
      which takes two arguments X and GX and which, for the given variables X,
@@ -191,7 +198,23 @@ func opk_minimize(fg, x0, mem=, nlcg=, flags=, single=, verb=, lower=, upper=)
 
         fx = fg(x, gx);
 
-     X0 are the initial variables, they are left unchanged.
+     X0 are the initial variables, they are left unchanged.  Optional
+     arguments, FX and GX are caller's variables used to setore the fucntion
+     value and the corresponding gradient at the final iterate X.
+
+     Keyword NLCG can be set true to use a non-linear conjugate gradient (see
+     opk_nlcg).  By default, a limited memory variable metric method is used
+     (see opk_vmlmb).
+
+     By default, the limited memory variable metric method memorizes 5 previous
+     steps to approximate the inverse Hessian of the objective function.
+     Keyword MEM can be used to choose a different number.
+
+     Keywords LOWER and UPPER may be used to set lower and/or upper bounds for
+     the variables.  Their value can be nothing (no bound), a scalar (same
+     bound value for all variables), or an array (of same dimensions as X0 to
+     specify a different bound value for each variables).  If any bound is
+     specified, the optimizer must be VMLM-B (or BLMVM).
 
      Keyword SINGLE may be set true to use single precision floating point
      variables.  The default is to use double precision floating point
@@ -199,9 +222,16 @@ func opk_minimize(fg, x0, mem=, nlcg=, flags=, single=, verb=, lower=, upper=)
      store the gradient and may result in costly conversions if the function FG
      is not designed to work at the assumed precision.
 
-     Keyword NLCG can be set with a non-zero value indicating which non-linear
-     conjugate gradient method to use.  By default, a variable metric method is
-     used.
+     Keyword FLAGS may be used to choose some options or variants of the
+     optimization methods (see opk_vmlmb for the variable metric optimizer and
+     opk_nlcg for the non-linear conversions gradient mthod).
+
+     Keyword MAXITER can be used to specify the maximum number of iterations
+     which is unlimited by default.
+
+     Keyword MAXEVAL can used to specify the maximum number of function
+     evaluations which is unlimited by default.
+
 
    SEE ALSO: opk_nlcg, opk_vmlmb.
  */
@@ -214,6 +244,8 @@ func opk_minimize(fg, x0, mem=, nlcg=, flags=, single=, verb=, lower=, upper=)
   if (nlcg && !(is_void(mem) && is_void(lower) && is_void(upper))) {
     error, "keywords MEM, LOWER and UPPER cannot be used for a non-linear conjugate gradient method";
   }
+  check_eval = ! is_void(maxeval);
+  check_iter = ! is_void(maxiter);
   if (single) {
     type = float;
     single = TRUE;
@@ -223,41 +255,74 @@ func opk_minimize(fg, x0, mem=, nlcg=, flags=, single=, verb=, lower=, upper=)
   }
   x = type(unref(x0));
   gx = array(type, dimsof(x));
-  n = numberof(x);
+  dims = dimsof(x);
   if (nlcg) {
-    opt = opk_nlcg(n, flags=flags, single=single);
+    opt = opk_nlcg(dims, flags=flags, single=single);
   } else {
-    opt = opk_vmlmb(n, mem=mem, single=single, lower=lower, upper=upper,
+    opt = opk_vmlmb(dims, mem=mem, single=single, lower=lower, upper=upper,
                     flags=flags);
   }
   task = opk_start(opt, x);
-  while (TRUE) {
+  for (;;) {
     if (task == OPK_TASK_COMPUTE_FG) {
-      fx = fg(x, gx);
+      if (check_eval && opt.evaluations >= maxeval) {
+        /* FIXME: should restore best solution so far. */
+        task = OPK_TASK_WARNING;
+        reason = "too many evaluations";
+        stage = 2;
+      } else {
+        fx = fg(x, gx);
+        stage = 0;
+      }
     } else if (task == OPK_TASK_NEW_X) {
+      if (check_iter && opt.iterations >= maxiter) {
+        task = OPK_TASK_WARNING;
+        reason = "too many iterations";
+        stage = 2;
+      } else {
+        stage = 1;
+      }
+    } else if (task == OPK_TASK_FINAL_X || task == OPK_TASK_WARNING) {
+      reason = opt.reason;
+      stage = 2;
+    } else {
+      if (task == OPK_TASK_ERROR) {
+        reason = opt.reason;
+      } else {
+        reason = swrite(format="unexpected task (%d)", task);
+      }
+      error, reason;
+    }
+    if (stage >= 1) {
       if (verb) {
         if (opt.evaluations == 1) {
-          write, format="# %s - %s\n",
-            opt.name, opt.description;
+          elapsed = array(double, 3);
+          timer, elapsed;
+          cpu_start = elapsed(1);
+          write, format="# %s - %s\n#%s%s\n#%s%s\n",
+            opt.name, opt.description,
+            " ITER  EVAL  REST. CPU (ms)        ",
+            " FUNC              GNORM   STEPLEN",
+            "-----------------------------------",
+            "----------------------------------";
         }
-        write, format="%4d  %4d  %.16E\n",
-          opt.iterations, opt.evaluations, fx;
+        if (stage >= 2 || (opt.iterations % verb) == 0) {
+          timer, elapsed;
+          cpu = elapsed(1) - cpu_start;
+          write, format="%5d %5d %5d %10.3f  %+-24.15e%-9.1e%-9.1e\n",
+            opt.iterations, opt.evaluations, opt.restarts, cpu*1e3, fx,
+            opt.gnorm, opt.step;
+        }
       }
-    } else {
-      break;
+      if (stage >= 2) {
+        if (task == OPK_TASK_WARNING) {
+          write, format="%sWARNING: %s\n", (verb ? "# " : ""), reason;
+        }
+        return x;
+      }
     }
     task = opk_iterate(opt, x, fx, gx);
   }
-  if (task != OPK_TASK_FINAL_X) {
-    if (task == OPK_TASK_WARNING) {
-      write, format="WARNING: %s\n", "some warning occured";
-    } else if (task == OPK_TASK_ERROR) {
-      error, "some error occured";
-    } else {
-      error, "unexpected task";
-    }
-  }
-  return x;
 }
 
 extern opk_init;
