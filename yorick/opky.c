@@ -63,6 +63,7 @@ static long description_index = -1L;
 static long dims_index = -1L;
 static long evaluations_index = -1L;
 static long flags_index = -1L;
+static long gnorm_index = -1L;
 static long iterations_index = -1L;
 static long lower_index = -1L;
 static long mem_index = -1L;
@@ -73,6 +74,7 @@ static long restarts_index = -1L;
 static long single_index = -1L;
 static long size_index = -1L;
 static long status_index = -1L;
+static long step_index = -1L;
 static long task_index = -1L;
 static long upper_index = -1L;
 
@@ -102,6 +104,8 @@ struct _yopt_operations {
   long         (*get_projections)(yopt_instance_t* opt);
   const char*  (*get_name)(yopt_instance_t* opt);
   const char*  (*get_description)(yopt_instance_t* opt);
+  double       (*get_step)(yopt_instance_t* opt);
+  double       (*get_gnorm)(yopt_instance_t* opt);
 };
 
 #define START(opt)             ((opt)->ops->start(opt))
@@ -115,6 +119,8 @@ struct _yopt_operations {
 #define GET_PROJECTIONS(opt)   ((opt)->ops->get_projections(opt))
 #define GET_NAME(opt)          ((opt)->ops->get_name(opt))
 #define GET_DESCRIPTION(opt)   ((opt)->ops->get_description(opt))
+#define GET_GNORM(opt)         ((opt)->ops->get_gnorm(opt))
+#define GET_STEP(opt)          ((opt)->ops->get_step(opt))
 
 struct _yopt_instance {
   long dims[Y_DIMSIZE];
@@ -175,14 +181,26 @@ yopt_extract(void* ptr, char* member)
 {
   yopt_instance_t* opt = (yopt_instance_t*)ptr;
   long index = yget_global(member, 0);
-  if (index == flags_index) {
-    ypush_long(GET_FLAGS(opt));
-  } else if (index == task_index) {
+  if (index == task_index) {
     ypush_int(GET_TASK(opt));
   } else if (index == status_index) {
     ypush_int(GET_STATUS(opt));
   } else if (index == reason_index) {
     push_string(opk_get_reason(GET_STATUS(opt)));
+  } else if (index == iterations_index) {
+    ypush_long(GET_ITERATIONS(opt));
+  } else if (index == evaluations_index) {
+    ypush_long(GET_EVALUATIONS(opt));
+  } else if (index == restarts_index) {
+    ypush_long(GET_RESTARTS(opt));
+  } else if (index == projections_index) {
+    ypush_long(GET_PROJECTIONS(opt));
+  } else if (index == gnorm_index) {
+    ypush_double(GET_GNORM(opt));
+  } else if (index == step_index) {
+    ypush_double(GET_STEP(opt));
+  } else if (index == flags_index) {
+    ypush_long(GET_FLAGS(opt));
   } else if (index == description_index) {
     push_string(GET_DESCRIPTION(opt));
   } else if (index == name_index) {
@@ -195,14 +213,6 @@ yopt_extract(void* ptr, char* member)
     dims[0] = 1;
     dims[1] = ndims + 1;
     copy_dims(ypush_l(dims), opt->dims);
-  } else if (index == iterations_index) {
-    ypush_long(GET_ITERATIONS(opt));
-  } else if (index == evaluations_index) {
-    ypush_long(GET_EVALUATIONS(opt));
-  } else if (index == restarts_index) {
-    ypush_long(GET_RESTARTS(opt));
-  } else if (index == projections_index) {
-    ypush_long(GET_PROJECTIONS(opt));
   } else if (index == single_index) {
     ypush_int(opt->single);
   } else {
@@ -287,6 +297,18 @@ nlcg_get_description(yopt_instance_t* opt)
   return descr;
 }
 
+static double
+nlcg_get_step(yopt_instance_t* opt)
+{
+  return opk_get_nlcg_step(NLCG(opt->optimizer));
+}
+
+static double
+nlcg_get_gnorm(yopt_instance_t* opt)
+{
+  return opk_get_nlcg_gnorm(NLCG(opt->optimizer));
+}
+
 static yopt_operations_t nlcg_ops = {
   nlcg_start,
   nlcg_iterate,
@@ -298,7 +320,9 @@ static yopt_operations_t nlcg_ops = {
   nlcg_get_restarts,
   nlcg_get_projections,
   nlcg_get_name,
-  nlcg_get_description
+  nlcg_get_description,
+  nlcg_get_step,
+  nlcg_get_gnorm
 };
 
 /*---------------------------------------------------------------------------*/
@@ -377,6 +401,18 @@ vmlmb_get_description(yopt_instance_t* opt)
   return descr;
 }
 
+static double
+vmlmb_get_step(yopt_instance_t* opt)
+{
+  return opk_get_vmlmb_step(VMLMB(opt->optimizer));
+}
+
+static double
+vmlmb_get_gnorm(yopt_instance_t* opt)
+{
+  return opk_get_vmlmb_gnorm(VMLMB(opt->optimizer));
+}
+
 static yopt_operations_t vmlmb_ops = {
   vmlmb_start,
   vmlmb_iterate,
@@ -388,7 +424,9 @@ static yopt_operations_t vmlmb_ops = {
   vmlmb_get_restarts,
   vmlmb_get_projections,
   vmlmb_get_name,
-  vmlmb_get_description
+  vmlmb_get_description,
+  vmlmb_get_step,
+  vmlmb_get_gnorm
 };
 
 /*---------------------------------------------------------------------------*/
@@ -599,6 +637,7 @@ void Y_opk_init(int argc)
   GET_GLOBAL(dims);
   GET_GLOBAL(evaluations);
   GET_GLOBAL(flags);
+  GET_GLOBAL(gnorm);
   GET_GLOBAL(iterations);
   GET_GLOBAL(mem);
   GET_GLOBAL(name);
@@ -608,6 +647,7 @@ void Y_opk_init(int argc)
   GET_GLOBAL(single);
   GET_GLOBAL(size);
   GET_GLOBAL(status);
+  GET_GLOBAL(step);
   GET_GLOBAL(task);
   GET_GLOBAL(upper);
   GET_GLOBAL(lower);
