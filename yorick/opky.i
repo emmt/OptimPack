@@ -187,7 +187,7 @@ extern opk_get_reason;
 
 func opk_minimize(fg, x0, &fx, &gx,
                   mem=, nlcg=, flags=, single=, lower=, upper=,
-                  maxiter=, maxeval=, verb=)
+                  maxiter=, maxeval=, verb=, output=)
 /* DOCUMENT x = opk_minimize(fg, x0);
          or x = opk_minimize(fg, x0, fx, gx);
 
@@ -231,6 +231,15 @@ func opk_minimize(fg, x0, &fx, &gx,
 
      Keyword MAXEVAL can used to specify the maximum number of function
      evaluations which is unlimited by default.
+
+     If keyword VERB is non-nil and non-zero, the routine will print out some
+     information about the current iterate at every VERB iterations and at the
+     final one.
+
+     Keyword OUPTPUT can be used to specify the output for verbose mode.  Its
+     value can be a string (interpreted as the name of the file to which append
+     the output lines) or a text file stream opened for writing.  If unset, the
+     standard output stream is used.
 
 
    SEE ALSO: opk_nlcg, opk_vmlmb.
@@ -296,10 +305,13 @@ func opk_minimize(fg, x0, &fx, &gx,
     if (stage >= 1) {
       if (verb) {
         if (opt.evaluations == 1) {
+          if (is_string(output)) {
+            output = open(output, "a");
+          }
           elapsed = array(double, 3);
           timer, elapsed;
           cpu_start = elapsed(1);
-          write, format="# %s - %s\n#%s%s\n#%s%s\n",
+          write, output, format="# %s - %s\n#%s%s\n#%s%s\n",
             opt.name, opt.description,
             " ITER  EVAL  REST. CPU (ms)        ",
             " FUNC              GNORM   STEPLEN",
@@ -309,14 +321,14 @@ func opk_minimize(fg, x0, &fx, &gx,
         if (stage >= 2 || (opt.iterations % verb) == 0) {
           timer, elapsed;
           cpu = elapsed(1) - cpu_start;
-          write, format="%5d %5d %5d %10.3f  %+-24.15e%-9.1e%-9.1e\n",
+          write, output, format="%5d %5d %5d %10.3f  %+-24.15e%-9.1e%-9.1e\n",
             opt.iterations, opt.evaluations, opt.restarts, cpu*1e3, fx,
             opt.gnorm, opt.step;
         }
       }
       if (stage >= 2) {
         if (task == OPK_TASK_WARNING) {
-          write, format="%sWARNING: %s\n", (verb ? "# " : ""), reason;
+          write, output, format="%sWARNING: %s\n", (verb ? "# " : ""), reason;
         }
         return x;
       }
