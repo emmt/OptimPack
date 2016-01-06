@@ -100,9 +100,9 @@ extern opk_vmlmb;
 
      The function opk_vmlmb() creates a new instance of OPKY reverse
      communication optimizer implementing VMLM-B algorithm.  This algorithm is
-     a limited memory variant of the BFGS variable metric (quasi-Newton) method
-     for solving an optimization problem with optional bound constraints.  DIMS
-     is the dimension list of the variables of the problem.
+     a limited memory variant of the BFGS variable metric (quasi-Newton)
+     method for solving an optimization problem with optional bound
+     constraints.  DIMS is the dimension list of the variables of the problem.
 
      Keyword MEM can be set to specify the number of previous steps to
      memorize.  By default, MEM=5 is used.
@@ -206,9 +206,9 @@ func opk_minimize(fg, x0, &fx, &gx,
      opk_nlcg).  By default, a limited memory variable metric method is used
      (see opk_vmlmb).
 
-     By default, the limited memory variable metric method memorizes 5 previous
-     steps to approximate the inverse Hessian of the objective function.
-     Keyword MEM can be used to choose a different number.
+     By default, the limited memory variable metric method memorizes 5
+     previous steps to approximate the inverse Hessian of the objective
+     function.  Keyword MEM can be used to choose a different number.
 
      Keywords LOWER and UPPER may be used to set lower and/or upper bounds for
      the variables.  Their value can be nothing (no bound), a scalar (same
@@ -219,8 +219,8 @@ func opk_minimize(fg, x0, &fx, &gx,
      Keyword SINGLE may be set true to use single precision floating point
      variables.  The default is to use double precision floating point
      variables.  Beware that this have an incidence on the allocated array to
-     store the gradient and may result in costly conversions if the function FG
-     is not designed to work at the assumed precision.
+     store the gradient and may result in costly conversions if the function
+     FG is not designed to work at the assumed precision.
 
      Keyword FLAGS may be used to choose some options or variants of the
      optimization methods (see opk_vmlmb for the variable metric optimizer and
@@ -237,9 +237,9 @@ func opk_minimize(fg, x0, &fx, &gx,
      final one.
 
      Keyword OUPTPUT can be used to specify the output for verbose mode.  Its
-     value can be a string (interpreted as the name of the file to which append
-     the output lines) or a text file stream opened for writing.  If unset, the
-     standard output stream is used.
+     value can be a string (interpreted as the name of the file to which
+     append the output lines) or a text file stream opened for writing.  If
+     unset, the standard output stream is used.
 
 
    SEE ALSO: opk_nlcg, opk_vmlmb.
@@ -340,8 +340,8 @@ func opk_minimize(fg, x0, &fx, &gx,
 extern opk_init;
 /* DOCUMENT opk_init;
      This procedure initializes internals of OPKY.  It can safely be called to
-     re-initialize and restore values of global variables.  It is automatically
-     called when the plug-in is loaded.
+     re-initialize and restore values of global variables.  It is
+     automatically called when the plug-in is loaded.
  */
 opk_init;
 
@@ -355,22 +355,23 @@ local cobyla_minimize, cobyla_maximize;
          or  obj = cobyla_maximize(f, c, x0, rhobeg, rhoend, all=1);
 
      Minimize or maximize the multi-variate function F under the inequality
-     constraints implemented by C and starting at the initial point X0.  RHOBEG
-     and RHOEND are the initial and final values of the trust region radius (0
-     < RHOEND <= RHOBEG).
+     constraints implemented by C and starting at the initial point X0.
+     RHOBEG and RHOEND are the initial and final values of the trust region
+     radius (0 < RHOEND <= RHOBEG).
 
      The objective is to find X which solves one of the problems:
 
           min f(x)    s.t.   c(x) <= 0   (cobyla_minimize)
           max f(x)    s.t.   c(x) <= 0   (cobyla_maximize)
 
-     Arguments F and C are user defined functions which take a single argument,
-     the variables X, and return the function value and the constraints
-     respectively.  If there are no contraints, C can be empty.
+     Arguments F and C are user defined functions which take a single
+     argument, the variables X, and return the function value and the
+     constraints respectively.  If there are no contraints, C can be empty.
 
-     Note that the proper scaling of the variables is important for the success
-     of the algorithm.  RHOBEG should be set to the typical size of the region
-     to explorate and RHOEND should be set to the typical precision.
+     Note that the proper scaling of the variables is important for the
+     success of the algorithm.  RHOBEG should be set to the typical size of
+     the region to explorate and RHOEND should be set to the typical
+     precision.
 
      Keyword NPT sets the number of of interpolation conditions.  Its default
      value is equal to 2*N+1 (the recommended value).
@@ -396,8 +397,8 @@ local cobyla_minimize, cobyla_maximize;
 
      Keyword ERR sets the behavior in case of abnormal termination.  If ERR=0,
      anything but a success throws an error (this is also the default
-     behavior); if ERR > 0, non-fatal errors are reported by a warning message;
-     if ERR < 0, non-fatal errors are silently ignored.
+     behavior); if ERR > 0, non-fatal errors are reported by a warning
+     message; if ERR < 0, non-fatal errors are silently ignored.
 
      Keyword VERB set the verbosity level.
 
@@ -464,11 +465,11 @@ func cobyla_error(status, errmode)
          or cobyla_error, status, errmode;
 
      Report an error in COBYLA according to the value of STATUS.  Nothing is
-     done if STATUS is COBYLA_SUCCESS; otherwise, the optional argument ERRMODE
-     determines the behavior.  If ERRMODE = 0, the routine throws an error
-     (this is also the default behavior); if ERRMODE > 0, non-fatal errors are
-     reported by a warning message; if ERRMODE < 0, non-fatal errors are
-     silently ignored.
+     done if STATUS is COBYLA_SUCCESS; otherwise, the optional argument
+     ERRMODE determines the behavior.  If ERRMODE = 0, the routine throws an
+     error (this is also the default behavior); if ERRMODE > 0, non-fatal
+     errors are reported by a warning message; if ERRMODE < 0, non-fatal
+     errors are silently ignored.
 
    SEE ALSO: cobyla_reason, error.
  */
@@ -497,13 +498,14 @@ extern cobyla_iterate;
 /* DOCUMENT ctx = cobyla_create(n, m, rhobeg, rhoend, iprint, maxfun);
          or status = cobyla_iterate(ctx, f, x, c);
 
-     The function `cobyla_create` makes a new instance for Mike Powell's COBYLA
-     algorithm for minimizing a function of a few variables.  The method is
-     "derivatives free" (only the function values are needed) and accounts for
-     inequality constraints on the variables.  N is the number of variables, M
-     is the number of constraints, RHOBEG and RHOEND are the initial and final
-     size of the trust region, IPRINT control the verbosity of the method (see
-     below) and MAXFUN is the maximum number of function evaluations.
+     The function `cobyla_create` makes a new instance for Mike Powell's
+     COBYLA algorithm for minimizing a function of a few variables.  The
+     method is "derivatives free" (only the function values are needed) and
+     accounts for inequality constraints on the variables.  N is the number of
+     variables, M is the number of constraints, RHOBEG and RHOEND are the
+     initial and final size of the trust region, IPRINT control the verbosity
+     of the method (see below) and MAXFUN is the maximum number of function
+     evaluations.
 
      The objective is to find X which solves the problem:
 
@@ -522,13 +524,14 @@ extern cobyla_iterate;
      IPRINT should be set to 0, 1, 2 or 3, which controls the amount of
      printing during the calculation.  Specifically, there is no output if
      IPRINT=0 and there is output only at the end of the calculation if
-     IPRINT=1.  Otherwise each new value of RHO and SIGMA is printed.  Further,
-     the vector of variables and some function information are given either
-     when RHO is reduced or when each new value of F(X) is computed in the
-     cases IPRINT=2 or IPRINT=3 respectively.
+     IPRINT=1.  Otherwise each new value of RHO and SIGMA is printed.
+     Further, the vector of variables and some function information are given
+     either when RHO is reduced or when each new value of F(X) is computed in
+     the cases IPRINT=2 or IPRINT=3 respectively.
 
-     The function `cobyla_iterate` performs an iteration of the algorithm given
-     F the function value at X the current variables and C the constraints.
+     The function `cobyla_iterate` performs an iteration of the algorithm
+     given F the function value at X the current variables and C the
+     constraints.
 
      Typical usage is:
 
@@ -592,12 +595,13 @@ local newuoa_minimize, newuoa_maximize;
          or  obj = newuoa_maximize(f, x0, rhobeg, rhoend, all=1);
 
      Minimize or maximize the multi-variate function F starting at the initial
-     point X0.  RHOBEG and RHOEND are the initial and final values of the trust
-     region radius (0 < RHOEND <= RHOBEG).
+     point X0.  RHOBEG and RHOEND are the initial and final values of the
+     trust region radius (0 < RHOEND <= RHOBEG).
 
-     Note that the proper scaling of the variables is important for the success
-     of the algorithm.  RHOBEG should be set to the typical size of the region
-     to explorate and RHOEND should be set to the typical precision.
+     Note that the proper scaling of the variables is important for the
+     success of the algorithm.  RHOBEG should be set to the typical size of
+     the region to explorate and RHOEND should be set to the typical
+     precision.
 
      Keyword NPT sets the number of of interpolation conditions.  Its default
      value is equal to 2*N+1 (the recommended value).
@@ -621,8 +625,8 @@ local newuoa_minimize, newuoa_maximize;
 
      Keyword ERR sets the behavior in case of abnormal termination.  If ERR=0,
      anything but a success throws an error (this is also the default
-     behavior); if ERR > 0, non-fatal errors are reported by a warning message;
-     if ERR < 0, non-fatal errors are silently ignored.
+     behavior); if ERR > 0, non-fatal errors are reported by a warning
+     message; if ERR < 0, non-fatal errors are silently ignored.
 
      Keyword VERB set the verbosity level.
 
@@ -677,11 +681,11 @@ func newuoa_error(status, errmode)
          or newuoa_error, status, errmode;
 
      Report an error in NEWUOA according to the value of STATUS.  Nothing is
-     done if STATUS is NEWUOA_SUCCESS; otherwise, the optional argument ERRMODE
-     determines the behavior.  If ERRMODE = 0, the routine throws an error
-     (this is also the default behavior); if ERRMODE > 0, non-fatal errors are
-     reported by a warning message; if ERRMODE < 0, non-fatal errors are
-     silently ignored.
+     done if STATUS is NEWUOA_SUCCESS; otherwise, the optional argument
+     ERRMODE determines the behavior.  If ERRMODE = 0, the routine throws an
+     error (this is also the default behavior); if ERRMODE > 0, non-fatal
+     errors are reported by a warning message; if ERRMODE < 0, non-fatal
+     errors are silently ignored.
 
    SEE ALSO: newuoa_reason, error.
  */
@@ -710,13 +714,14 @@ extern newuoa_iterate;
 /* DOCUMENT ctx = newuoa_create(n, npt, rhobeg, rhoend, iprint, maxfun);
          or status = newuoa_iterate(ctx, f, x, c);
 
-     The function `newuoa_create` makes a new instance for Mike Powell's NEWUOA
-     algorithm for minimizing a function of many variables.  The method is
-     "derivatives free" (only the function values are needed).
+     The function `newuoa_create` makes a new instance for Mike Powell's
+     NEWUOA algorithm for minimizing a function of many variables.  The method
+     is "derivatives free" (only the function values are needed).
 
      N is the number of variables, NPT is the number of interpolation
      conditions. Its value must be in the interval [N+2,(N+1)(N+2)/2].  The
-     recommended number of points for building the quadratic model is NPT=2*N+1.
+     recommended number of points for building the quadratic model is
+     NPT=2*N+1.
 
      RHOBEG and RHOEND are the initial and final values of a trust region
      radius, so both must be positive with RHOEND <= RHOBEG.  Typically RHOBEG
@@ -725,17 +730,17 @@ extern newuoa_iterate;
      values of the variables.
 
      The value of IPRINT should be set to 0, 1, 2 or 3, which controls the
-     amount of printing. Specifically, there is no output if IPRINT=0 and there
-     is output only at the return if IPRINT=1. Otherwise, each new value of RHO
-     is printed, with the best vector of variables so far and the corresponding
-     value of the objective function.  Further, each new value of F with its
-     variables are output if IPRINT=3.
+     amount of printing. Specifically, there is no output if IPRINT=0 and
+     there is output only at the return if IPRINT=1. Otherwise, each new value
+     of RHO is printed, with the best vector of variables so far and the
+     corresponding value of the objective function.  Further, each new value
+     of F with its variables are output if IPRINT=3.
 
      MAXFUN must be set to an upper bound on the number of objective function
      calls.
 
-     The function `newuoa_iterate` performs an iteration of the algorithm given
-     F the function value at the current variables X.
+     The function `newuoa_iterate` performs an iteration of the algorithm
+     given F the function value at the current variables X.
 
      Typical usage is:
 
