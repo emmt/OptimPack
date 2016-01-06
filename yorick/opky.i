@@ -754,7 +754,7 @@ extern newuoa_iterate;
      following members:
 
          ctx.n       number of variables
-         ctx.npt     number of intepolation points
+         ctx.npt     number of interpolation points
          ctx.rho     radius of the trust region
          ctx.status  current status
          ctx.nevals  number of function evaluations so far
