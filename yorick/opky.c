@@ -726,7 +726,8 @@ void Y_opk_nlcg(int argc)
   if (opt->x == NULL || opt->gx == NULL) {
     y_error("failed to create working vectors");
   }
-  opt->optimizer = (opk_object_t*)opk_new_nlcg_optimizer(opt->vspace, flags, NULL);
+  opt->optimizer = (opk_object_t*)opk_new_nlcg_optimizer(opt->vspace,
+                                                         flags, NULL);
   if (opt->optimizer == NULL) {
     y_error(opk_get_reason(opk_guess_status(errno)));
   }
@@ -790,8 +791,10 @@ void Y_opk_vmlmb(int argc)
   }
   opt->xl = (lower >= 0 ? get_bound(lower + 1, opt) : NULL);
   opt->xu = (upper >= 0 ? get_bound(upper + 1, opt) : NULL);
-  opt->optimizer = (opk_object_t*)opk_new_vmlmb_optimizer(opt->vspace, mem, flags,
-                                                          opt->xl, opt->xu, NULL);
+  opt->optimizer = (opk_object_t*)opk_new_vmlmb_optimizer(opt->vspace,
+                                                          mem, flags,
+                                                          opt->xl, opt->xu,
+                                                          NULL);
   if (opt->optimizer == NULL) {
     y_error(opk_get_reason(opk_guess_status(errno)));
   }
