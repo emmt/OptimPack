@@ -44,6 +44,9 @@
 #define TRUE    OPK_TRUE
 #define FALSE   OPK_FALSE
 
+#define IS_INTEGER(id)   (Y_CHAR <= (id) && (id) <= Y_LONG)
+#define IS_REAL(id)      (Y_CHAR <= (id) && (id) <= Y_DOUBLE)
+
 /* Define some macros to get rid of some GNU extensions when not compiling
    with GCC. */
 #if ! (defined(__GNUC__) && __GNUC__ > 1)
@@ -59,6 +62,7 @@ PLUG_API void y_error(const char *) __attribute__ ((noreturn));
 /* PRIVATE DATA AND DEFINTIONS */
 
 /* Indices of keywords. */
+static long atol_index = -1L;
 static long description_index = -1L;
 static long dims_index = -1L;
 static long evaluations_index = -1L;
@@ -66,11 +70,13 @@ static long flags_index = -1L;
 static long gnorm_index = -1L;
 static long iterations_index = -1L;
 static long lower_index = -1L;
+static long maxiter_index = -1L;
 static long mem_index = -1L;
 static long name_index = -1L;
 static long projections_index = -1L;
 static long reason_index = -1L;
 static long restarts_index = -1L;
+static long rtol_index = -1L;
 static long single_index = -1L;
 static long size_index = -1L;
 static long status_index = -1L;
@@ -85,6 +91,16 @@ static void push_string(const char *value);
 static void copy_dims(long dst[], const long src[]);
 static int same_dims(const long adims[], const long bdims[]);
 static long get_dims(int iarg, long dims[]);
+
+static void set_global_int(const char* name, int value);
+
+static unsigned int get_optional_uint(int iarg, unsigned int def);
+static long         get_optional_long(int iarg, long def);
+static double       get_optional_double(int iarg, double def);
+
+static void assign_int(long index, int value);
+static void assign_long(long index, long value);
+static void assign_double(long index, double value);
 
 /*---------------------------------------------------------------------------*/
 /* OPTIMIZER OBJECT */
@@ -219,7 +235,6 @@ yopt_extract(void* ptr, char* member)
     ypush_nil();
   }
 }
-
 
 /*---------------------------------------------------------------------------*/
 /* NON-LINEAR CONJUGATE GRADIENT (NLCG) METHOD */
@@ -592,11 +607,30 @@ get_bound(int iarg, yopt_instance_t* opt)
   return bnd;
 }
 
-static void set_global_int(const char* name, int value)
+static void assign_int(long index, int value)
 {
   ypush_int(value);
-  yput_global(yget_global(name, 0), 0);
+  yput_global(index, 0);
   yarg_drop(1);
+}
+
+static void assign_long(long index, long value)
+{
+  ypush_long(value);
+  yput_global(index, 0);
+  yarg_drop(1);
+}
+
+static void assign_double(long index, double value)
+{
+  ypush_double(value);
+  yput_global(index, 0);
+  yarg_drop(1);
+}
+
+static void set_global_int(const char* name, int value)
+{
+  assign_int(yget_global(name, 0), value);
 }
 
 static unsigned int
@@ -613,7 +647,7 @@ get_optional_uint(int iarg, unsigned int def)
 }
 
 static long
-get_optional_long(int iarg, int def)
+get_optional_long(int iarg, long def)
 {
   int type = yarg_typeid(iarg);
   if (type == Y_VOID) {
@@ -625,6 +659,19 @@ get_optional_long(int iarg, int def)
   return ygets_l(iarg);
 }
 
+static double
+get_optional_double(int iarg, double def)
+{
+  int type = yarg_typeid(iarg);
+  if (type == Y_VOID) {
+    return def;
+  }
+  if (type > Y_DOUBLE || yarg_rank(iarg) != 0) {
+    y_error("expecting nothing or an integer scalar");
+  }
+  return ygets_d(iarg);
+}
+
 /*---------------------------------------------------------------------------*/
 /* BUILTIN FUNCTIONS */
 
@@ -633,24 +680,27 @@ void Y_opk_init(int argc)
   opk_set_error_handler(error_handler);
 
 #define GET_GLOBAL(a) a##_index = yget_global(#a, 0)
+  GET_GLOBAL(atol);
   GET_GLOBAL(description);
   GET_GLOBAL(dims);
   GET_GLOBAL(evaluations);
   GET_GLOBAL(flags);
   GET_GLOBAL(gnorm);
   GET_GLOBAL(iterations);
+  GET_GLOBAL(lower);
+  GET_GLOBAL(maxiter);
   GET_GLOBAL(mem);
   GET_GLOBAL(name);
+  GET_GLOBAL(projections);
   GET_GLOBAL(reason);
   GET_GLOBAL(restarts);
-  GET_GLOBAL(projections);
+  GET_GLOBAL(rtol);
   GET_GLOBAL(single);
   GET_GLOBAL(size);
   GET_GLOBAL(status);
   GET_GLOBAL(step);
   GET_GLOBAL(task);
   GET_GLOBAL(upper);
-  GET_GLOBAL(lower);
 #undef GET_GLOBAL
 
 #define SET_GLOBAL_INT(a) set_global_int(#a, a)
@@ -869,3 +919,217 @@ void Y_opk_get_reason(int argc)
   if (argc != 1) y_error("expecting exactly one argument");
   push_string(opk_get_reason(ygets_l(0)));
 }
+
+/*---------------------------------------------------------------------------*/
+/* TRUST REGION */
+
+void Y_opk_gqtpar(int argc)
+{
+  double atol = 1E-8, rtol = 5E-2;
+  double delta = 0.0, lambda = 0.0, f = 0.0;
+  long lambda_index = -1, f_index = -1;
+  long iter_index = -1, status_index = -1;
+  long n, elsize, iter, maxiter = 7;
+  void *A, *b, *z, *wa1, *wa2;
+  long dims[Y_DIMSIZE];
+  int np = 0, type, iarg, status;
+  int A_iarg = -1, A_type, A_temp, A_full;
+  int b_iarg = -1, b_type;
+
+  /* Parse arguments. */
+  for (iarg = argc - 1; iarg >= 0; --iarg) {
+    long index = yarg_key(iarg);
+    if (index < 0L) {
+      /* Non-keyword argument. */
+      if (++np == 1) {
+        A_iarg = iarg;
+      } else if (np == 2) {
+        b_iarg = iarg;
+      } else if (np == 3) {
+        if ((delta = ygets_d(iarg)) <= 0.0) {
+          y_error("DELTA must be strictly greater than zero");
+        }
+      } else if (np == 4) {
+        lambda_index = yget_ref(iarg);
+        lambda = get_optional_double(iarg, lambda);
+        if (lambda  < 0.0) {
+          y_error("LAMBDA must be nonnegative");
+        }
+      } else if (np == 5) {
+        if ((f_index = yget_ref(iarg)) < 0L) {
+          y_error("argument F must be set with a variable reference");
+        }
+      } else if (np == 6) {
+        if ((iter_index = yget_ref(iarg)) < 0L) {
+          y_error("argument ITER must be set with a variable reference");
+        }
+      } else if (np == 7) {
+        if ((status_index = yget_ref(iarg)) < 0L) {
+          y_error("argument STATUS must be set with a variable reference");
+        }
+      } else {
+        y_error("too many arguments");
+      }
+    } else {
+      /* Keyword argument. */
+      --iarg;
+      if (index == atol_index) {
+        atol = get_optional_double(iarg, atol);
+        if (atol < 0) {
+          y_error("invalid value for ATOL keyword");
+        }
+      } else if (index == rtol_index) {
+        rtol = get_optional_double(iarg, rtol);
+        if (rtol < 0) {
+          y_error("invalid value for RTOL keyword");
+        }
+      } else if (index == maxiter_index) {
+        maxiter = get_optional_long(iarg, maxiter);
+        if (maxiter < 1) {
+          y_error("invalid value for MAXITER keyword");
+        }
+      } else {
+        y_error("unknown keyword");
+      }
+    }
+  }
+  if (np < 3) {
+    y_error("too few arguments");
+  }
+
+  /* Get the A and B arrays. */
+  A_type = yarg_typeid(A_iarg);
+  b_type = yarg_typeid(b_iarg);
+  if (A_type == Y_DOUBLE || b_type == Y_DOUBLE) {
+    type = Y_DOUBLE;
+    elsize = sizeof(double);
+  } else {
+    type = Y_FLOAT;
+    elsize = sizeof(float);
+  }
+  if (A_type != type) {
+    if (! IS_REAL(A_type)) {
+      y_error("bad data type for matrix A");
+    }
+    A_temp = TRUE;
+  } else {
+    A_temp = (yget_ref(A_iarg) < 0L);
+  }
+  if (b_type != type && ! IS_REAL(b_type)) {
+    y_error("bad data type for vector B");
+  }
+  if (type == Y_DOUBLE) {
+    b = ygeta_d(b_iarg, NULL, dims);
+  } else {
+    b = ygeta_f(b_iarg, NULL, dims);
+  }
+  if (dims[0] == 1L) {
+    n = dims[1];
+  } else if (dims[0] == 0L) {
+    n = 1L;
+  } else {
+    y_error("bad dimensions for vector B");
+    n = 0L; /* avoids compiler warnings */
+  }
+  if (type == Y_DOUBLE) {
+    A = ygeta_d(A_iarg, NULL, dims);
+  } else {
+    A = ygeta_f(A_iarg, NULL, dims);
+  }
+  if ((dims[0] == 0L && n == 1L) ||
+      (dims[0] == 2L && dims[1] == n && dims[2] == n)) {
+    A_full = TRUE;
+  } else {
+    A_full = FALSE;
+    if (dims[0] != 1L || dims[1] != n*(n + 1L)/2L) {
+      y_error("bad dimensions for matrix A (or incompatible with vector B)");
+    }
+  }
+  if (! A_temp || ! A_full) {
+    /* Allocate a new array A and copy its upper triangle part.
+     * Note:
+     *   - lower triangle: A(i,j)  i >= j
+     *   - upper triangle: A(i,j)  i <= j
+     */
+    long j1, j2;
+    dims[0] = 2;
+    dims[1] = n;
+    dims[2] = n;
+    if (type == Y_DOUBLE) {
+      double* dst = ypush_d(dims);
+      const double* src = (const double*)A;
+      if (A_full) {
+        for (j2 = 0; j2 < n; ++j2, dst += n, src += n) {
+          for (j1 = 0; j1 <= j2; ++j1) {
+            dst[j1] = src[j1];
+          }
+        }
+      } else {
+        for (j2 = 0; j2 < n; ++j2, dst += n, src += j2) {
+          for (j1 = 0; j1 <= j2; ++j1) {
+            dst[j1] = src[j1];
+          }
+        }
+      }
+      A = (void*)dst;
+    } else {
+      float* dst = ypush_f(dims);
+      const float* src = (const float*)A;
+      if (A_full) {
+        for (j2 = 0; j2 < n; ++j2, dst += n, src += n) {
+          for (j1 = 0; j1 <= j2; ++j1) {
+            dst[j1] = src[j1];
+          }
+        }
+      } else {
+        for (j2 = 0; j2 < n; ++j2, dst += n, src += j2) {
+          for (j1 = 0; j1 <= j2; ++j1) {
+            dst[j1] = src[j1];
+          }
+        }
+      }
+      A = (void*)dst;
+    }
+    yarg_swap(A_iarg + 1, 0);
+    yarg_drop(1);
+  }
+
+  /* Allocate workspaces on the stack. */
+  z = ypush_scratch(3*elsize*n, NULL);
+  wa1 = (void*)(((char*)z) +   elsize*n);
+  wa2 = (void*)(((char*)z) + 2*elsize*n);
+
+  /* Call More & Sorenson routine. */
+  dims[0] = 1;
+  dims[1] = n;
+  if (type == Y_FLOAT) {
+    float temp[2];
+    temp[0] = (float)lambda;
+    temp[1] = (float)f;
+    status = opk_sgqt(n, A, n, b, delta, rtol, atol, maxiter, &temp[0],
+                      (f_index >= 0L ? &temp[1] : NULL),
+                      ypush_f(dims), &iter, z, wa1, wa2);
+    lambda = temp[0];
+    f = temp[1];
+  } else {
+    status = opk_dgqt(n, A, n, b, delta, rtol, atol, maxiter, &lambda,
+                      (f_index >= 0L ? &f : NULL),
+                      ypush_d(dims), &iter, z, wa1, wa2);
+  }
+
+  /* Assign output variables. */
+  if (f_index >= 0L) {
+    assign_double(f_index, f);
+  }
+  if (lambda_index >= 0L) {
+    assign_double(lambda_index, lambda);
+  }
+  if (iter_index >= 0L) {
+    assign_long(iter_index, iter);
+  }
+  if (status_index >= 0L) {
+    assign_int(status_index, status);
+  }
+}
+
+/*---------------------------------------------------------------------------*/
