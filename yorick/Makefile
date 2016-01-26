@@ -20,8 +20,8 @@ TGT=$(DEFAULT_TGT)
 PKG_NAME=opky
 PKG_I=${srcdir}/opky.i
 
-OBJS=opky.o algebra.o fltvector.o dblvector.o error.o nlcg.o lnsrch.o \
-	 vmlmb.o cobyla.o ycobyla.o newuoa.o ynewuoa.o
+OBJS=opky.o algebra.o fltvector.o dblvector.o error.o gqtpar.o linalg.o \
+     nlcg.o lnsrch.o vmlmb.o cobyla.o ycobyla.o newuoa.o ynewuoa.o
 
 # change to give the executable a name other than yorick
 PKG_EXENAME=yorick
@@ -94,6 +94,9 @@ dummy-default:
 OPK_SRC = $(srcdir)/../src
 OPK_CFLAGS = $(CPPFLAGS) $(CFLAGS) -DNDEBUG -I$(OPK_SRC)
 OPK_HEADERS =  $(OPK_SRC)/optimpack.h $(OPK_SRC)/optimpack-private.h
+OPK_LINALG_HEADERS = $(OPK_HEADERS) $(OPK_SRC)/optimpack-linalg.h \
+    $(OPK_SRC)/linalg-single.h $(OPK_SRC)/linalg-double.h \
+    $(OPK_SRC)/linalg-common.h
 
 opky.o: $(srcdir)/opky.c $(OPK_SRC)/optimpack.h
 	$(CC) $(OPK_CFLAGS) -o $@ -c $<
@@ -108,6 +111,12 @@ dblvector.o: $(OPK_SRC)/simple_vector.c $(OPK_HEADERS)
 	$(CC) $(OPK_CFLAGS) -DSINGLE_PRECISION=0 -o $@ -c $<
 
 error.o: $(OPK_SRC)/error.c $(OPK_HEADERS)
+	$(CC) $(OPK_CFLAGS) -o $@ -c $<
+
+gqtpar.o:$(OPK_SRC)/gqtpar.c $(OPK_LINALG_HEADERS)
+	$(CC) $(OPK_CFLAGS) -o $@ -c $<
+
+linalg.o:$(OPK_SRC)/linalg.c $(OPK_LINALG_HEADERS)
 	$(CC) $(OPK_CFLAGS) -o $@ -c $<
 
 nlcg.o: $(OPK_SRC)/nlcg.c $(OPK_HEADERS)
