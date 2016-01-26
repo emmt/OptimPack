@@ -854,3 +854,125 @@ extern newuoa_init;
 newuoa_init;
 
 /*---------------------------------------------------------------------------*/
+/* TRUST REGION */
+
+local opk_gqtpar_info;
+extern opk_gqtpar;
+/* DOCUMENT   x = opk_gqtpar(A, b, delta, lambda, fx, iter, status);
+         or msg = opk_gqtpar_info(status);
+
+     Given an N by N symmetric matrix A, an N-vector B, and a strictly
+     positive number DELTA, this function determines a vector X which
+     approximately minimizes the quadratic function:
+
+         f(x) = (1/2)*x'.A.x + b'.x
+
+     subject to the Euclidean norm constraint:
+
+         norm(x) <= delta.
+
+     This function computes an approximation X and a Lagrange multiplier
+     LAMBDA such that either LAMBDA is zero and
+
+          norm(x) <= (1 + rtol)*delta,
+
+     or LAMBDA is positive and
+
+          abs(norm(x) - delta) <= rtol*delta.
+
+     If XSOL is the exact solution to the problem, the approximation X
+     satisfies:
+
+          f(x) <= ((1 - rtol)^2)*f(xsol)
+
+
+   ARGUMENTS:
+
+     A is a real 2-D array of dimension N by N or a 1-D array of length
+       N*(N+1)/2.  If A is 2-D, the full upper triangle of A must contain the
+       full upper triangle of the symmetric matrix A.  If A is 1-D, it must
+       contains the full upper triangle of the symmetric matrix A.
+
+     B is a real array of dimension N which specifies the linear term in the
+       quadratic approximation.
+
+     DELTA is a positive real value equal to the bound on the Euclidean norm
+       of X.
+
+     LAMBDA is a variable.  On entry, LAMBDA is an initial estimate of the
+       Lagrange multiplier for the constraint norm(x) <= delta.  If LAMBDA is
+       undefined on entry, LAMBDA = 0.0 is tried first.  On exit, LAMBDA
+       contains the final estimate of the multiplier.
+
+     FX is an optional variable.  On entry, FX need not be specified.  On
+       exit, FX is set to f(X) at the output X.
+
+     STATUS is an optional variable.  On entry STATUS need not be specified.
+       On exit STATUS is set as follows:
+
+          status = 1  The function value F(X) has the relative
+                    accuracy specified by RTOL.
+
+          status = 2  The function value F(X) has the absolute
+                    accuracy specified by ATOL.
+
+          status = 3  Rounding errors prevent further progress.
+                    On exit X is the best available approximation.
+
+          status = 4  Failure to converge after ITMAX iterations.
+                    On exit X is the best available approximation.
+
+        Function opk_gqtpar_info(STATUS) can be used to query the explanation
+        corresponding to the output value of STATUS.
+
+
+   KEYWORDS:
+
+     RTOL is the relative accuracy desired in the solution. Convergence
+       occurs if:
+
+            f(x) <= ((1 - rtol)^2)*f(xsol)
+
+       By default RTOL=0.05; otherwise the value for RTOL must be a
+       positive real scalar.
+
+     ATOL is the absolute accuracy desired in the solution. Convergence
+       occurs when:
+
+            norm(x) <= (1 + rtol)*delta
+
+            max(-f(x), -f(xsol)) <= atol
+
+       By default ATOL = 1E-8; otherwise the value for ATOL is a real scalar.
+
+     ITMAX is the maximum number of iterations.  By default ITMAX = 7;
+       otherwise the value for ITMAX is an integer scalar.
+
+
+   RESULT:
+
+     The result X is a real array of dimension N set to the final estimate of
+     the solution.
+
+
+   REFERENCES:
+
+     [1] Moré, J.J. & Sorensen, D.C., "Computing A Trust Region Step",
+         SIAM J. Sci. Stat. Comp., vol. 4, pp. 553-572, 1983.
+ */
+func opk_gqtpar_info(status)
+{
+  if (status == 1n) {
+    return "The function value has the relative accuracy specified by RTOL.";
+  } else if (status == 2n) {
+    return "The function value has the absolute accuracy specified by ATOL.";
+  } else if (status == 3n) {
+    return "Rounding errors prevent further progress, the result is the best available approximation.";
+  } else if (status == 4n) {
+    return "Failure to converge after ITMAX iterations, the result is the best available approximation.";
+  } else {
+    return string(0);
+  }
+}
+
+/*---------------------------------------------------------------------------*/
