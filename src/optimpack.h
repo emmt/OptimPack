@@ -1655,9 +1655,9 @@ opk_fmin_with_context(double (*f)(void *data, double x),
  *
  * @param par_ptr - If non `NULL`, the address of an integer variable used to
  *            store the Lagrange multiplier.  On entry `*par_ptr` is an initial
- *            estimate of the Lagrange multiplier for the constraint
- *            `norm(x) <= delta`.  On exit `*par_ptr` contains the final estimate
- *            of the multiplier. If `NULL`, the initial Lagrange parameter is 0.
+ *            estimate of the Lagrange multiplier for the constraint `norm(x)
+ *            <= delta`.  On exit `*par_ptr` contains the final estimate of the
+ *            multiplier.  If `NULL`, the initial Lagrange parameter is 0.
  *
  * @param f_ptr - If non `NULL`, the address of a floating point variable used
  *            to store the function value. On entry `*f_ptr` needs not be
