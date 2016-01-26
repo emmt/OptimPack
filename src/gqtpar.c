@@ -1,15 +1,24 @@
 /*
  * gqtpar.c --
  *
- * C-version of GQTPAR algorithm for "Computing A Trust Region Step" by Moré,
+ * GQTPAR algorithm for "Computing A Trust Region Step" by Moré,
  * J.J. & Sorensen, D.C. (SIAM J. Sci. Stat. Comp., 1983, vol. 4, pp. 553-572).
- * Based on dgqt.f and destsv.f from MINPACK-2 project.
  *
  *-----------------------------------------------------------------------------
  *
- * The OptimPack library is licensed under the MIT "Expat" License:
+ * Original FORTRAN code dgqt.f and destsv.f from MINPACK-2 project.
  *
- * Copyright (c) 2008-2014: Éric Thiébaut
+ * Copyright (C) 1993, Brett M. Averick and Jorge J. Moré (MINPACK-2 Project,
+ * Argonne National Laboratory and University of Minnesota).
+ *
+ * Copyright (C) 1994, Brett M. Averick, Richard Carter and Jorge J. Moré
+ * (MINPACK-2 Project, Argonne National Laboratory and University of
+ * Minnesota).
+ *
+ * C-version of GQTPAR is part of OptimPack library is licensed under the MIT
+ * "Expat" License.
+ *
+ * Copyright (c) 2008-2015, Éric Thiébaut
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -64,7 +73,7 @@ int
 OPK_GQT(const opk_index_t n, real_t a_[], const opk_index_t lda,
         const real_t b_[], const real_t delta,
         const real_t rtol, const real_t atol,
-        const opk_index_t itmax, real_t *par_ptr, real_t *f_ptr,
+        const opk_index_t itmax, real_t *par_ptr, real_t *fx_ptr,
         real_t x_[], opk_index_t *iter_ptr, real_t z_[],
         real_t wa1_[], real_t wa2_[])
 {
@@ -307,13 +316,13 @@ OPK_GQT(const opk_index_t n, real_t a_[], const opk_index_t lda,
       /* Compute the best current estimates for x and f. */
       par = parf;
       if (rednc) {
-        if (f_ptr != NULL) {
-          *f_ptr = -HALF*((rxnorm*rxnorm + par*delta*delta) - rznorm*rznorm);
+        if (fx_ptr != NULL) {
+          *fx_ptr = -HALF*((rxnorm*rxnorm + par*delta*delta) - rznorm*rznorm);
         }
         OPK_AXPY(n, alpha, z_, 1, x_, 1);
       } else {
-        if (f_ptr != NULL) {
-          *f_ptr = -HALF*(rxnorm*rxnorm + par*xnorm*xnorm);
+        if (fx_ptr != NULL) {
+          *fx_ptr = -HALF*(rxnorm*rxnorm + par*xnorm*xnorm);
         }
       }
 
@@ -352,7 +361,7 @@ OPK_GQT(const opk_index_t n, real_t a_[], const opk_index_t lda,
 #ifdef OPK_ESTSV
 
 real_t
-OPK_ESTSV(opk_index_t n, const real_t r_[],opk_index_t ldr, real_t z_[])
+OPK_ESTSV(opk_index_t n, const real_t r_[], opk_index_t ldr, real_t z_[])
 {
   /* Define some macros to mimic FORTRAN indexing. */
 #undef z
