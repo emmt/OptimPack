@@ -1156,13 +1156,13 @@ opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x,
  * @see opk_get_nlcg_stpmax(), opk_set_nlcg_stpmin_and_stpmax().
  */
 extern double
-opk_get_nlcg_step(opk_nlcg_t* opt);
+opk_get_nlcg_step(const opk_nlcg_t* opt);
 
 extern double
-opk_get_nlcg_gnorm(opk_nlcg_t* opt);
+opk_get_nlcg_gnorm(const opk_nlcg_t* opt);
 
 extern opk_status_t
-opk_get_nlcg_fmin(opk_nlcg_t* opt, double* fmin);
+opk_get_nlcg_fmin(const opk_nlcg_t* opt, double* fmin);
 
 extern opk_status_t
 opk_set_nlcg_fmin(opk_nlcg_t* opt, double fmin);
@@ -1171,22 +1171,22 @@ extern opk_status_t
 opk_unset_nlcg_fmin(opk_nlcg_t* opt);
 
 extern opk_index_t
-opk_get_nlcg_iterations(opk_nlcg_t* opt);
+opk_get_nlcg_iterations(const opk_nlcg_t* opt);
 
 extern opk_index_t
-opk_get_nlcg_restarts(opk_nlcg_t* opt);
+opk_get_nlcg_restarts(const opk_nlcg_t* opt);
 
 extern opk_index_t
-opk_get_nlcg_evaluations(opk_nlcg_t* opt);
+opk_get_nlcg_evaluations(const opk_nlcg_t* opt);
 
 extern unsigned int
-opk_get_nlcg_flags(opk_nlcg_t* opt);
+opk_get_nlcg_flags(const opk_nlcg_t* opt);
 
 extern opk_task_t
-opk_get_nlcg_task(opk_nlcg_t* opt);
+opk_get_nlcg_task(const opk_nlcg_t* opt);
 
 extern opk_status_t
-opk_get_nlcg_status(opk_nlcg_t* opt);
+opk_get_nlcg_status(const opk_nlcg_t* opt);
 
 /**
  * Get description of nonlinear conjugate gradient method.
@@ -1201,7 +1201,7 @@ extern size_t
 opk_get_nlcg_description(char* buf, size_t size, const opk_nlcg_t* opt);
 
 extern double
-opk_get_nlcg_beta(opk_nlcg_t* opt);
+opk_get_nlcg_beta(const opk_nlcg_t* opt);
 
 /**
  * Query NLCG optimizer parameters.

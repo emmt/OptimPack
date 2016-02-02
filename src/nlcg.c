@@ -537,19 +537,19 @@ opk_new_nlcg_optimizer(opk_vspace_t* vspace,
 }
 
 double
-opk_get_nlcg_step(opk_nlcg_t* opt)
+opk_get_nlcg_step(const opk_nlcg_t* opt)
 {
   return (opt == NULL ? -1.0 : opt->alpha);
 }
 
 double
-opk_get_nlcg_gnorm(opk_nlcg_t* opt)
+opk_get_nlcg_gnorm(const opk_nlcg_t* opt)
 {
   return (opt == NULL ? -1.0 : opt->gnorm);
 }
 
 opk_status_t
-opk_get_nlcg_fmin(opk_nlcg_t* opt, double* fmin)
+opk_get_nlcg_fmin(const opk_nlcg_t* opt, double* fmin)
 {
   if (opt == NULL) {
     return OPK_ILLEGAL_ADDRESS;
@@ -589,25 +589,25 @@ opk_unset_nlcg_fmin(opk_nlcg_t* opt)
 }
 
 opk_index_t
-opk_get_nlcg_iterations(opk_nlcg_t* opt)
+opk_get_nlcg_iterations(const opk_nlcg_t* opt)
 {
   return opt->iterations;
 }
 
 opk_index_t
-opk_get_nlcg_restarts(opk_nlcg_t* opt)
+opk_get_nlcg_restarts(const opk_nlcg_t* opt)
 {
   return opt->restarts;
 }
 
 opk_index_t
-opk_get_nlcg_evaluations(opk_nlcg_t* opt)
+opk_get_nlcg_evaluations(const opk_nlcg_t* opt)
 {
   return opt->evaluations;
 }
 
 unsigned int
-opk_get_nlcg_flags(opk_nlcg_t* opt)
+opk_get_nlcg_flags(const opk_nlcg_t* opt)
 {
   return (opt != NULL ? opt->flags : -1);
 }
@@ -665,19 +665,19 @@ opk_get_nlcg_description(char* buf, size_t size, const opk_nlcg_t* opt)
 }
 
 opk_task_t
-opk_get_nlcg_task(opk_nlcg_t* opt)
+opk_get_nlcg_task(const opk_nlcg_t* opt)
 {
   return opt->task;
 }
 
 opk_status_t
-opk_get_nlcg_status(opk_nlcg_t* opt)
+opk_get_nlcg_status(const opk_nlcg_t* opt)
 {
   return opt->status;
 }
 
 double
-opk_get_nlcg_beta(opk_nlcg_t* opt)
+opk_get_nlcg_beta(const opk_nlcg_t* opt)
 {
   return opt->beta;
 }
