@@ -84,9 +84,6 @@ static long step_index = -1L;
 static long task_index = -1L;
 static long upper_index = -1L;
 
-static char descr[OPK_MAX(OPK_NLCG_DESCRIPTION_MAX_SIZE,
-                          OPK_VMLMB_DESCRIPTION_MAX_SIZE)];
-
 static void push_string(const char *value);
 static void copy_dims(long dst[], const long src[]);
 static int same_dims(const long adims[], const long bdims[]);
@@ -118,25 +115,25 @@ struct _yopt_operations {
   long         (*get_evaluations)(yopt_instance_t* opt);
   long         (*get_restarts)(yopt_instance_t* opt);
   long         (*get_projections)(yopt_instance_t* opt);
-  const char*  (*get_name)(yopt_instance_t* opt);
-  const char*  (*get_description)(yopt_instance_t* opt);
+  size_t       (*get_name)(char* buf, size_t size, yopt_instance_t* opt);
+  size_t       (*get_description)(char* buf, size_t size, yopt_instance_t* opt);
   double       (*get_step)(yopt_instance_t* opt);
   double       (*get_gnorm)(yopt_instance_t* opt);
 };
 
-#define START(opt)             ((opt)->ops->start(opt))
-#define ITERATE(opt, fx)       ((opt)->ops->iterate(opt, fx))
-#define GET_TASK(opt)          ((opt)->ops->get_task(opt))
-#define GET_FLAGS(opt)         ((opt)->ops->get_flags(opt))
-#define GET_STATUS(opt)        ((opt)->ops->get_status(opt))
-#define GET_ITERATIONS(opt)    ((opt)->ops->get_iterations(opt))
-#define GET_EVALUATIONS(opt)   ((opt)->ops->get_evaluations(opt))
-#define GET_RESTARTS(opt)      ((opt)->ops->get_restarts(opt))
-#define GET_PROJECTIONS(opt)   ((opt)->ops->get_projections(opt))
-#define GET_NAME(opt)          ((opt)->ops->get_name(opt))
-#define GET_DESCRIPTION(opt)   ((opt)->ops->get_description(opt))
-#define GET_GNORM(opt)         ((opt)->ops->get_gnorm(opt))
-#define GET_STEP(opt)          ((opt)->ops->get_step(opt))
+#define START(opt)                       ((opt)->ops->start(opt))
+#define ITERATE(opt, fx)                 ((opt)->ops->iterate(opt, fx))
+#define GET_TASK(opt)                    ((opt)->ops->get_task(opt))
+#define GET_FLAGS(opt)                   ((opt)->ops->get_flags(opt))
+#define GET_STATUS(opt)                  ((opt)->ops->get_status(opt))
+#define GET_ITERATIONS(opt)              ((opt)->ops->get_iterations(opt))
+#define GET_EVALUATIONS(opt)             ((opt)->ops->get_evaluations(opt))
+#define GET_RESTARTS(opt)                ((opt)->ops->get_restarts(opt))
+#define GET_PROJECTIONS(opt)             ((opt)->ops->get_projections(opt))
+#define GET_NAME(opt, buf, siz)          ((opt)->ops->get_name(buf, siz, opt))
+#define GET_DESCRIPTION(opt, buf, siz)   ((opt)->ops->get_description(buf, siz, opt))
+#define GET_GNORM(opt)                   ((opt)->ops->get_gnorm(opt))
+#define GET_STEP(opt)                    ((opt)->ops->get_step(opt))
 
 struct _yopt_instance {
   long dims[Y_DIMSIZE];
@@ -181,9 +178,11 @@ yopt_print(void* ptr)
 {
   yopt_instance_t* opt = (yopt_instance_t*)ptr;
   char buffer[100];
-  y_print(GET_NAME(opt), FALSE);
+  GET_NAME(opt, buffer, sizeof(buffer));
+  y_print(buffer, FALSE);
   y_print(" implementing ", FALSE);
-  y_print(GET_DESCRIPTION(opt), FALSE);
+  GET_DESCRIPTION(opt, buffer, sizeof(buffer));
+  y_print(buffer, FALSE);
   sprintf(buffer, " (size=%ld, type=%s)",
           (long)opt->vspace->size,
           (opt->single ? "float" : "double"));
@@ -195,6 +194,7 @@ yopt_print(void* ptr)
 static void
 yopt_extract(void* ptr, char* member)
 {
+  char buffer[100];
   yopt_instance_t* opt = (yopt_instance_t*)ptr;
   long index = yget_global(member, 0);
   if (index == task_index) {
@@ -218,9 +218,11 @@ yopt_extract(void* ptr, char* member)
   } else if (index == flags_index) {
     ypush_long(GET_FLAGS(opt));
   } else if (index == description_index) {
-    push_string(GET_DESCRIPTION(opt));
+    GET_DESCRIPTION(opt, buffer, sizeof(buffer));
+    push_string(buffer);
   } else if (index == name_index) {
-    push_string(GET_NAME(opt));
+    GET_NAME(opt, buffer, sizeof(buffer));
+    push_string(buffer);
   } else if (index == size_index) {
     ypush_long(opt->vspace->size);
   } else if (index == dims_index) {
@@ -295,21 +297,16 @@ nlcg_get_projections(yopt_instance_t* opt)
   return 0L;
 }
 
-static const char*
-nlcg_get_name(yopt_instance_t* opt)
+static size_t
+nlcg_get_name(char* buf, size_t size, yopt_instance_t* opt)
 {
-  return "NLCG";
+  return opk_copy_string(buf, size, "NLCG");
 }
 
-static const char*
-nlcg_get_description(yopt_instance_t* opt)
+static size_t
+nlcg_get_description(char* buf, size_t size, yopt_instance_t* opt)
 {
-  opk_status_t status;
-  status = opk_get_nlcg_description(NLCG(opt->optimizer), descr);
-  if (status != OPK_SUCCESS) {
-    y_error(opk_get_reason(status));
-  }
-  return descr;
+  return opk_get_nlcg_description(buf, size, NLCG(opt->optimizer));
 }
 
 static double
@@ -399,21 +396,17 @@ vmlmb_get_projections(yopt_instance_t* opt)
   return opk_get_vmlmb_evaluations(VMLMB(opt->optimizer));
 }
 
-static const char*
-vmlmb_get_name(yopt_instance_t* opt)
+static size_t
+vmlmb_get_name(char* buf, size_t size, yopt_instance_t* opt)
 {
-  return opk_get_vmlmb_method_name(VMLMB(opt->optimizer));
+  return opk_copy_string(buf, size,
+                         opk_get_vmlmb_method_name(VMLMB(opt->optimizer)));
 }
 
-static const char*
-vmlmb_get_description(yopt_instance_t* opt)
+static size_t
+vmlmb_get_description(char* buf, size_t size, yopt_instance_t* opt)
 {
-  opk_status_t status;
-  status = opk_get_vmlmb_description(VMLMB(opt->optimizer), descr);
-  if (status != OPK_SUCCESS) {
-    y_error(opk_get_reason(status));
-  }
-  return descr;
+  return opk_get_vmlmb_description(buf, size, VMLMB(opt->optimizer));
 }
 
 static double
