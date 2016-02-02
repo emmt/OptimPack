@@ -944,7 +944,7 @@ opk_lnsrch_new_csrch(double ftol, double gtol, double xtol);
  *
  * @param ftol - Parameter of the first Wolfe condition.  Must be in the
  *               range (0,1/2); however a small value is recommended.
- * @param amin - Smallest Parameter of the first Wolfe condition.  Must be in
+ * @param amin - Smallest parameter of the first Wolfe condition.  Must be in
  *               the range (0,1); if larger of equal 1/2, a bisection step is
  *               always take (as in Armijo's rule).
  *
@@ -1378,7 +1378,7 @@ typedef struct _opk_vmlmb_options {
  * Create a reverse communication optimizer implementing a limited memory
  * quasi-Newton method.
  *
- * The optimzer may account for bound constraints.
+ * The optimizer may account for bound constraints.
  *
  * @param space  - The space to which belong the variables.
  * @param m      - The number of previous steps to memorize (`m` > 0).
@@ -1541,6 +1541,175 @@ opk_get_vmlmb_options(opk_vmlmb_options_t* dst, const opk_vmlmb_t* src);
  */
 extern opk_status_t
 opk_set_vmlmb_options(opk_vmlmb_t* dst, const opk_vmlmb_options_t* src);
+
+/** @} */
+
+/*---------------------------------------------------------------------------*/
+/* SIMPLE DRIVER FOR LIMITED MEMORY OPTIMIZATION */
+
+/**
+ * @addtogroup LimitedMemory
+ * @{
+ */
+
+/** Type of the variables in a optimization problem. */
+typedef enum {
+  OPK_FLOAT, OPK_DOUBLE
+} opk_type_t;
+
+/**
+ * Limited memory optimization algorithm.
+ *
+ * * `OPK_ALGORITHM_NLCG` is for nonlinear conjugate gradient.
+ *
+ * * `OPK_ALGORITHM_VMLMB` is for limited memory variable metric (possibly with
+ *    bounds).
+ *
+ */
+typedef enum {
+  OPK_ALGORITHM_NLCG, OPK_ALGORITHM_VMLMB
+} opk_algorithm_t;
+
+/** Opaque structure for limited memory optimizer. */
+typedef struct _opk_optimizer opk_optimizer_t;
+
+/**
+ * Create a reverse communication optimizer implementing a limited memory
+ * optimization method.
+ *
+ * This simple driver assumes that the variables and the gradient are stored as
+ * flat arrays of floating point values (`float` or `double`).  The implemented
+ * algorithms are suitable for large problems and smooth (that is to say
+ * differentiable) objective functions.
+ *
+ * Depending on the settings, optimization can be performed by an instance of
+ * the nonlinear conjugate gradient methods or an instance of the limited
+ * memory quasi-Newton (a.k.a. variable metric) methods.  Simple bound
+ * constraints can be taken into account (providing the variable metric method
+ * is selected).
+ *
+ * When no longer needed, the optimizer must be released with
+ * `opk_destroy_optimizer`.
+ *
+ * Typical usage is:
+ * <pre>
+ *     const int n = 100000;
+ *     const int type = OPK_FLOAT;
+ *     double fx;
+ *     float x[n];
+ *     float gx[n];
+ *     opk_optimizer_t* opt = opk_new_optimizer(OPK_ALGORITHM_VMLMB,
+ *                                              type, n, 0, 0,
+ *                                              OPK_BOUND_NONE, NULL,
+ *                                              OPK_BOUND_NONE, NULL,
+ *                                              NULL);
+ *     task = opk_start(opt, type, n, x);
+ *     for (;;) {
+ *         if (task == OPK_TASK_COMPUTE_FG) {
+ *              fx = f(x);
+ *              for (i = 0; i < n; ++i) {
+ *                  gx[i] = ...;
+ *              }
+ *          } else if (task == OPK_TASK_NEW_X) {
+ *              // a new iterate is available
+ *              fprintf(stdout, "iter=%ld, f(x)=%g, |g(x)|=%g\n",
+ *                      opk_get_iterations(opt), fx,
+ *                      opk_get_gnorm(opt));
+ *          } else {
+ *              break;
+ *          }
+ *          task = opk_iterate(opt, type, n, x, fx, gx);
+ *     }
+ *     if (task != OPK_TASK_FINAL_X) {
+ *         fprintf(stderr, "some error occured (%s)",
+ *                 opk_get_reason(opk_get_status(opt)));
+ *     }
+ *     opk_destroy_optimizer(opt);
+ * </pre>
+ *
+ * @param algorithm - The limited memory algorithm to use.
+ * @param type   - The type of the variable limited memory algorithm to use
+ *                 (`OPK_FLOAT` or `OPK_DOUBLE`).
+ * @param n      - The number of variables (`n` > 0).
+ * @param m      - The number of previous steps to memorize for the variable
+ *                 metric methods.  If `m` is less or equal zero, a default
+ *                 value is used; if `m` is larger than `n`, `m = n` is used.
+ * @param flags  - Bitwise algorithm flags.
+ * @param lower_type - The type of the lower bound.
+ * @param lower  - Optional lower bound for the variables.  Can be `NULL` if
+ *                 there are no lower bounds and `lower_type` is
+ *                 `OPK_BOUND_NONE`; otherwise must have the same type as the
+ *                 variables.
+ * @param upper_type - The type of the upper bound.
+ * @param upper  - Optional upper bound for the variables.  Can be `NULL` if
+ *                 there are no upper bounds and `upper_type` is
+ *                 `OPK_BOUND_NONE`; otherwise must have the same type as the
+ *                 variables.
+ * @param lnsrch - The line search method to use, can be `NULL` to use a default
+ *                 line search which depends on the optimization algorithm.
+ *
+ * @return The address of a new optimizer instance, or `NULL` in case of error.
+ *         In case of error, global variable `errno` may be `ENOMEM` if there
+ *         is not enough memory or `EINVAL` if one of the arguments is invalid
+ *         or `EFAULT` if the bounds are unexpectedly `NULL`.
+ *
+ */
+extern opk_optimizer_t *
+opk_new_optimizer(opk_algorithm_t algorithm, /* optimization algorithm */
+                  opk_type_t type, /* type of variables: OPK_FLOAT or OPK_DOUBLE */
+                  opk_index_t n,   /* number of variables */
+                  opk_index_t m,   /* number of memorized directions (m > 0, for quasi-Newton,
+                                      m = 0 for non-linear conjugate gradient) */
+                  unsigned int flags, /* algorithm flags */
+                  opk_bound_type_t lower_type, void* lower,
+                  opk_bound_type_t upper_type, void* upper,
+                  opk_lnsrch_t* lnschr);
+
+extern void
+opk_destroy_optimizer(opk_optimizer_t *opt);
+
+extern opk_task_t
+opk_start(opk_optimizer_t *opt, opk_type_t type, opk_index_t n,  void* x);
+
+extern opk_task_t
+opk_iterate(opk_optimizer_t *opt, opk_type_t type, opk_index_t n,
+            void* x, double f, void* g);
+
+extern opk_task_t
+opk_get_task(const opk_optimizer_t* opt);
+
+extern opk_status_t
+opk_get_status(const opk_optimizer_t* opt);
+
+extern opk_status_t
+opk_get_options(void* dst, const opk_optimizer_t* src);
+
+extern opk_status_t
+opk_set_options(opk_optimizer_t* dst, const void* src);
+
+extern unsigned int
+opk_get_flags(const opk_optimizer_t* opt);
+
+extern opk_index_t
+opk_get_iterations(const opk_optimizer_t* opt);
+
+extern opk_index_t
+opk_get_restarts(const opk_optimizer_t* opt);
+
+extern opk_index_t
+opk_get_evaluations(const opk_optimizer_t* opt);
+
+extern size_t
+opk_get_name(char* buf, size_t size, const opk_optimizer_t* opt);
+
+extern size_t
+opk_get_description(char* buf, size_t size, const opk_optimizer_t* opt);
+
+extern double
+opk_get_step(const opk_optimizer_t* opt);
+
+extern double
+opk_get_gnorm(const opk_optimizer_t* opt);
 
 /** @} */
 
