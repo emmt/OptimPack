@@ -1455,7 +1455,6 @@ opk_get_vmlmb_step(const opk_vmlmb_t* opt);
 extern double
 opk_get_vmlmb_gnorm(const opk_vmlmb_t* opt);
 
-
 /**
  * Get actual number of memorized steps.
  *
@@ -1465,13 +1464,59 @@ opk_get_vmlmb_gnorm(const opk_vmlmb_t* opt);
  *         with `m` the maximum number of memorized steps.
  */
 extern opk_index_t
-opk_get_vmlmb_mp(const opk_vmlmb_t* opt, opk_index_t k);
+opk_get_vmlmb_mp(const opk_vmlmb_t* opt, opk_index_t j);
 
+/**
+ * Get a given memorized variable change.
+ *
+ * Variable metric methods store variable and gradient changes for the few last
+ * steps to measure the effect of the Hessian.  Using pseudo-code notation the
+ * following `(s,y)` pairs are memorized:
+ * <pre>
+ * s[k-j] = x[k-j+1] - x[k-j]     // variable change
+ * y[k-j] = g[k-j+1] - g[k-j]     // gradient change
+ * </pre>
+ * with `x[k]` and `g[k]` the variables and corresponding gradient at `k`-th
+ * iteration and `j=1,...,mp` the relative index of the saved pair.
+ *
+ * @param opt - The VMLMB optimizer.
+ *
+ * @param j   - The index of the memorized pair to consider relative to the
+ *              last one.  Index `j` must be in the inclusive range `[0,mp]`
+ *              with `mp` the actual number of saved corrections.  The special
+ *              case `j = 0` corresponds to the next saved pair (which will be
+ *              overwritten at the end of the current iteration).  The other
+ *              cases, `j = 1,...,mp`, correspond to actually saved pairs.
+ *              Because the algorithm may be automatically restarted or may try
+ *              to save memory, the actual number of saved pairs `mp` may
+ *              change between iterations and has to be retrieved each time a
+ *              given save pair is queried.
+ *
+ * @return The variable difference `s[k-j]` where `k` is the current iteration
+ *         number, with `m` the maximum number of memorized steps.  `NULL` is
+ *         returned if `j` is out of bounds.
+ *
+ * @see opk_get_vmlmb_y, opk_get_vmlmb_mb.
+ */
 extern opk_vector_t*
-opk_get_vmlmb_s(const opk_vmlmb_t* opt, opk_index_t k);
+opk_get_vmlmb_s(const opk_vmlmb_t* opt, opk_index_t j);
 
+/**
+ * Get a given memorized gradient change.
+ *
+ * @param opt - The VMLMB optimizer.
+ * @param j   - The index of the memorized pair to consider relative to the
+ *              last one.  Index `j` must be in the inclusive range `[0,mp]`
+ *              with `mp` the actual number of saved corrections.
+ *
+ * @return The gradient difference `y[k-j]` where `k` is the current iteration
+ *         number, with `m` the maximum number of memorized steps.  `NULL` is
+ *         returned if `j` is out of bounds.
+ *
+ * @see opk_get_vmlmb_s, opk_get_vmlmb_mb.
+ */
 extern opk_vector_t*
-opk_get_vmlmb_y(const opk_vmlmb_t* opt, opk_index_t k);
+opk_get_vmlmb_y(const opk_vmlmb_t* opt, opk_index_t j);
 
 /**
  * Query VMLMB optimizer parameters.

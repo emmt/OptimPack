@@ -827,15 +827,15 @@ opk_get_vmlmb_gnorm(const opk_vmlmb_t* opt)
 }
 
 opk_index_t
-opk_get_vmlmb_mp(const opk_vmlmb_t* opt, opk_index_t k)
+opk_get_vmlmb_mp(const opk_vmlmb_t* opt, opk_index_t j)
 {
   return (opt == NULL ? 0 : opt->mp);
 }
 
 opk_vector_t*
-opk_get_vmlmb_s(const opk_vmlmb_t* opt, opk_index_t k)
+opk_get_vmlmb_s(const opk_vmlmb_t* opt, opk_index_t j)
 {
-  return (0 <= k && opt != NULL && k <= opt->mp ? opt->s[slot(opt, k)] : NULL);
+  return (0 <= j && opt != NULL && j <= opt->mp ? opt->s[slot(opt, j)] : NULL);
 }
 
 opk_vector_t*
