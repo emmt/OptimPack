@@ -1455,6 +1455,18 @@ opk_get_vmlmb_step(const opk_vmlmb_t* opt);
 extern double
 opk_get_vmlmb_gnorm(const opk_vmlmb_t* opt);
 
+
+/**
+ * Get actual number of memorized steps.
+ *
+ * @param opt - The VMLMB optimizer.
+ *
+ * @return The actual number of memorized steps which is in the range `[0,m]`,
+ *         with `m` the maximum number of memorized steps.
+ */
+extern opk_index_t
+opk_get_vmlmb_mp(const opk_vmlmb_t* opt, opk_index_t k);
+
 extern opk_vector_t*
 opk_get_vmlmb_s(const opk_vmlmb_t* opt, opk_index_t k);
 
