@@ -736,20 +736,20 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
 }
 
 unsigned int
-opk_get_vmlmb_flags(opk_vmlmb_t* opt)
+opk_get_vmlmb_flags(const opk_vmlmb_t* opt)
 {
   return opt->flags;
 }
 
 
 opk_vmlmb_method_t
-opk_get_vmlmb_method(opk_vmlmb_t* opt)
+opk_get_vmlmb_method(const opk_vmlmb_t* opt)
 {
   return opt->method;
 }
 
 const char*
-opk_get_vmlmb_method_name(opk_vmlmb_t* opt)
+opk_get_vmlmb_method_name(const opk_vmlmb_t* opt)
 {
   switch (opt->method) {
   case OPK_LBFGS: return "VMLM/L-BFGS";
@@ -785,55 +785,55 @@ opk_get_vmlmb_description(char* buf, size_t size, const opk_vmlmb_t* opt)
 }
 
 opk_task_t
-opk_get_vmlmb_task(opk_vmlmb_t* opt)
+opk_get_vmlmb_task(const opk_vmlmb_t* opt)
 {
   return opt->task;
 }
 
 opk_status_t
-opk_get_vmlmb_status(opk_vmlmb_t* opt)
+opk_get_vmlmb_status(const opk_vmlmb_t* opt)
 {
   return opt->status;
 }
 
 opk_index_t
-opk_get_vmlmb_iterations(opk_vmlmb_t* opt)
+opk_get_vmlmb_iterations(const opk_vmlmb_t* opt)
 {
   return opt->iterations;
 }
 
 opk_index_t
-opk_get_vmlmb_evaluations(opk_vmlmb_t* opt)
+opk_get_vmlmb_evaluations(const opk_vmlmb_t* opt)
 {
   return opt->evaluations;
 }
 
 opk_index_t
-opk_get_vmlmb_restarts(opk_vmlmb_t* opt)
+opk_get_vmlmb_restarts(const opk_vmlmb_t* opt)
 {
   return opt->restarts;
 }
 
 double
-opk_get_vmlmb_step(opk_vmlmb_t* opt)
+opk_get_vmlmb_step(const opk_vmlmb_t* opt)
 {
   return (opt == NULL ? -1.0 : opt->stp);
 }
 
 double
-opk_get_vmlmb_gnorm(opk_vmlmb_t* opt)
+opk_get_vmlmb_gnorm(const opk_vmlmb_t* opt)
 {
   return (opt == NULL ? -1.0 : opt->gnorm);
 }
 
 opk_vector_t*
-opk_get_vmlmb_s(opk_vmlmb_t* opt, opk_index_t k)
+opk_get_vmlmb_s(const opk_vmlmb_t* opt, opk_index_t k)
 {
   return (0 <= k && k <= opt->mp ? opt->s[slot(opt, k)] : NULL);
 }
 
 opk_vector_t*
-opk_get_vmlmb_y(opk_vmlmb_t* opt, opk_index_t k)
+opk_get_vmlmb_y(const opk_vmlmb_t* opt, opk_index_t k)
 {
   return (0 <= k && k <= opt->mp ? opt->y[slot(opt, k)] : NULL);
 }
