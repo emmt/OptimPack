@@ -299,6 +299,19 @@ opk_get_reason(opk_status_t status);
 extern opk_status_t
 opk_guess_status();
 
+/**
+ * Copy a string.
+ *
+ * @param dst  - The destination buffer to copy the soruce (can be `NULL`).
+ * @param size - The number of available bytes in `buf`.
+ * @param src  - The source string; `NULL` is considered as being the
+ *               same as an empty string "".
+ * @return The minimum number of bytes required to store the source
+ *         string (including the terminating '\0' character).
+ */
+extern size_t
+opk_copy_string(char* dst, size_t size, const char* src);
+
 /*---------------------------------------------------------------------------*/
 /* DATA TYPES */
 
@@ -1175,9 +1188,17 @@ opk_get_nlcg_task(opk_nlcg_t* opt);
 extern opk_status_t
 opk_get_nlcg_status(opk_nlcg_t* opt);
 
-#define OPK_NLCG_DESCRIPTION_MAX_SIZE 80
-extern opk_status_t
-opk_get_nlcg_description(opk_nlcg_t* opt, char* str);
+/**
+ * Get description of nonlinear conjugate gradient method.
+ *
+ * @param opt - The optimizer.
+ * @param buf - A string buffer to copy the description (can be `NULL`).
+ * @param size - The number of available bytes in `buf`.
+ * @return The minimum number of bytes required to store the description
+ *         (including the terminating '\0' character).
+ */
+extern size_t
+opk_get_nlcg_description(char* buf, size_t size, const opk_nlcg_t* opt);
 
 extern double
 opk_get_nlcg_beta(opk_nlcg_t* opt);
@@ -1407,9 +1428,17 @@ opk_get_vmlmb_task(opk_vmlmb_t* opt);
 extern opk_status_t
 opk_get_vmlmb_status(opk_vmlmb_t* opt);
 
-#define OPK_VMLMB_DESCRIPTION_MAX_SIZE 80
-extern opk_status_t
-opk_get_vmlmb_description(opk_vmlmb_t* opt, char* str);
+/**
+ * Get description of algorithm implemented by VMLMB.
+ *
+ * @param opt - The optimizer.
+ * @param buf - A string buffer to copy the description (can be `NULL`).
+ * @param size - The number of available bytes in `buf`.
+ * @return The minimum number of bytes required to store the description
+ *         (including the terminating '\0' character).
+ */
+extern size_t
+opk_get_vmlmb_description(char* buf, size_t size, const opk_vmlmb_t* opt);
 
 extern opk_index_t
 opk_get_vmlmb_iterations(opk_vmlmb_t* opt);

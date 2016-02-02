@@ -759,26 +759,29 @@ opk_get_vmlmb_method_name(opk_vmlmb_t* opt)
   }
 }
 
-opk_status_t
-opk_get_vmlmb_description(opk_vmlmb_t* opt, char* str)
+size_t
+opk_get_vmlmb_description(char* buf, size_t size, const opk_vmlmb_t* opt)
 {
+  char str[80];
+
   switch (opt->method) {
 
   case OPK_LBFGS:
     sprintf(str, "variable metric method with %ld memorized step(s)",
             (long)opt->m);
-    return OPK_SUCCESS;
+    break;
 
   case OPK_VMLMB:
   case OPK_BLMVM:
     sprintf(str, "variable metric method with %ld memorized step(s) and bounds",
             (long)opt->m);
-    return OPK_SUCCESS;
+    break;
 
   default:
     strcat(str, "*** unknown method ***");
-    return OPK_CORRUPTED_WORKSPACE;
   }
+
+  return opk_copy_string(buf, size, str);
 }
 
 opk_task_t

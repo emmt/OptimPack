@@ -29,10 +29,34 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
 #include <errno.h>
 
 #include "optimpack.h"
+
+extern size_t
+opk_copy_string(char* dst, size_t size, const char* src)
+{
+  size_t length = (src == NULL || src[0] == '\0' ? 0 : strlen(src));
+  if (dst != NULL) {
+    if (size > length) {
+      if (length > 0) {
+        memcpy(dst, src, length + 1);
+      } else {
+        dst[0] = '\0';
+      }
+    } else {
+      if (size > 1) {
+        memcpy(dst, src, size - 1);
+      }
+      if (size > 0) {
+        dst[size - 1] = '\0';
+      }
+    }
+  }
+  return length + 1;
+}
 
 static void
 default_error_handler(const char* message)

@@ -612,12 +612,14 @@ opk_get_nlcg_flags(opk_nlcg_t* opt)
   return (opt != NULL ? opt->flags : -1);
 }
 
-opk_status_t
-opk_get_nlcg_description(opk_nlcg_t* opt, char* str)
+size_t
+opk_get_nlcg_description(char* buf, size_t size, const opk_nlcg_t* opt)
 {
+  char str[80];
   int and;
-  if (opt == NULL || str == NULL) {
-    return OPK_ILLEGAL_ADDRESS;
+
+  if (opt == NULL || (buf == NULL && size > 0)) {
+    return 0;
   }
   switch (opt->flags & 0xff) {
   case OPK_NLCG_FLETCHER_REEVES:
@@ -645,7 +647,7 @@ opk_get_nlcg_description(opk_nlcg_t* opt, char* str)
     strcpy(str, "Hager & Zhang");
     break;
   default:
-    *str = 0;
+    str[0] = '\0';
     return OPK_CORRUPTED_WORKSPACE;
   }
   strcat(str, " updates");
@@ -659,7 +661,7 @@ opk_get_nlcg_description(opk_nlcg_t* opt, char* str)
     strcat(str, (and ? " and" : " with"));
     strcat(str, " Shanno & Phua step size");
   }
-  return OPK_SUCCESS;
+  return opk_copy_string(buf, size, str);
 }
 
 opk_task_t
