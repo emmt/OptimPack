@@ -15,6 +15,7 @@
 #include <strings.h>
 #include <time.h>
 
+#define DESCRIPTION_MAX_SIZE 128
 #define MAXLINE 512
 #define VERBOSE 0
 
@@ -734,8 +735,8 @@ int MAINENTRY(void)
   if (algorithm == VMLMB) {
     printf("(mem=%d)\n", OPK_MIN(CUTEst_nvar, mem));
   } else {
-    char temp[OPK_NLCG_DESCRIPTION_MAX_SIZE];
-    opk_get_nlcg_description(nlcg, temp);
+    char temp[DESCRIPTION_MAX_SIZE];
+    opk_get_nlcg_description(temp, sizeof(temp), nlcg);
     printf("(%s)\n", temp);
   }
   printf("#                  Problem = %-s\n", pname);
