@@ -40,6 +40,10 @@
 
 #include "optimpack-private.h"
 
+#define CHECK_BOUND_TYPE(t) ((t) == OPK_BOUND_NONE || \
+                             (t) == OPK_BOUND_SCALAR || \
+                             (t) == OPK_BOUND_VECTOR)
+
 /*---------------------------------------------------------------------------*/
 
 typedef struct _operations operations_t;
@@ -363,6 +367,17 @@ opk_new_optimizer(opk_algorithm_t algorithm, /* optimization algorithm */
     return NULL;
   }
 
+  /* Check consistency of bound settings. */
+  if (! CHECK_BOUND_TYPE(lower_type) || ! CHECK_BOUND_TYPE(upper_type)) {
+    errno = EINVAL;
+    return NULL;
+  }
+  if ((lower_type == OPK_BOUND_NONE) != (lower == NULL) ||
+      (upper_type == OPK_BOUND_NONE) != (upper == NULL)) {
+    errno = EFAULT;
+    return NULL;
+  }
+
   /* Check algorithm and bounds. */
   if (algorithm == OPK_ALGORITHM_NLCG) {
     if (lower_type != OPK_BOUND_NONE ||
@@ -371,11 +386,6 @@ opk_new_optimizer(opk_algorithm_t algorithm, /* optimization algorithm */
       return NULL;
     }
   } else if (algorithm == OPK_ALGORITHM_VMLMB) {
-    if ((lower_type != OPK_BOUND_NONE && lower == NULL) ||
-        (upper_type != OPK_BOUND_NONE && upper == NULL)) {
-      errno = EFAULT;
-      return NULL;
-    }
     if (m < 1) {
       /* Default memory parameter. */
       m = 3;
