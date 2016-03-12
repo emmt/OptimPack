@@ -963,12 +963,12 @@ opk_lnsrch_new_backtrack(double ftol, double amin);
  * J. Optim. <b>10</b>, 1196-1211 (2000).
  *
  * The parameters used in the SPG2 paper:
- * <pre>
+ * ~~~~~{.cpp}
  * m = 10
  * ftol = 1E-4
  * sigma1 = 0.1
  * sigma2 = 0.9
- * </pre>
+ * ~~~~~
  *
  * With {@code m = 1}, this line search method is equivalent to Armijo's line
  * search except that it attempts to use quadratic interpolation rather than
@@ -1087,9 +1087,9 @@ typedef struct _opk_nlcg opk_nlcg_t;
  * specified by the members `gatol` and `grtol` of this structure.  The
  * convergence of the non-linear convergence gradient (NLCG) method is defined
  * by:
- * <pre>
+ * ~~~~~{.cpp}
  * ||g|| <= max(0, gatol, grtol*||ginit||)
- * </pre>
+ * ~~~~~
  * where `||g||` is the Euclidean norm of the current gradient `g`, `||ginit||`
  * is the Euclidean norm of the initial gradient `ginit` while `gatol` and
  * `grtol` are absolute and relative thresholds.
@@ -1097,9 +1097,9 @@ typedef struct _opk_nlcg opk_nlcg_t;
  * During a line search, the step is constrained to be within `stpmin` and
  * `stpmax` times the lenght of the first step.  The relative bounds must be
  * such that:
- * <pre>
+ * ~~~~~{.cpp}
  * 0 <= stpmin < stpmax
- * </pre>
+ * ~~~~~
  */
 typedef struct _opk_nlcg_options {
   double delta;   /**< Relative size for a small step. */
@@ -1444,6 +1444,10 @@ opk_box_get_step_limits(double* smin1, double* smin2, double *smax,
 /**
  * @addtogroup VariableMetric
  * @{
+ *
+ * Variable metric methods, aslo known as quasi-Newtoon methods, make
+ * use of the previous steps and gradint changes to estimate an
+ * approximation of the inverse Hessian of the objective function.
  */
 
 /** Opaque type for a variable metric optimizer. */
@@ -1451,9 +1455,9 @@ typedef struct _opk_vmlmb opk_vmlmb_t;
 
 /** Rules for scaling the inverse Hessian approximation. */
 typedef enum {
-  OPK_SCALING_NONE             = 0,
-  OPK_SCALING_OREN_SPEDICATO   = 1, /**< gamma = <s,y>/<y,y> */
-  OPK_SCALING_BARZILAI_BORWEIN = 2  /**< gamma = <s,s>/<s,y> */
+  OPK_SCALING_NONE             = 0, /**< No-scaling. */
+  OPK_SCALING_OREN_SPEDICATO   = 1, /**< Scaling by: {@code gamma = (s'.y)/(y'.y)} */
+  OPK_SCALING_BARZILAI_BORWEIN = 2  /**< Scaling by: {@code gamma = (s'.s)/(s'.y)} */
 } opk_bfgs_scaling_t;
 
 /** Structure used to store the settings of a VMLMB optimizer. */
@@ -1570,10 +1574,10 @@ opk_get_vmlmb_mp(const opk_vmlmb_t* opt);
  * Variable metric methods store variable and gradient changes for the few last
  * steps to measure the effect of the Hessian.  Using pseudo-code notation the
  * following `(s,y)` pairs are memorized:
- * <pre>
+ * ~~~~~{.cpp}
  * s[k-j] = x[k-j+1] - x[k-j]     // variable change
  * y[k-j] = g[k-j+1] - g[k-j]     // gradient change
- * </pre>
+ * ~~~~~
  * with `x[k]` and `g[k]` the variables and corresponding gradient at `k`-th
  * iteration and `j=1,...,mp` the relative index of the saved pair.
  *
@@ -1652,20 +1656,15 @@ opk_set_vmlmb_options(opk_vmlmb_t* dst, const opk_vmlmb_options_t* src);
 
 /** Type of the variables in a optimization problem. */
 typedef enum {
-  OPK_FLOAT, OPK_DOUBLE
+  OPK_FLOAT, /**< Variables are single precision floating point numbers. */
+  OPK_DOUBLE /**< Variables are double precision floating point numbers. */
 } opk_type_t;
 
-/**
- * Limited memory optimization algorithm.
- *
- * * `OPK_ALGORITHM_NLCG` is for nonlinear conjugate gradient.
- *
- * * `OPK_ALGORITHM_VMLMB` is for limited memory variable metric (possibly with
- *    bounds).
- *
- */
+/** Limited memory optimization algorithm. */
 typedef enum {
-  OPK_ALGORITHM_NLCG, OPK_ALGORITHM_VMLMB
+  OPK_ALGORITHM_NLCG, /**< Nonlinear conjugate gradient. */
+  OPK_ALGORITHM_VMLMB /**< Limited memory variable metric (possibly with
+                       *   bounds). */
 } opk_algorithm_t;
 
 /** Opaque structure for limited memory optimizer. */
@@ -1687,47 +1686,47 @@ typedef struct _opk_optimizer opk_optimizer_t;
  * is selected).
  *
  * When no longer needed, the optimizer must be released with
- * `opk_destroy_optimizer`.
+ * {@link opk_destroy_optimizer}.
  *
  * Typical usage is:
- * <pre>
- *     const int n = 100000;
- *     const int type = OPK_FLOAT;
- *     double fx;
- *     float x[n];
- *     float gx[n];
- *     opk_optimizer_t* opt = opk_new_optimizer(OPK_ALGORITHM_VMLMB,
- *                                              type, n, 0, 0,
- *                                              OPK_BOUND_NONE, NULL,
- *                                              OPK_BOUND_NONE, NULL,
- *                                              NULL);
- *     task = opk_start(opt, type, n, x);
- *     for (;;) {
- *         if (task == OPK_TASK_COMPUTE_FG) {
- *              fx = f(x);
- *              for (i = 0; i < n; ++i) {
- *                  gx[i] = ...;
- *              }
- *          } else if (task == OPK_TASK_NEW_X) {
- *              // a new iterate is available
- *              fprintf(stdout, "iter=%ld, f(x)=%g, |g(x)|=%g\n",
- *                      opk_get_iterations(opt), fx,
- *                      opk_get_gnorm(opt));
- *          } else {
- *              break;
+ * ~~~~~{.cpp}
+ * const int n = 100000;
+ * const int type = OPK_FLOAT;
+ * double fx;
+ * float x[n];
+ * float gx[n];
+ * opk_optimizer_t* opt = opk_new_optimizer(OPK_ALGORITHM_VMLMB,
+ *                                          type, n, 0, 0,
+ *                                          OPK_BOUND_NONE, NULL,
+ *                                          OPK_BOUND_NONE, NULL,
+ *                                          NULL);
+ * task = opk_start(opt, type, n, x);
+ * for (;;) {
+ *     if (task == OPK_TASK_COMPUTE_FG) {
+ *          fx = f(x);
+ *          for (i = 0; i < n; ++i) {
+ *              gx[i] = ...;
  *          }
- *          task = opk_iterate(opt, type, n, x, fx, gx);
- *     }
- *     if (task != OPK_TASK_FINAL_X) {
- *         fprintf(stderr, "some error occured (%s)",
- *                 opk_get_reason(opk_get_status(opt)));
- *     }
- *     opk_destroy_optimizer(opt);
- * </pre>
+ *      } else if (task == OPK_TASK_NEW_X) {
+ *          // a new iterate is available
+ *          fprintf(stdout, "iter=%ld, f(x)=%g, |g(x)|=%g\n",
+ *                  opk_get_iterations(opt), fx,
+ *                  opk_get_gnorm(opt));
+ *      } else {
+ *          break;
+ *      }
+ *      task = opk_iterate(opt, type, n, x, fx, gx);
+ * }
+ * if (task != OPK_TASK_FINAL_X) {
+ *     fprintf(stderr, "some error occured (%s)",
+ *             opk_get_reason(opk_get_status(opt)));
+ * }
+ * opk_destroy_optimizer(opt);
+ * ~~~~~
  *
  * @param algorithm - The limited memory algorithm to use.
  * @param type   - The type of the variable limited memory algorithm to use
- *                 (`OPK_FLOAT` or `OPK_DOUBLE`).
+ *                 ({@link OPK_FLOAT} or {@link OPK_DOUBLE}).
  * @param n      - The number of variables (`n` > 0).
  * @param m      - The number of previous steps to memorize for the variable
  *                 metric methods.  If `m` is less or equal zero, a default
@@ -1735,13 +1734,13 @@ typedef struct _opk_optimizer opk_optimizer_t;
  * @param flags  - Bitwise algorithm flags.
  * @param lower_type - The type of the lower bound.
  * @param lower  - Optional lower bound for the variables.  Can be `NULL` if
- *                 there are no lower bounds and `lower_type` is
- *                 `OPK_BOUND_NONE`; otherwise must have the same type as the
+ *                 there are no lower bounds and `lower_type` is {@link
+ *                 OPK_BOUND_NONE}; otherwise must have the same type as the
  *                 variables.
  * @param upper_type - The type of the upper bound.
  * @param upper  - Optional upper bound for the variables.  Can be `NULL` if
- *                 there are no upper bounds and `upper_type` is
- *                 `OPK_BOUND_NONE`; otherwise must have the same type as the
+ *                 there are no upper bounds and `upper_type` is {@link
+ *                 OPK_BOUND_NONE}; otherwise must have the same type as the
  *                 variables.
  * @param lnsrch - The line search method to use, can be `NULL` to use a default
  *                 line search which depends on the optimization algorithm.
@@ -1763,19 +1762,73 @@ opk_new_optimizer(opk_algorithm_t algorithm, /* optimization algorithm */
                   opk_bound_type_t upper_type, void* upper,
                   opk_lnsrch_t* lnschr);
 
+/**
+ * Destroy a reverse communication optimizer implementing a limited memory
+ * optimization method.
+ *
+ * This function must be called when the optimizer is no longer in use.  It
+ * reduces the reference count of the optimizer eventually freeing any
+ * associated ressources.
+ *
+ * @param opt - An optimizer created by {@link #opk_new_optimizer}.
+ */
 extern void
 opk_destroy_optimizer(opk_optimizer_t *opt);
 
+/**
+ * Start the optimization with given initial variables.
+ *
+ * @param opt  - An optimizer created by {@link #opk_new_optimizer}.
+ * @param type - The type of variables.
+ * @param n    - The number of variables.
+ * @param x    - The variables.
+ *
+ * @return An integer indicating the next thing to do for the caller.
+ *         Unless an error occured, it should be {@link OPK_TASK_COMPUTE_FG}.
+ */
 extern opk_task_t
-opk_start(opk_optimizer_t *opt, opk_type_t type, opk_index_t n,  void* x);
+opk_start(opk_optimizer_t *opt, opk_type_t type, opk_index_t n, void* x);
 
+/**
+ * Proceed with next optimization step.
+ *
+ * Note that the variables must not be changed by the caller after
+ * calling {@link opk_start} and between calls to {@link opk_iterate}.
+ *
+ * @param opt  - An optimizer created by {@link #opk_new_optimizer}.
+ * @param type - The type of variables.
+ * @param n    - The number of variables.
+ * @param x    - The current variables.
+ * @param f    - The value of the objective function at the current variables.
+ * @param g    - The gradient of the objective function at the current
+ *               variables.
+ *
+ * @return An integer indicating the next thing to do for the caller.
+ */
 extern opk_task_t
 opk_iterate(opk_optimizer_t *opt, opk_type_t type, opk_index_t n,
             void* x, double f, void* g);
 
+/**
+ * Get the current pending task.
+ *
+ * @param opt  - An optimizer created by {@link #opk_new_optimizer}.
+ *
+ * @return The current pending task.
+ */
 extern opk_task_t
 opk_get_task(const opk_optimizer_t* opt);
 
+/**
+ * Get the current optimizer status.
+ *
+ * This function is useful to figure out which kind of problem occured when
+ * the pending task is {@link OPK_TASK_WARNING} or {@link OPK_TASK_ERROR}.
+ *
+ * @param opt  - An optimizer created by {@link #opk_new_optimizer}.
+ *
+ * @return The current optimizer status.
+ */
 extern opk_status_t
 opk_get_status(const opk_optimizer_t* opt);
 
