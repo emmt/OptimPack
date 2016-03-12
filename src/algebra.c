@@ -634,8 +634,8 @@ opk_box_get_free_variables(opk_vector_t* dst,
                                 d, orient);
 }
 
-extern opk_status_t
-opk_box_get_step_limits(double* smin, double* wolfe, double *smax,
+opk_status_t
+opk_box_get_step_limits(double* smin1, double* smin2, double *smax,
                         const opk_vector_t* x,
                         const opk_bound_t* xl,
                         const opk_bound_t* xu,
@@ -660,7 +660,7 @@ opk_box_get_step_limits(double* smin, double* wolfe, double *smax,
   if (space->ops->boxsteplimits == NULL) {
     return OPK_NOT_IMPLEMENTED;
   }
-  return space->ops->boxsteplimits(space, smin, wolfe, smax,
+  return space->ops->boxsteplimits(space, smin1, smin2, smax,
                                    x, lower, upper, type, d, orient);
 }
 
