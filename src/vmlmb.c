@@ -124,7 +124,7 @@ struct _opk_vmlmb {
   double gnorm;            /**< Euclidean norm of the (projected) gradient at
                                 the last tested step. */
   double stp;              /**< Current step length. */
-  double stpmin;           /**< Relative mimimum step length. */
+  double stpmin;           /**< Relative minimum step length. */
   double stpmax;           /**< Relative maximum step length. */
   double bsmin;            /**< Step size to the first encountered bound. */
   opk_vspace_t* vspace;    /**< Variable space. */
@@ -156,7 +156,7 @@ struct _opk_vmlmb {
   double gamma;            /**< Scale factor to approximate inverse Hessian. */
   opk_vector_t** s;        /**< Storage for variable differences. */
   opk_vector_t** y;        /**< Storage for gradient differences. */
-  double* beta;            /**< Workspace to save <d,s>/<s,y> */
+  double* alpha;            /**< Workspace to save <d,s>/<s,y> */
   double* rho;             /**< Workspace to save 1/<s,y> */
   opk_index_t m;           /**< Maximum number of memorized steps. */
   opk_index_t mp;          /**< Actual number of memorized steps
@@ -243,7 +243,7 @@ opk_new_vmlmb_optimizer(opk_vspace_t* space,
                         opk_lnsrch_t* lnsrch)
 {
   opk_vmlmb_t* opt;
-  size_t s_offset, y_offset, beta_offset, rho_offset, size;
+  size_t s_offset, y_offset, alpha_offset, rho_offset, size;
   opk_index_t k;
   int bounds;
 
@@ -292,17 +292,17 @@ opk_new_vmlmb_optimizer(opk_vspace_t* space,
   /* Allocate enough memory for the workspace and its arrays. */
   s_offset = ROUND_UP(sizeof(opk_vmlmb_t), sizeof(opk_vector_t*));
   y_offset = s_offset + m*sizeof(opk_vector_t*);
-  beta_offset = ROUND_UP(y_offset + m*sizeof(opk_vector_t*), sizeof(double));
-  rho_offset = beta_offset + m*sizeof(double);
+  alpha_offset = ROUND_UP(y_offset + m*sizeof(opk_vector_t*), sizeof(double));
+  rho_offset = alpha_offset + m*sizeof(double);
   size = rho_offset + m*sizeof(double);
   opt = (opk_vmlmb_t*)opk_allocate_object(finalize_vmlmb, size);
   if (opt == NULL) {
     return NULL;
   }
-  opt->s      = ADDRESS(opk_vector_t*, opt,    s_offset);
-  opt->y      = ADDRESS(opk_vector_t*, opt,    y_offset);
-  opt->beta   = ADDRESS(double,        opt, beta_offset);
-  opt->rho    = ADDRESS(double,        opt,  rho_offset);
+  opt->s      = ADDRESS(opk_vector_t*, opt,     s_offset);
+  opt->y      = ADDRESS(opk_vector_t*, opt,     y_offset);
+  opt->alpha  = ADDRESS(double,        opt, alpha_offset);
+  opt->rho    = ADDRESS(double,        opt,   rho_offset);
   opt->m      = m;
   opt->gamma  = 1.0;
   opt->bounds = bounds;
@@ -403,7 +403,7 @@ opk_start_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x)
 /* Define a few macros to make the code more readable. */
 #define S(k)                           opt->s[k]
 #define Y(k)                           opt->y[k]
-#define BETA(k)                        opt->beta[k]
+#define ALPHA(k)                       opt->alpha[k]
 #define RHO(k)                         opt->rho[k]
 #define UPDATE(dst, alpha, x)          AXPBY(dst, 1, dst, alpha, x)
 #define AXPBY(dst, alpha, x, beta, y)  opk_vaxpby(dst, alpha, x, beta, y)
@@ -428,10 +428,14 @@ update(opk_vmlmb_t* opt,
   AXPBY(Y(k), 1, g, -1, opt->g0);
   if (opt->method != OPK_VMLMB) {
     /* Compute initial inverse Hessian approximation. */
-    sty = DOT(Y(k), S(k));
+    sty = DOT(S(k), Y(k));
     if (sty <= 0) {
+      /* This pair will be skipped.  This may however indicate a problem, see
+         Nocedal & Wright "Numerical Optimization", section 8.1, p. 201 (1999).
+         FIXME: restart? */
       RHO(k) = 0;
     } else {
+      /* Compute RHO(k) and GAMMA. */
       RHO(k) = 1/sty;
       yty = DOT(Y(k), Y(k));
       if (yty > 0) {
@@ -463,8 +467,8 @@ apply(opk_vmlmb_t* opt, const opk_vector_t* g)
     for (j = 1; j <= opt->mp; ++j) {
       k = slot(opt, j);
       if (RHO(k) > 0) {
-        BETA(k) = RHO(k)*DOT(opt->d, S(k));
-        UPDATE(opt->d, -BETA(k), Y(k));
+        ALPHA(k) = RHO(k)*DOT(opt->d, S(k));
+        UPDATE(opt->d, -ALPHA(k), Y(k));
       }
     }
     if (opt->gamma != 1) {
@@ -474,7 +478,8 @@ apply(opk_vmlmb_t* opt, const opk_vector_t* g)
     for (j = opt->mp; j >= 1; --j) {
       k = slot(opt, j);
       if (RHO(k) > 0) {
-        UPDATE(opt->d, BETA(k) - RHO(k)*DOT(opt->d, Y(k)), S(k));
+        double beta = RHO(k)*DOT(opt->d, Y(k));
+        UPDATE(opt->d, ALPHA(k) - beta, S(k));
       }
     }
   } else {
@@ -486,15 +491,15 @@ apply(opk_vmlmb_t* opt, const opk_vector_t* g)
       sty = WDOT(Y(k), S(k));
       if (sty <= 0) {
         RHO(k) = 0;
-        continue;
-      }
-      RHO(k) = 1/sty;
-      BETA(k) = RHO(k)*WDOT(opt->d, S(k));
-      UPDATE(opt->d, -BETA(k), Y(k));
-      if (opt->gamma == 0) {
-        yty = WDOT(Y(k), Y(k));
-        if (yty > 0) {
-          opt->gamma = sty/yty;
+      } else {
+        RHO(k) = 1/sty;
+        ALPHA(k) = RHO(k)*WDOT(opt->d, S(k));
+        UPDATE(opt->d, -ALPHA(k), Y(k));
+        if (opt->gamma == 0) {
+          yty = WDOT(Y(k), Y(k));
+          if (yty > 0) {
+            opt->gamma = sty/yty;
+          }
         }
       }
     }
@@ -508,7 +513,8 @@ apply(opk_vmlmb_t* opt, const opk_vector_t* g)
     for (j = opt->mp; j >= 1; --j) {
       k = slot(opt, j);
       if (RHO(k) > 0) {
-        UPDATE(opt->d, BETA(k) - RHO(k)*WDOT(opt->d, Y(k)), S(k));
+        double beta = RHO(k)*WDOT(opt->d, Y(k));
+        UPDATE(opt->d, ALPHA(k) - beta, S(k));
       }
     }
   }
@@ -526,11 +532,11 @@ opk_task_t
 opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
                   double f, opk_vector_t* g)
 {
-  double dtg;
+  double dtg, gtest;
   opk_index_t k;
   opk_status_t status;
   opk_lnsrch_task_t lnsrch_task;
-  opk_bool_t bounded, final;
+  opk_bool_t bounded;
 
   bounded = (opt->bounds != 0);
 
@@ -573,6 +579,8 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
         break;
       }
       if (lnsrch_task != OPK_LNSRCH_CONVERGENCE) {
+        /* An error may have occurred during the line search.  Figure out
+           whether this error can be safely ignored. */
         status = opk_lnsrch_get_status(opt->lnsrch);
         if (lnsrch_task != OPK_LNSRCH_WARNING ||
             status != OPK_ROUNDING_ERRORS_PREVENT_PROGRESS) {
@@ -582,6 +590,7 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
       ++opt->iterations;
     }
 
+    /* The current step is acceptable.  Check for global convergence. */
     if (bounded) {
       /* Determine the set of free variables. */
       status = opk_box_get_free_variables(opt->w, x, opt->xl, opt->xu,
@@ -590,8 +599,6 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
         return failure(opt, status);
       }
     }
-
-    /* Check for global convergence. */
     if (opt->method == OPK_VMLMB) {
       /* Compute the Euclidean norm of the projected gradient. */
       opt->gnorm = WNORM2(g);
@@ -606,8 +613,10 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
     if (opt->evaluations == 1) {
       opt->ginit = opt->gnorm;
     }
-    final = (opt->gnorm <= max3(0.0, opt->gatol, opt->grtol*opt->ginit));
-    return success(opt, (final ? OPK_TASK_FINAL_X : OPK_TASK_NEW_X));
+    gtest = max3(0.0, opt->gatol, opt->grtol*opt->ginit);
+    return success(opt, (opt->gnorm <= gtest
+                         ? OPK_TASK_FINAL_X
+                         : OPK_TASK_NEW_X));
 
   case OPK_TASK_NEW_X:
   case OPK_TASK_FINAL_X:
@@ -655,7 +664,7 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
         /* Use the projected gradient. */
         opk_vproduct(opt->d, opt->w, g);
       } else if (opt->method == OPK_BLMVM) {
-        /* Use the projected gradient (which has aready been computed and
+        /* Use the projected gradient (which has already been computed and
          * stored in the scratch vector). */
         opk_vcopy(opt->d, opt->tmp);
       } else {
