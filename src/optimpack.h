@@ -1562,7 +1562,7 @@ opk_get_vmlmb_gnorm(const opk_vmlmb_t* opt);
  *         with `m` the maximum number of memorized steps.
  */
 extern opk_index_t
-opk_get_vmlmb_mp(const opk_vmlmb_t* opt, opk_index_t j);
+opk_get_vmlmb_mp(const opk_vmlmb_t* opt);
 
 /**
  * Get a given memorized variable change.

@@ -836,7 +836,7 @@ opk_get_vmlmb_gnorm(const opk_vmlmb_t* opt)
 }
 
 opk_index_t
-opk_get_vmlmb_mp(const opk_vmlmb_t* opt, opk_index_t j)
+opk_get_vmlmb_mp(const opk_vmlmb_t* opt)
 {
   return (opt == NULL ? 0 : opt->mp);
 }
