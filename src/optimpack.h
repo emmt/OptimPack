@@ -1109,7 +1109,7 @@ typedef struct _opk_nlcg_options {
                        convergence. */
   double gatol;   /**< Absolute threshold for the norm or the gradient for
                        convergence. */
-  double stpmin;  /**< Relative mimimum step length. */
+  double stpmin;  /**< Relative minimum step length. */
   double stpmax;  /**< Relative maximum step length. */
 } opk_nlcg_options_t;
 
@@ -1367,7 +1367,7 @@ typedef struct _opk_vmlmb_options {
                        gradient) for convergence. */
   double gatol;   /**< Absolute threshold for the norm or the projected
                        gradient for convergence. */
-  double stpmin;  /**< Relative mimimum step length. */
+  double stpmin;  /**< Relative minimum step length. */
   double stpmax;  /**< Relative maximum step length. */
 } opk_vmlmb_options_t;
 
