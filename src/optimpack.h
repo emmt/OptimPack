@@ -1268,6 +1268,7 @@ opk_set_nlcg_options(opk_nlcg_t* dst, const opk_nlcg_options_t* src);
 
 typedef struct _opk_bound opk_bound_t;
 
+/** Type of bound. */
 typedef enum {
   OPK_BOUND_NONE = 0,
   OPK_BOUND_SCALAR = 1,
@@ -1289,6 +1290,24 @@ opk_set_vector_bound(opk_bound_t* bnd, opk_vector_t* vec);
 extern opk_bound_type_t
 opk_get_bound_type(const opk_bound_t* bnd);
 
+/**
+ * Project the variables to the feasible set.
+ *
+ * Given input variables `x`, the projection produces feasible output variables
+ * `dst` which belongs to the convex set.  The input and output variables can
+ * be stored in the same vector (<i>i.e.</i> the method can be applied
+ * <i>in-place</i>).
+ *
+ * @param dst - The output projected variables.
+ * @param x   - The input variables.
+ * @param xl  - The lower bound.
+ * @param xu  - The upper bound.
+ *
+ * @return `OPK_SUCCESS` or `OPK_ILLEGAL_ADDRESS` if one argumeant has an
+ *         invalid (`NULL`) address, `OPK_BAD_SPACE` if not all vectors
+ *         and bounds belongs to the same space, `OPK_NOT_IMPLEMENTED` if
+ *         this functionality is not implemented.
+ */
 extern opk_status_t
 opk_box_project_variables(opk_vector_t* dst,
                           const opk_vector_t* x,
@@ -1296,7 +1315,7 @@ opk_box_project_variables(opk_vector_t* dst,
                           const opk_bound_t* xu);
 
 /**
- * Orientation of search direction.
+ * Orientation of a search direction.
  *
  * If orientation is `OPK_DESCENT` (or strictly positive), the search
  * direction `d` is a descent direction and the variables are updated as:
@@ -1314,6 +1333,31 @@ typedef enum {
   OPK_DESCENT =  1
 } opk_orientation_t;
 
+/**
+ * Project a direction.
+ *
+ * This function projects the direction `d` so that:
+ * ~~~~~~~~~~{.c}
+ * x + orient*alpha*d
+ * ~~~~~~~~~~
+ * yields a feasible position for `alpha > 0` sufficiently small.
+ *
+ * @param dst - The resulting projected direction.
+ * @param x   - The current variables.
+ * @param xl  - The lower bound.
+ * @param xu  - The upper bound.
+ * @param d   - The direction to project.
+ * @param orient - The orientation of the direction `d`.  Strictly positive if
+ *              `d` is a descent direction, strictly negative if `d` is an
+ *              ascent direction.  For convenience, the constants {@link
+ *              #OPK_DESCENT} and {@link #OPK_ASCENT} can be used to specify
+ *              the orientation.
+ *
+ * @return `OPK_SUCCESS` or `OPK_ILLEGAL_ADDRESS` if one argumeant has an
+ *         invalid (`NULL`) address, `OPK_BAD_SPACE` if not all vectors
+ *         and bounds belongs to the same space, `OPK_NOT_IMPLEMENTED` if
+ *         this functionality is not implemented.
+ */
 extern opk_status_t
 opk_box_project_direction(opk_vector_t* dst,
                           const opk_vector_t* x,
@@ -1322,6 +1366,23 @@ opk_box_project_direction(opk_vector_t* dst,
                           const opk_vector_t* d,
                           opk_orientation_t orientation);
 
+/**
+ * Find the non-binding constraints.
+ *
+ * @param dst - The resulting mask whose elements are set to 1 (resp. 0) if
+ *              the corresponding variables are free (resp. binded).
+ * @param x   - The current variables.
+ * @param xl  - The lower bound.
+ * @param xu  - The upper bound.
+ * @param d   - The search direction.
+ * @param orient - The orientation of the search direction (see {@link
+ *              opk_box_project_direction}).
+ *
+ * @return `OPK_SUCCESS` or `OPK_ILLEGAL_ADDRESS` if one argumeant has an
+ *         invalid (`NULL`) address, `OPK_BAD_SPACE` if not all vectors
+ *         and bounds belongs to the same space, `OPK_NOT_IMPLEMENTED` if
+ *         this functionality is not implemented.
+ */
 extern opk_status_t
 opk_box_get_free_variables(opk_vector_t* dst,
                            const opk_vector_t* x,
@@ -1330,8 +1391,45 @@ opk_box_get_free_variables(opk_vector_t* dst,
                            const opk_vector_t* d,
                            opk_orientation_t orientation);
 
+/**
+ * Find the limits of the step size.
+ *
+ * Along the search direction the new variables are computed as:
+ * ~~~~~~~~~~{.c}
+ * proj(x +/- alpha*d)
+ * ~~~~~~~~~~
+ * where `proj` is the projection onto the feasible set, `alpha` is the step
+ * length and +/- is a plus for a descent direction and a minus otherwise.
+ * This method computes 3 specific step lengths: `smin1` which is the step
+ * length for the first bound reached by the variables along the search
+ * direction; `smin2` which is the step length for the first bound reached by
+ * the variables along the search direction and with a non-zero step length;
+ * `smax` which is the step length for the last bound reached by the variables
+ * along the search direction.
+ *
+ * In other words, for any `0 <= alpha <= smin1`, no variables may overreach a
+ * bound, while, for any `alpha >= smax`, the projected variables are the same
+ * as those obtained with `alpha = smax`.  If `d` has been properly projected
+ * (e.g. by {@link opk_box_project_direction}), then `smin1 = smin2` otherwise
+ * `0 <= smin1 <= smin2` and `smin2 > 0`.
+ *
+ * @param smin1  - The address to store the value of `smin1` or `NULL`.
+ * @param smin2  - The address to store the value of `smin2` or `NULL`.
+ * @param smax   - The address to store the value of `smax` or `NULL`.
+ * @param x      - The current variables (assumed to be feasible).
+ * @param xl     - The lower bound.
+ * @param xu     - The upper bound.
+ * @param d      - The search direction.
+ * @param orient - The orientation of the search direction (see
+ *                 {@link opk_box_project_direction}).
+ *
+ * @return `OPK_SUCCESS` or `OPK_ILLEGAL_ADDRESS` if one argumeant has an
+ *         invalid (`NULL`) address, `OPK_BAD_SPACE` if not all vectors
+ *         and bounds belongs to the same space, `OPK_NOT_IMPLEMENTED` if
+ *         this functionality is not implemented.
+ */
 extern opk_status_t
-opk_box_get_step_limits(double* smin, double* wolfe, double *smax,
+opk_box_get_step_limits(double* smin1, double* smin2, double *smax,
                         const opk_vector_t* x,
                         const opk_bound_t* xl,
                         const opk_bound_t* xu,
