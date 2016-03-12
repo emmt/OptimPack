@@ -37,12 +37,14 @@
 #include <stddef.h>
 
 /**
+ * @defgroup LimitedMemory   Limited memory methods.
+ * @defgroup NLCG            Non-linear conjugate gradient methods.
+ * @defgroup VariableMetric  Variable metric methods.
+ * @defgroup LineSearch      Line search methods.
+ * @defgroup ReverseCommunication Reverse communication model.
  * @defgroup Objects         Management of objects and derived types.
  * @defgroup Vectors         Vectors to store variables and vector spaces.
  * @defgroup Operators       Operators acting on vectors.
- * @defgroup LineSearch      Line search methods.
- * @defgroup NLCG            Non-linear conjugate gradient methods.
- * @defgroup VariableMetric  Variable metric methods.
  * @defgroup Error           Reporting of errors.
  * @defgroup TrustRegion     Trust region methods.
  * @defgroup Utilities       Miscellaneous utility functions and macros.
@@ -54,15 +56,72 @@
  * OptimPack is a library for large scale optimization problems.  Its primary
  * focus is solving large inverse problems as image reconstruction.
  *
- * @section ManagementOfObjects Management of objects and derived types.
  *
- * @subsection BasicObjects Basic objects.
+ * @section LargeScale Large scale optimization
+ *
+ * OptimPack implements limited memory optimization methods dedicated to the
+ * minimization of function of a large number of variables.  We routinely use
+ * these method to solve image restoration problems with millions, of even
+ * billions, of variables.  Two families of methods are provided: non-linear
+ * conjugate gradients and variable metric methods.  These methods require the
+ * objective function and its gradient thus the objective function has to be \e
+ * smooth that is to say \e differentiable.
+ *
+ * @subsection ReverseCommunicationDriver General reverse communication driver
+ *
+ * @ref LimitedMemory
+ *
+ * @ref NLCG
+ *
+ * @ref VariableMetric
+ *
+ * @ref LineSearch
+ *
+ *
+ * @section ManagementOfObjects Management of objects and derived types
+ *
+ * OptimPack implements a simple object-oriented API with various object
+ * classes.  The most basic reason of this choice is to correctly manage data
+ * and structures which may be shared between different piece of code.  All
+ * OptimPack objects inherit from @ref Objects::opk_object_t "opk_object_t"
+ * whose instances maintain a reference count and take care of releasing
+ * ressources when objects are no longer in use (understand \e referenced).
+ * This memory management model is lightweight and very effective and but is
+ * not as sophisticated as, say a garbage collector which allows for circular
+ * references (circular references must be avoided in OptimPack).
+ *
+ * @subsection BasicObjects Basic objects
  * @ref Objects
  *
- * @subsection VectorSpaces Vectors and vector spaces.
+ * @subsection VectorSpaces Vectors and vector spaces
+ *
+ * A high level driver is provided by OptimPack to the implemented limited
+ * memory optimization methods.  At a lower level, these methods operate on
+ * variables which can be stored in any form suitable to the application needs.
+ * OptimPack will never directly access the components of these variables and
+ * only applies a limited set of operations (dot product, scaling, linear
+ * combination, *etc.*) to the variables.  These operations are very similar to
+ * the one available to \e vectors in mathematics and the notions of vectors
+ * and associated vector spaces, operators and linear algebra are central to
+ * OptimPack (and to optimization in general).
+ *
  * @ref Vectors
  *
+ * @ref Operators
+ *
+ * OptimPack provides a simple memory model to store variables (as conventional
+ * C arrays of float/double values) but no memory model is imposed.  For
+ * instance, you may have your variables stored in non-conventional memory (GPU)
+ * or distributed between several machines.  The only requirement is to provide
+ * OptimPack with a set of functions to manipulate your own implementation of
+ * vectors.
+ *
+ *
  * @section Linear Algebra
+ *
+ * OptimPack has a number of linear algebra routines for small and simple
+ * arrays mostly ported from the LINPACK library (in FORTRAN).
+ *
  * @ref LinearAlgebra
  */
 
@@ -334,18 +393,18 @@ typedef int opk_bool_t;
 /**
  * @addtogroup Objects
  * @{
- */
-
-/**
- * Opaque basic object type.
  *
  * Users of OptimPack library normally do not need to known exactly the
  * contents of an object.  They simply use the functions of the library to
- * manipulate object pointers.
+ * manipulate object pointers as opaque structure pointers.
  *
  * Developpers who need to implement derived types or specific variants of
  * existing types must include the header `optimpack-private.h` to unveil
  * the definitions of the structures representing the OptimPack objects.
+ */
+
+/**
+ * Opaque basic object type.
  */
 typedef struct _opk_object opk_object_t;
 
@@ -910,6 +969,15 @@ opk_error(const char* reason);
 /* REVERSE COMMUNICATION */
 
 /**
+ * @addtogroup ReverseCommunication
+ * @{
+ *
+ * For maximum portability and integration in any other language, OptimPack
+ * limited memory optimizers exploit a reverse communication model to minimize
+ * the objective function.
+ */
+
+/**
  * @brief Code returned by the reverse communication version of optimzation
  * algorithms.
  */
@@ -923,6 +991,7 @@ typedef enum {
   OPK_TASK_WARNING     =  4  /**< Algorithm terminated with a warning. */
 } opk_task_t;
 
+/** @} */
 
 /*---------------------------------------------------------------------------*/
 /* LINE SEARCH METHODS */
@@ -930,6 +999,21 @@ typedef enum {
 /**
  * @addtogroup LineSearch
  * @{
+ *
+ * Line search consists in optimizing the variables along a given search
+ * direction.
+ *
+ * The variables `x` are updated along the search direction `d` as follows:
+ * ~~~~~{.cpp}
+ * x = x0 +/- alpha*d
+ * ~~~~~
+ * with `x0` the variables at the start of the line search, `alpha` the step
+ * size and +/- a plus if `d` is a descent direction and a minus if it is an
+ * ascent direction.  The line search approximately solves:
+ * ~~~~~{.cpp}
+ * min f(x0 +/- alpha*d)
+ * ~~~~~
+ * with respect to `alpha > 0` and where `f(x)` is the objective function.
  */
 
 /** Opaque line search type.  This sub-type inherits from `opk_object_t`. */
@@ -958,20 +1042,19 @@ opk_lnsrch_new_backtrack(double ftol, double amin);
  *
  * Nonmonotone line search is described in SPG2 paper:
  *
- * E.G. Birgin, J.M. Martínez, & M. Raydan, "<i>Nonmonotone
- * Spectral Projected Gradient Methods on Convex Sets</i>," SIAM
- * J. Optim. <b>10</b>, 1196-1211 (2000).
+ * > E.G. Birgin, J.M. Martínez, & M. Raydan, "Nonmonotone Spectral Projected
+ * > Gradient Methods on Convex Sets," SIAM J. Optim. **10**, 1196-1211 (2000).
  *
  * The parameters used in the SPG2 paper:
  * ~~~~~{.cpp}
- * m = 10
- * ftol = 1E-4
- * sigma1 = 0.1
- * sigma2 = 0.9
+ * m = 10;
+ * ftol = 1E-4;
+ * sigma1 = 0.1;
+ * sigma2 = 0.9;
  * ~~~~~
  *
- * With {@code m = 1}, this line search method is equivalent to Armijo's line
- * search except that it attempts to use quadratic interpolation rather than
+ * With `m = 1`, this line search method is equivalent to Armijo's line search
+ * except that it attempts to use quadratic interpolation rather than
  * systematically use bisection to reduce the step size.
  *
  * @param m      - Number of previous steps to remember.
@@ -986,30 +1069,37 @@ opk_lnsrch_new_nonmonotone(opk_index_t m, double ftol,
                            double sigma1, double sigma2);
 
 /**
- * Possible values returned by opk_lnsrch_start and opk_lnsrch_iterate.
+ * Possible values returned by {@link opk_lnsrch_start} and {@link
+ * opk_lnsrch_iterate}.
+ *
+ * These values are for the caller to decide what to do next.  In case of error
+ * or warning, {@link opk_lnsrch_get_status} can be used to query more
+ * information.
  */
 typedef enum {
-  OPK_LNSRCH_ERROR       = -1,
-  OPK_LNSRCH_SEARCH      =  0,
-  OPK_LNSRCH_CONVERGENCE =  1,
-  OPK_LNSRCH_WARNING     =  2
+  OPK_LNSRCH_ERROR       = -1, /**< An error occurred. */
+  OPK_LNSRCH_SEARCH      =  0, /**< Line search in progress. */
+  OPK_LNSRCH_CONVERGENCE =  1, /**< Line search has converged. */
+  OPK_LNSRCH_WARNING     =  2  /**< Line search terminated with warnings. */
 } opk_lnsrch_task_t;
 
 /**
  * Start a new line search.
  *
+ *
  * @param ls     - The line search object.
  * @param f0     - The function value at the start of the line search (that
  *                 is, for a step of length 0).
- * @param df0    - The dirctional derivative at the start of the line search.
+ * @param df0    - The directional derivative at the start of the line search.
+ *                 (see {@link opk_lnsrch_use_deriv} for the definition).
  * @param stp1   - The length of the first step to try (must be between
  *                 `stpmin` and `stpmax`).
  * @param stpmin - The minimum allowed step length (must be nonnegative).
  * @param stpmax - The maximum allowed step length (must be greater than
  *                 `stpmin`).
  *
- * @return The line search task, which is normally `OPK_LNSRCH_SEARCH` (zero).
- *         A different value (strictly negative) indicate an error.
+ * @return The line search task, which is normally @link OPK_LNSRCH_SEARCH}.
+ *         A different value indicates an error.
  */
 extern int
 opk_lnsrch_start(opk_lnsrch_t* ls, double f0, double df0,
@@ -1024,8 +1114,9 @@ opk_lnsrch_start(opk_lnsrch_t* ls, double f0, double df0,
  *                  with the next step to try (unless the line search is
  *                  finished).
  * @param f       - The function value for the current step length.
- * @param df      - The directional derivative for the current step length.
-
+ * @param df      - The directional derivative for the current step length (see
+ *                  {@link opk_lnsrch_use_deriv} for the definition).
+ *
  * @return The returned value is strictly negative to indicate an error; it is
  * equal to zero when searching is in progress; it is strictly positive when
  * line search has converged or cannot make any more progresses.
@@ -1034,29 +1125,106 @@ extern int
 opk_lnsrch_iterate(opk_lnsrch_t* ls, double* stp_ptr,
                    double f, double df);
 
-/** Get current step lenght. Returned value should be >= 0; -1 is returned in
-   case of error. */
+/**
+ * Get current step lenght.
+ *
+ * @param ls - The line search object.
+ *
+ * @return Returned value should be >= 0; -1 is returned in case of error.
+ */
 extern double
 opk_lnsrch_get_step(const opk_lnsrch_t* ls);
 
+/**
+ * Get current line search pending task.
+ *
+ * In case of error or warning, {@link opk_lnsrch_get_status} can be used to
+ * query more information.
+ *
+ * @param ls - The line search object.
+ *
+ * @return The current line search pending task.
+ */
 extern opk_lnsrch_task_t
 opk_lnsrch_get_task(const opk_lnsrch_t* ls);
 
+/**
+ * Get current line search status.
+ *
+ * @param ls - The line search object.
+ *
+ * @return The current line search status.
+ */
 extern opk_status_t
 opk_lnsrch_get_status(const opk_lnsrch_t* ls);
 
+/**
+ * Check whether line search has errors.
+ *
+ * @param ls - The line search object.
+ *
+ * @return A boolean value, true if there are any errors.
+ */
 extern opk_bool_t
 opk_lnsrch_has_errors(const opk_lnsrch_t* ls);
 
+/**
+ * Check whether line search has warnings.
+ *
+ * @param ls - The line search object.
+ *
+ * @return A boolean value, true if there are any warnings.
+ */
 extern opk_bool_t
 opk_lnsrch_has_warnings(const opk_lnsrch_t* ls);
 
+/**
+ * Check whether line search has converged.
+ *
+ * @param ls - The line search object.
+ *
+ * @return A boolean value, true if line search has converged.
+ */
 extern opk_bool_t
 opk_lnsrch_converged(const opk_lnsrch_t* ls);
 
+/**
+ * Check whether line search has finished.
+ *
+ * Note that line search termination may be due to convergence, possibly with
+ * warnings, or to errors.
+ *
+ * @param ls - The line search object.
+ *
+ * @return A boolean value, true if line search has finished.
+ */
 extern opk_bool_t
 opk_lnsrch_finished(const opk_lnsrch_t* ls);
 
+/**
+ * Check whether line search requires the directional derivative.
+ *
+ * The directional derivative is the derivative with respect to the step size
+ * of the objective function during the line search.  The directional
+ * derivative is given by:
+ * ~~~~~{.cpp}
+ *  +/-d'.g(x0 +\- alpha*d)
+ * ~~~~~
+ * with `d` the search direction, `g(x)` the gradient of the objective function
+ * (the `+/-` signs are `+` if `d` is a descent direction and `-` if it is an
+ * ascent direction) and assuming that, during the line search, the variables
+ * change as:
+ * ~~~~~{.cpp}
+ * x = x0 +/- alpha*d
+ * ~~~~~
+ * with `x0` the variables at the start of the line search and `alpha` the step
+ * size.
+ *
+ * @param ls - The line search object.
+ *
+ * @return A boolean value, true if line search makes use of the directional
+ *         derivative.
+ */
 extern opk_bool_t
 opk_lnsrch_use_deriv(const opk_lnsrch_t* ls);
 
@@ -1445,9 +1613,9 @@ opk_box_get_step_limits(double* smin1, double* smin2, double *smax,
  * @addtogroup VariableMetric
  * @{
  *
- * Variable metric methods, aslo known as quasi-Newtoon methods, make
- * use of the previous steps and gradint changes to estimate an
- * approximation of the inverse Hessian of the objective function.
+ * Variable metric methods, also known as quasi-Newton methods, make use of
+ * the previous steps and gradient changes to estimate an approximation of the
+ * inverse Hessian of the objective function.
  */
 
 /** Opaque type for a variable metric optimizer. */

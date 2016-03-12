@@ -142,11 +142,32 @@ typedef struct _opk_vspace_operations opk_vspace_operations_t;
  * implement a sub-type of the vector type, it is sufficient to define a new
  * structure whose first member is an `opk_vector_t`.  The function
  * `opk_allocate_vector()` **must** be used to allocate the whole structure.
+ * For instance:
  * ~~~~~~~~~~{.c}
- * struct _my_vector {
+ * typedef struct _my_vector {
  *   opk_vector_t base;
  *   double* data;
- * };
+ * } my_vector;
+ *
+ * void finalize_vector(my_vector* v)
+ * {
+ *   if (v->data != NULL) {
+ *     free(v->data);
+ *   }
+ * }
+ *
+ * my_vector* new_vector(int n)
+ * {
+ *    my_vector* v = (my_vector*)opk_allocate_vector(space, sizeof(my_vector));
+ *    if (v != NULL) {
+ *       v->data = (double*)malloc(n*sizeof(double));
+ *       if (v->data == NULL) {
+ *         OPK_DROP(v);
+ *         return NULL;
+ *       }
+ *    }
+ *    return v;
+ * }
  * ~~~~~~~~~~
  *
  * OptimPack routines only require the address of such vectors and treat them
