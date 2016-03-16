@@ -883,30 +883,6 @@ opk_get_step_limits2(double* smin1, double* smin2, double *smax,
    publically available (the caller receives an `opk_convexset_t` type
    instead. */
 
-int opk_get_bounds(const opk_convexset_t* set)
-{
-  int bounds = 0;
-
-  if (set != NULL) {
-    if (set->lower != NULL) {
-      if (set->lower->type == OPK_BOUND_SCALAR) {
-        bounds += 1;
-      } else if (set->lower->type == OPK_BOUND_VECTOR) {
-        bounds += 2;
-      }
-    }
-    if (set->upper != NULL) {
-      if (set->upper->type == OPK_BOUND_SCALAR) {
-        bounds += 3;
-      } else if (set->upper->type == OPK_BOUND_VECTOR) {
-        bounds += 6;
-      }
-    }
-  }
-  return bounds;
-}
-
-
 opk_convexset_t*
 opk_new_boxset(opk_vspace_t* space,
                opk_bound_type_t lower_type, void* lower,

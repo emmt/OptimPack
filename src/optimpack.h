@@ -1483,9 +1483,6 @@ opk_set_vector_bound(opk_bound_t* bnd, opk_vector_t* vec);
 extern opk_bound_type_t
 opk_get_bound_type(const opk_bound_t* bnd);
 
-extern int
-opk_get_bounds(const opk_convexset_t* set);
-
 /**
  * Project the variables to the feasible set.
  *
