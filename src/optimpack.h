@@ -7,7 +7,7 @@
  *
  * This file is part of OptimPack (https://github.com/emmt/OptimPack).
  *
- * Copyright (C) 2014, 2015 Éric Thiébaut
+ * Copyright (C) 2014-2016 Éric Thiébaut
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -474,11 +474,11 @@ opk_get_object_references(opk_object_t* obj);
  */
 #define OPK_REFS(obj)       opk_get_object_references((opk_object_t*)(obj))
 
-#define OPK_HOLD_VSPACE(vsp)  ((opk_vspace_t*)OPK_HOLD(vsp))
-#define OPK_HOLD_VECTOR(vec)  ((opk_vector_t*)OPK_HOLD(vec))
-#define OPK_HOLD_LNSRCH(vec)  ((opk_lnsrch_t*)OPK_HOLD(vec))
-#define OPK_HOLD_OPERATOR(op) ((opk_operator_t*)OPK_HOLD(op))
-#define OPK_HOLD_BOUND(bnd)   ((opk_bound_t*)OPK_HOLD(bnd))
+#define OPK_HOLD_VSPACE(vsp)     ((opk_vspace_t*)OPK_HOLD(vsp))
+#define OPK_HOLD_VECTOR(vec)     ((opk_vector_t*)OPK_HOLD(vec))
+#define OPK_HOLD_LNSRCH(lns)     ((opk_lnsrch_t*)OPK_HOLD(lns))
+#define OPK_HOLD_OPERATOR(op)    ((opk_operator_t*)OPK_HOLD(op))
+#define OPK_HOLD_BOUND(bnd)      ((opk_bound_t*)OPK_HOLD(bnd))
 
 /** @} */
 
@@ -1427,21 +1427,45 @@ opk_set_nlcg_options(opk_nlcg_t* dst, const opk_nlcg_options_t* src);
 /** @} */
 
 /*---------------------------------------------------------------------------*/
-/* SEPARABLE BOUND CONSTRAINTS */
+/* CONVEX SETS AND BOX SETS */
 
 /**
  * @addtogroup BoxConstraints
  * @{
  */
 
-typedef struct _opk_bound opk_bound_t;
+/** Opaque structure to represent an instance of a convex set. */
+typedef struct _opk_convexset opk_convexset_t;
 
-/** Type of bound. */
+/**
+ * Type of bounds.
+ *
+ * Variables can be bounded or unbounded from below and from above.  The bounds
+ * are specified by two parameters: a type and a value.  If the variables are
+ * unbounded, then the corresponding bound type is `OPK_BOUND_NONE` and the
+ * associated value must be `NULL`.  If all variables have the same bound, it
+ * is more efficient to specify a scalar bound with type `OPK_BOUND_SCALAR` and
+ * the address of a double precision variable which stores the bound as
+ * associated value.  It is also possible to specify a componentwise bound in
+ * three different ways depending how the bounds are stored.  If the bounds are
+ * in an OptimPack vector (of the same vector space of the variables) use type
+ * `OPK_BOUND_VECTOR` and provide the address of the vector as the associated
+ * value.  If the bounds are in a conventional array (with the same number of
+ * elements and the same type `OPK_FLOAT` or `OPK_DOUBLE` as the variables),
+ * then the associated value is the address of the array and the type is
+ * `OPK_BOUND_STATIC` if the array will not be released while the bound is in
+ * use or `OPK_BOUND_VOLATILE` otherwise.
+ */
 typedef enum {
-  OPK_BOUND_NONE = 0,
-  OPK_BOUND_SCALAR = 1,
-  OPK_BOUND_VECTOR = 2
+  OPK_BOUND_NONE     = 0, /**< No-bound (associated value must be `NULL`). */
+  OPK_BOUND_SCALAR   = 1, /**< Scalar bound (associated value is the address of
+                           *   a double). */
+  OPK_BOUND_VECTOR   = 2  /**< Vector bound (associated value is the address of
+                           *   an `opk_vector_t`). */
 } opk_bound_type_t;
+
+
+typedef struct _opk_bound opk_bound_t;
 
 extern opk_bound_t*
 opk_new_bound(opk_vspace_t* space, opk_bound_type_t type,
@@ -1463,8 +1487,10 @@ opk_get_bound_type(const opk_bound_t* bnd);
  *
  * Given input variables `x`, the projection produces feasible output variables
  * `dst` which belongs to the convex set.  The input and output variables can
- * be stored in the same vector (<i>i.e.</i> the method can be applied
- * <i>in-place</i>).
+ * be stored in the same vector (*i.e.* the method can be applied *in-place*).
+ *
+ * The function `opk_can_project_variables()` can be used to determine whether
+ * this functionality is implemented by `set`.
  *
  * @param dst - The output projected variables.
  * @param x   - The input variables.
@@ -1477,10 +1503,21 @@ opk_get_bound_type(const opk_bound_t* bnd);
  *         this functionality is not implemented.
  */
 extern opk_status_t
-opk_box_project_variables(opk_vector_t* dst,
+opk_project_variables(opk_vector_t* dst,
                           const opk_vector_t* x,
                           const opk_bound_t* xl,
                           const opk_bound_t* xu);
+
+/**
+ * Check whether the projection of the variables is implemented.
+ *
+ * @param set - The convex set which implements the constraints.
+ *
+ * @return A boolean value, true if the projection of the variables is
+ *         implemented by `set`.
+ */
+extern opk_bool_t
+opk_can_project_variables(const opk_convexset_t* set);
 
 /**
  * Orientation of a search direction.
@@ -1497,8 +1534,8 @@ opk_box_project_variables(opk_vector_t* dst,
  * ~~~~~~~~~~
  */
 typedef enum {
-  OPK_ASCENT  = -1,
-  OPK_DESCENT =  1
+  OPK_ASCENT  = -1, /**< Ascent search direction. */
+  OPK_DESCENT =  1  /**< Descent search direction. */
 } opk_orientation_t;
 
 /**
@@ -1509,6 +1546,9 @@ typedef enum {
  * x + orient*alpha*d
  * ~~~~~~~~~~
  * yields a feasible position for `alpha > 0` sufficiently small.
+ *
+ * The function `opk_can_project_directions()` can be used to determine whether
+ * this functionality is implemented by `set`.
  *
  * @param dst - The resulting projected direction.
  * @param x   - The current variables.
@@ -1527,7 +1567,7 @@ typedef enum {
  *         this functionality is not implemented.
  */
 extern opk_status_t
-opk_box_project_direction(opk_vector_t* dst,
+opk_project_direction(opk_vector_t* dst,
                           const opk_vector_t* x,
                           const opk_bound_t* xl,
                           const opk_bound_t* xu,
@@ -1535,7 +1575,21 @@ opk_box_project_direction(opk_vector_t* dst,
                           opk_orientation_t orientation);
 
 /**
+ * Check whether projection of the search direction is implemented.
+ *
+ * @param set - The convex set which implements the constraints.
+ *
+ * @return A boolean value, true if projection of the search direction is
+ *         implemented by `set`.
+ */
+extern opk_bool_t
+opk_can_project_directions(const opk_convexset_t* set);
+
+/**
  * Find the non-binding constraints.
+ *
+ * The function `opk_can_get_free_variables()` can be used to determine whether
+ * this functionality is implemented by `set`.
  *
  * @param dst - The resulting mask whose elements are set to 1 (resp. 0) if
  *              the corresponding variables are free (resp. binded).
@@ -1544,7 +1598,7 @@ opk_box_project_direction(opk_vector_t* dst,
  * @param xu  - The upper bound.
  * @param d   - The search direction.
  * @param orient - The orientation of the search direction (see {@link
- *              opk_box_project_direction}).
+ *              opk_project_direction}).
  *
  * @return `OPK_SUCCESS` or `OPK_ILLEGAL_ADDRESS` if one argumeant has an
  *         invalid (`NULL`) address, `OPK_BAD_SPACE` if not all vectors
@@ -1552,12 +1606,23 @@ opk_box_project_direction(opk_vector_t* dst,
  *         this functionality is not implemented.
  */
 extern opk_status_t
-opk_box_get_free_variables(opk_vector_t* dst,
+opk_get_free_variables(opk_vector_t* dst,
                            const opk_vector_t* x,
                            const opk_bound_t* xl,
                            const opk_bound_t* xu,
                            const opk_vector_t* d,
-                           opk_orientation_t orientation);
+                           opk_orientation_t orient);
+
+/**
+ * Check whether determining the free variables is implemented.
+ *
+ * @param set - The convex set which implements the constraints.
+ *
+ * @return A boolean value, true if determining the free variables is
+ *         implemented by `set`.
+ */
+extern opk_bool_t
+opk_can_get_free_variables(const opk_convexset_t* set);
 
 /**
  * Find the limits of the step size.
@@ -1578,8 +1643,11 @@ opk_box_get_free_variables(opk_vector_t* dst,
  * In other words, for any `0 <= alpha <= smin1`, no variables may overreach a
  * bound, while, for any `alpha >= smax`, the projected variables are the same
  * as those obtained with `alpha = smax`.  If `d` has been properly projected
- * (e.g. by {@link opk_box_project_direction}), then `smin1 = smin2` otherwise
+ * (e.g. by {@link opk_project_direction}), then `smin1 = smin2` otherwise
  * `0 <= smin1 <= smin2` and `smin2 > 0`.
+ *
+ * The function `opk_can_get_step_limits()` can be used to determine whether
+ * this functionality is implemented by `set`.
  *
  * @param smin1  - The address to store the value of `smin1` or `NULL`.
  * @param smin2  - The address to store the value of `smin2` or `NULL`.
@@ -1589,7 +1657,7 @@ opk_box_get_free_variables(opk_vector_t* dst,
  * @param xu     - The upper bound.
  * @param d      - The search direction.
  * @param orient - The orientation of the search direction (see
- *                 {@link opk_box_project_direction}).
+ *                 {@link opk_project_direction}).
  *
  * @return `OPK_SUCCESS` or `OPK_ILLEGAL_ADDRESS` if one argumeant has an
  *         invalid (`NULL`) address, `OPK_BAD_SPACE` if not all vectors
@@ -1597,12 +1665,23 @@ opk_box_get_free_variables(opk_vector_t* dst,
  *         this functionality is not implemented.
  */
 extern opk_status_t
-opk_box_get_step_limits(double* smin1, double* smin2, double *smax,
+opk_get_step_limits(double* smin1, double* smin2, double *smax,
                         const opk_vector_t* x,
                         const opk_bound_t* xl,
                         const opk_bound_t* xu,
                         const opk_vector_t* d,
                         opk_orientation_t orient);
+
+/**
+ * Check whether determining the step limits is implemented.
+ *
+ * @param set - The convex set which implements the constraints.
+ *
+ * @return A boolean value, true if determining the step limits is implemented
+ *         by `set`.
+ */
+extern opk_bool_t
+opk_can_get_step_limits(const opk_convexset_t* set);
 
 /** @} */
 
@@ -1641,7 +1720,7 @@ typedef struct _opk_vmlmb_options {
   double stpmax;  /**< Relative maximum step length. */
 } opk_vmlmb_options_t;
 
-/* Options for VMLMB. */
+/** Options for VMLMB. */
 #define OPK_EMULATE_BLMVM              (1 << 1) /**< Emulate Benson & Moré
                                                      BLMVM method. */
 /**

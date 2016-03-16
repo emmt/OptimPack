@@ -7,7 +7,7 @@
  *
  * This file is part of OptimPack (https://github.com/emmt/OptimPack).
  *
- * Copyright (C) 2014, 2015 Éric Thiébaut
+ * Copyright (C) 2014-2016 Éric Thiébaut
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -295,7 +295,12 @@ struct _opk_vspace_operations {
                    double beta,  const opk_vector_t* y,
                    double gamma, const opk_vector_t* z);
 
-  /* Project variables X such that DST = MAX(XL, MAX(X, XU)). */
+  /* Project variables X such that DST = MAX(XL, MIN(X, XU)).  There are 9
+     possibilities for the bounds.  If (BOUND%3) = 0, there is no lower bound;
+     if (BOUND%3) = 1, the lower bound is a scalar; if (BOUND%3) = 2, the lower
+     bound is a vector.  If (BOUND/3) = 0, there is no uppwer bound; if
+     (BOUND/3) = 1, the upper bound is a scalar; if (BOUND/3) = 2, the upper
+     bound is a vector. */
   opk_status_t (*boxprojvar)(opk_vspace_t* space, opk_vector_t* dst,
                              const opk_vector_t* x,
                              const void* xl, const void* xu, int bound);
@@ -310,12 +315,12 @@ struct _opk_vspace_operations {
                              const void* xl, const void* xu, int bound,
                              const opk_vector_t* d, opk_orientation_t orient);
 
-  opk_status_t (*boxsteplimits)(opk_vspace_t* space,
-                                double* smin1, double* smin2, double* smax,
-                                const opk_vector_t* x,
-                                const void* xl, const void* xu, int bound,
-                                const opk_vector_t* d,
-                                opk_orientation_t orient);
+  opk_status_t (*boxsteplim)(opk_vspace_t* space,
+                             double* smin1, double* smin2, double* smax,
+                             const opk_vector_t* x,
+                             const void* xl, const void* xu, int bound,
+                             const opk_vector_t* d,
+                             opk_orientation_t orient);
 
 };
 
@@ -360,7 +365,7 @@ opk_allocate_vector(opk_vspace_t* vspace, size_t nbytes);
 /* LOW LEVEL API FOR SEPARABLE BOUND CONSTRAINTS */
 
 /**
- * @defgroup LowBoxConstraints  Implementing bound constraints.
+ * @defgroup LowConvexSet Implementing convex sets.
  * @ingroup LowLevel
  * @{
  */
@@ -374,6 +379,61 @@ struct _opk_bound {
     double        scalar; /**< Value for a scalar bound. */
   } value;
 };
+
+/**
+ * Private structure to store the base of an instance derived from a convex
+ * set.
+ */
+struct _opk_convexset {
+  opk_object_t base;       /**< Base type (must be the first member). */
+  opk_vspace_t* space;     /**< Variable space. */
+  void (*finalize)(opk_convexset_t* self);
+  opk_status_t (*projvar)(opk_vector_t* dst,
+                          const opk_vector_t* x,
+                          const opk_convexset_t* set);
+  opk_status_t (*projdir)(opk_vector_t* dst,
+                          const opk_vector_t* x,
+                          const opk_convexset_t* set,
+                          const opk_vector_t* d,
+                          opk_orientation_t orient);
+  opk_status_t (*freevar)(opk_vector_t* dst,
+                          const opk_vector_t* x,
+                          const opk_convexset_t* set,
+                          const opk_vector_t* d,
+                          opk_orientation_t orient);
+  opk_status_t (*steplim)(double* smin1, double* smin2, double *smax,
+                          const opk_vector_t* x,
+                          const opk_convexset_t* set,
+                          const opk_vector_t* d,
+                          opk_orientation_t orient);
+};
+
+/**
+ * Allocate a new instance of a convex set.
+ */
+extern opk_convexset_t*
+opk_allocate_convexset(opk_vspace_t* space,
+                       void (*finalize)(opk_convexset_t* self),
+                       opk_status_t (*projvar)(opk_vector_t* dst,
+                                               const opk_vector_t* x,
+                                               const opk_convexset_t* set),
+                       opk_status_t (*projdir)(opk_vector_t* dst,
+                                               const opk_vector_t* x,
+                                               const opk_convexset_t* set,
+                                               const opk_vector_t* d,
+                                               opk_orientation_t orient),
+                       opk_status_t (*freevar)(opk_vector_t* dst,
+                                               const opk_vector_t* x,
+                                               const opk_convexset_t* set,
+                                               const opk_vector_t* d,
+                                               opk_orientation_t orient),
+                       opk_status_t (*steplim)(double* smin1, double* smin2,
+                                               double *smax,
+                                               const opk_vector_t* x,
+                                               const opk_convexset_t* set,
+                                               const opk_vector_t* d,
+                                               opk_orientation_t orient),
+                       size_t nbytes);
 
 /** @} */
 

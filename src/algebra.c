@@ -512,7 +512,7 @@ double opk_box_shortcut_step(double alpha,
                              opk_orientation_t orient)
 {
   double stpmax;
-  if (opk_box_get_step_limits(NULL, NULL, &stpmax, x, xl, xu,
+  if (opk_get_step_limits(NULL, NULL, &stpmax, x, xl, xu,
                               d, orient) != OPK_SUCCESS) {
     return 0;
   }
@@ -548,7 +548,7 @@ get_bound(const void** lower, const opk_bound_t* xl,
 }
 
 opk_status_t
-opk_box_project_variables(opk_vector_t* dst,
+opk_project_variables(opk_vector_t* dst,
                           const opk_vector_t* x,
                           const opk_bound_t* xl,
                           const opk_bound_t* xu)
@@ -575,7 +575,7 @@ opk_box_project_variables(opk_vector_t* dst,
 }
 
 opk_status_t
-opk_box_project_direction(opk_vector_t* dst,
+opk_project_direction(opk_vector_t* dst,
                           const opk_vector_t* x,
                           const opk_bound_t* xl,
                           const opk_bound_t* xu,
@@ -605,7 +605,7 @@ opk_box_project_direction(opk_vector_t* dst,
 }
 
 opk_status_t
-opk_box_get_free_variables(opk_vector_t* dst,
+opk_get_free_variables(opk_vector_t* dst,
                            const opk_vector_t* x,
                            const opk_bound_t* xl,
                            const opk_bound_t* xu,
@@ -635,7 +635,7 @@ opk_box_get_free_variables(opk_vector_t* dst,
 }
 
 opk_status_t
-opk_box_get_step_limits(double* smin1, double* smin2, double *smax,
+opk_get_step_limits(double* smin1, double* smin2, double *smax,
                         const opk_vector_t* x,
                         const opk_bound_t* xl,
                         const opk_bound_t* xu,
@@ -657,10 +657,10 @@ opk_box_get_step_limits(double* smin1, double* smin2, double *smax,
     return OPK_BAD_SPACE;
   }
   type = get_bound(&lower, xl, &upper, xu);
-  if (space->ops->boxsteplimits == NULL) {
+  if (space->ops->boxsteplim == NULL) {
     return OPK_NOT_IMPLEMENTED;
   }
-  return space->ops->boxsteplimits(space, smin1, smin2, smax,
+  return space->ops->boxsteplim(space, smin1, smin2, smax,
                                    x, lower, upper, type, d, orient);
 }
 

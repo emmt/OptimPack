@@ -392,7 +392,7 @@ opk_start_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x)
   opt->updates = 0;
   opt->mp = 0;
   if (opt->bounds != 0) {
-    opk_status_t status = opk_box_project_variables(x, x, opt->xl, opt->xu);
+    opk_status_t status = opk_project_variables(x, x, opt->xl, opt->xu);
     if (status != OPK_SUCCESS) {
       return failure(opt, status);
     }
@@ -593,7 +593,7 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
     /* The current step is acceptable.  Check for global convergence. */
     if (bounded) {
       /* Determine the set of free variables. */
-      status = opk_box_get_free_variables(opt->w, x, opt->xl, opt->xu,
+      status = opk_get_free_variables(opt->w, x, opt->xl, opt->xu,
                                           g, OPK_ASCENT);
       if (status != OPK_SUCCESS) {
         return failure(opt, status);
@@ -689,7 +689,7 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
     if (bounded) {
       /* Shortcut the step length. */
       double bsmin, bsmax, wolfe;
-      status = opk_box_get_step_limits(&bsmin, &wolfe, &bsmax,
+      status = opk_get_step_limits(&bsmin, &wolfe, &bsmax,
                                        x, opt->xl, opt->xu,
                                        opt->d, OPK_ASCENT);
       if (status != OPK_SUCCESS) {
@@ -736,7 +736,7 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
   /* Compute a new trial point along the line search. */
   opk_vaxpby(x, 1, opt->x0, -opt->stp, opt->d);
   if (opt->bounds != 0 && opt->stp > opt->bsmin) {
-    opk_status_t status = opk_box_project_variables(x, x, opt->xl, opt->xu);
+    opk_status_t status = opk_project_variables(x, x, opt->xl, opt->xu);
     if (status != OPK_SUCCESS) {
       return failure(opt, status);
     }

@@ -95,7 +95,7 @@ gradnorm(const opk_vector_t* x, const opk_vector_t* g, opk_vector_t* gp,
   if (gp != NULL) {
     /* compute ||Projection(x_k - g_k) - x_k||_infty */
     opk_vaxpby(gp, 1, x, -1, g);
-    if (opk_box_project_variables(gp, gp, xl, xu) != OPK_SUCCESS) {
+    if (opk_project_variables(gp, gp, xl, xu) != OPK_SUCCESS) {
       printf("# Failed to project variables\n");
       exit(-1);
     }

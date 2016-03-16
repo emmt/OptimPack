@@ -7,7 +7,7 @@
  *
  * This file is part of OptimPack (https://github.com/emmt/OptimPack).
  *
- * Copyright (C) 2014, 2015 Éric Thiébaut
+ * Copyright (C) 2014-2016 Éric Thiébaut
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -76,6 +76,7 @@ struct _simple_vector {
   void (*free_client_data)(void* client_data);
 };
 
+/* Fetch the data part of a vector at a given address. */
 #define DATA(v) ((simple_vector_t*)(v))->data
 
 static opk_vector_t*
@@ -672,11 +673,11 @@ boxfreevar(opk_vspace_t* space, opk_vector_t* dstvec,
 }
 
 static opk_status_t
-boxsteplimits(opk_vspace_t* space,
-              double* smin1, double* smin2, double* smax,
-              const opk_vector_t* xvec,
-              const void* lower, const void* upper, int bound,
-              const opk_vector_t* dvec, int orient)
+boxsteplim(opk_vspace_t* space,
+           double* smin1, double* smin2, double* smax,
+           const opk_vector_t* xvec,
+           const void* lower, const void* upper, int bound,
+           const opk_vector_t* dvec, int orient)
 {
   const REAL* x = DATA(xvec);
   const REAL* d = DATA(dvec);
@@ -874,7 +875,7 @@ static opk_vspace_operations_t operations = {
   boxprojvar,
   boxprojdir,
   boxfreevar,
-  boxsteplimits
+  boxsteplim
 };
 
 opk_vspace_t*
