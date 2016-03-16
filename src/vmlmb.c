@@ -34,7 +34,7 @@
  *
  * This file is part of OptimPack (https://github.com/emmt/OptimPack).
  *
- * Copyright (C) 2002, 2015 Éric Thiébaut
+ * Copyright (C) 2002, 2015-2016 Éric Thiébaut
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -135,12 +135,11 @@ struct _opk_vmlmb {
                                 as: x1 = x0 - stp*d with stp > 0. */
   opk_vector_t* w;         /**< Vector whose elements are set to 1 for free
                                 variables and 0 otherwise. */
-  opk_vector_t* tmp;       /**< Scratch work vector sued to store the effective
+  opk_vector_t* tmp;       /**< Scratch work vector used to store the effective
                                 step size and the projected gradient (for the
                                 BLMVM method). */
-  opk_bound_t* xl;         /**< Lower bound (or `NULL`). */
-  opk_bound_t* xu;         /**< Upper bound (or `NULL`). */
-  int bounds;              /**< Type of bounds. */
+  opk_convexset_t* box;    /**< Convex set implementing the box constraints (or
+                            *   `NULL`). */
   int method;              /**< The method to use/emulate. */
   unsigned int flags;      /**< Bitwise options. */
   opk_index_t evaluations; /**< Number of functions (and gradients)
@@ -193,8 +192,7 @@ finalize_vmlmb(opk_object_t* obj)
   OPK_DROP(opt->d);
   OPK_DROP(opt->w);
   OPK_DROP(opt->tmp);
-  OPK_DROP(opt->xl);
-  OPK_DROP(opt->xu);
+  OPK_DROP(opt->box);
   if (opt->s != NULL) {
     for (k = 0; k < opt->m; ++k) {
       OPK_DROP(opt->s[k]);
@@ -238,14 +236,12 @@ opk_vmlmb_t*
 opk_new_vmlmb_optimizer(opk_vspace_t* space,
                         opk_index_t m,
                         unsigned int flags,
-                        opk_bound_t* xl,
-                        opk_bound_t* xu,
+                        opk_convexset_t* box,
                         opk_lnsrch_t* lnsrch)
 {
   opk_vmlmb_t* opt;
   size_t s_offset, y_offset, alpha_offset, rho_offset, size;
   opk_index_t k;
-  int bounds;
 
   /* Check the input arguments for errors. */
   if (space == NULL) {
@@ -259,34 +255,9 @@ opk_new_vmlmb_optimizer(opk_vspace_t* space,
   if (m > space->size) {
     m = space->size;
   }
-  bounds = 0;
-  if (xl != NULL) {
-    if (xl->owner != space) {
-      errno = EINVAL;
-      return NULL;
-    }
-    if (xl->type == OPK_BOUND_SCALAR) {
-      bounds += 1;
-    } else if (xl->type == OPK_BOUND_VECTOR) {
-      bounds += 2;
-    } else {
-      /* Discard unused bound. */
-      xl = NULL;
-    }
-  }
-  if (xu != NULL) {
-    if (xu->owner != space) {
-      errno = EINVAL;
-      return NULL;
-    }
-    if (xu->type == OPK_BOUND_SCALAR) {
-      bounds += 3;
-    } else if (xu->type == OPK_BOUND_VECTOR) {
-      bounds += 6;
-    } else {
-      /* Discard unused bound. */
-      xu = NULL;
-    }
+  if (box != NULL && box->space != space) {
+    errno = EINVAL;
+    return NULL;
   }
 
   /* Allocate enough memory for the workspace and its arrays. */
@@ -305,9 +276,8 @@ opk_new_vmlmb_optimizer(opk_vspace_t* space,
   opt->rho    = ADDRESS(double,        opt,   rho_offset);
   opt->m      = m;
   opt->gamma  = 1.0;
-  opt->bounds = bounds;
   opt->flags  = flags;
-  if (opt->bounds == 0) {
+  if (box == NULL) {
     opt->method = OPK_LBFGS;
   } else if ((flags & OPK_EMULATE_BLMVM) != 0) {
     /* For the BLMVM method, the scratch vector is used to store the
@@ -338,7 +308,7 @@ opk_new_vmlmb_optimizer(opk_vspace_t* space,
   if (lnsrch != NULL) {
     opt->lnsrch = OPK_HOLD_LNSRCH(lnsrch);
   } else {
-    if (bounds != 0) {
+    if (box != NULL) {
       opt->lnsrch = opk_lnsrch_new_backtrack(SFTOL, SAMIN);
     } else {
       opt->lnsrch = opk_lnsrch_new_csrch(SFTOL, SGTOL, SXTOL);
@@ -346,12 +316,6 @@ opk_new_vmlmb_optimizer(opk_vspace_t* space,
     if (opt->lnsrch == NULL) {
       goto error;
     }
-  }
-  if (xl != NULL) {
-    opt->xl = OPK_HOLD_BOUND(xl);
-  }
-  if (xu != NULL) {
-    opt->xu = OPK_HOLD_BOUND(xu);
   }
 #if ! SAVE_MEMORY
   opt->x0 = opk_vcreate(space);
@@ -367,7 +331,8 @@ opk_new_vmlmb_optimizer(opk_vspace_t* space,
   if (opt->d == NULL) {
     goto error;
   }
-  if (opt->bounds != 0) {
+  if (box != NULL) {
+    opt->box = OPK_HOLD_CONVEXSET(box);
     opt->w = opk_vcreate(space);
     if (opt->w == NULL) {
       goto error;
@@ -391,8 +356,8 @@ opk_start_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x)
   opt->restarts = 0;
   opt->updates = 0;
   opt->mp = 0;
-  if (opt->bounds != 0) {
-    opk_status_t status = opk_project_variables(x, x, opt->xl, opt->xu);
+  if (opt->box != NULL) {
+    opk_status_t status = opk_project_variables(x, x, opt->box);
     if (status != OPK_SUCCESS) {
       return failure(opt, status);
     }
@@ -519,7 +484,7 @@ apply(opk_vmlmb_t* opt, const opk_vector_t* g)
     }
   }
 
-  if (opt->bounds != 0) {
+  if (opt->box != NULL) {
     /* Enforce search direction to belong to the subset of the free
        variables. */
     opk_vproduct(opt->d, opt->w, opt->d);
@@ -538,7 +503,10 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
   opk_lnsrch_task_t lnsrch_task;
   opk_bool_t bounded;
 
-  bounded = (opt->bounds != 0);
+  if (opt == NULL) {
+    return OPK_TASK_ERROR;
+  }
+  bounded = (opt->box != NULL);
 
   switch (opt->task) {
 
@@ -553,7 +521,7 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
       if (opk_lnsrch_use_deriv(opt->lnsrch)) {
         if (bounded) {
           /* Compute the directional derivative as the inner product between
-             the effective step and the gradient. */
+             the effective step and the gradient divided by the step length. */
 #if 0
           if (opt->tmp == NULL &&
               (opt->tmp = opk_vcreate(opt->vspace)) == NULL) {
@@ -593,8 +561,7 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
     /* The current step is acceptable.  Check for global convergence. */
     if (bounded) {
       /* Determine the set of free variables. */
-      status = opk_get_free_variables(opt->w, x, opt->xl, opt->xu,
-                                          g, OPK_ASCENT);
+      status = opk_get_free_variables(opt->w, x, opt->box, g, OPK_ASCENT);
       if (status != OPK_SUCCESS) {
         return failure(opt, status);
       }
@@ -688,10 +655,12 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
 
     if (bounded) {
       /* Shortcut the step length. */
-      double bsmin, bsmax, wolfe;
-      status = opk_get_step_limits(&bsmin, &wolfe, &bsmax,
-                                       x, opt->xl, opt->xu,
-                                       opt->d, OPK_ASCENT);
+      double bsmin1, bsmin2, bsmax;
+      status = opk_get_step_limits(&bsmin1, &bsmin2, &bsmax,
+                                   x, opt->box, opt->d, OPK_ASCENT);
+      if (bsmin1 < 0) {
+        fprintf(stderr, "FIXME: SMIN1 =%g, SMIN2 =%g, SMAX =%g\n", bsmin1, bsmin2, bsmax);
+      }
       if (status != OPK_SUCCESS) {
         return failure(opt, status);
       }
@@ -701,7 +670,7 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
       if (opt->stp > bsmax) {
         opt->stp = bsmax;
       }
-      opt->bsmin = bsmin;
+      opt->bsmin = bsmin2;
     }
 
     /* Save current point. */
@@ -735,8 +704,8 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
 
   /* Compute a new trial point along the line search. */
   opk_vaxpby(x, 1, opt->x0, -opt->stp, opt->d);
-  if (opt->bounds != 0 && opt->stp > opt->bsmin) {
-    opk_status_t status = opk_project_variables(x, x, opt->xl, opt->xu);
+  if (bounded /*FIXME: && opt->stp > opt->bsmin*/) {
+    opk_status_t status = opk_project_variables(x, x, opt->box);
     if (status != OPK_SUCCESS) {
       return failure(opt, status);
     }

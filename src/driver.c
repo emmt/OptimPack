@@ -55,8 +55,7 @@ struct _opk_optimizer {
   opk_vspace_t* vspace;
   opk_vector_t* x;
   opk_vector_t* g;
-  opk_bound_t* lower;
-  opk_bound_t* upper;
+  opk_convexset_t* box;
   opk_index_t n;
   opk_algorithm_t algorithm;
   int single;
@@ -338,8 +337,7 @@ finalize_optimizer(opk_object_t* obj)
   OPK_DROP(opt->vspace);
   OPK_DROP(opt->x);
   OPK_DROP(opt->g);
-  OPK_DROP(opt->lower);
-  OPK_DROP(opt->upper);
+  OPK_DROP(opt->box);
 }
 
 extern opk_optimizer_t *
@@ -423,15 +421,11 @@ opk_new_optimizer(opk_algorithm_t algorithm, /* optimization algorithm */
   if (opt->vspace == NULL || opt->x == NULL || opt->g == NULL) {
     goto failure;
   }
-  if (lower_type != OPK_BOUND_NONE) {
-    opt->lower = opk_new_bound(opt->vspace, lower_type, lower);
-    if (opt->lower == NULL) {
-      goto failure;
-    }
-  }
-  if (upper_type != OPK_BOUND_NONE) {
-    opt->upper = opk_new_bound(opt->vspace, upper_type, upper);
-    if (opt->upper == NULL) {
+  if (lower_type != OPK_BOUND_NONE || upper_type != OPK_BOUND_NONE) {
+    opt->box = opk_new_boxset(opt->vspace,
+                              lower_type, lower,
+                              upper_type, upper);
+    if (opt->box == NULL) {
       goto failure;
     }
   }
@@ -442,8 +436,7 @@ opk_new_optimizer(opk_algorithm_t algorithm, /* optimization algorithm */
   } else {
     opt->optimizer = (opk_object_t*)opk_new_vmlmb_optimizer(opt->vspace,
                                                             m, flags,
-                                                            opt->lower,
-                                                            opt->upper,
+                                                            opt->box,
                                                             lnschr);
     opt->ops = &vmlmb_ops;
   }

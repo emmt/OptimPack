@@ -406,6 +406,8 @@ struct _opk_convexset {
                           const opk_convexset_t* set,
                           const opk_vector_t* d,
                           opk_orientation_t orient);
+  opk_bound_t* lower;
+  opk_bound_t* upper;
 };
 
 /**

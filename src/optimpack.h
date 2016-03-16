@@ -478,6 +478,7 @@ opk_get_object_references(opk_object_t* obj);
 #define OPK_HOLD_VECTOR(vec)     ((opk_vector_t*)OPK_HOLD(vec))
 #define OPK_HOLD_LNSRCH(lns)     ((opk_lnsrch_t*)OPK_HOLD(lns))
 #define OPK_HOLD_OPERATOR(op)    ((opk_operator_t*)OPK_HOLD(op))
+#define OPK_HOLD_CONVEXSET(set)  ((opk_convexset_t*)OPK_HOLD(set))
 #define OPK_HOLD_BOUND(bnd)      ((opk_bound_t*)OPK_HOLD(bnd))
 
 /** @} */
@@ -1482,6 +1483,9 @@ opk_set_vector_bound(opk_bound_t* bnd, opk_vector_t* vec);
 extern opk_bound_type_t
 opk_get_bound_type(const opk_bound_t* bnd);
 
+extern int
+opk_get_bounds(const opk_convexset_t* set);
+
 /**
  * Project the variables to the feasible set.
  *
@@ -1494,8 +1498,7 @@ opk_get_bound_type(const opk_bound_t* bnd);
  *
  * @param dst - The output projected variables.
  * @param x   - The input variables.
- * @param xl  - The lower bound.
- * @param xu  - The upper bound.
+ * @param set - The convex set which implements the constraints.
  *
  * @return `OPK_SUCCESS` or `OPK_ILLEGAL_ADDRESS` if one argumeant has an
  *         invalid (`NULL`) address, `OPK_BAD_SPACE` if not all vectors
@@ -1504,9 +1507,8 @@ opk_get_bound_type(const opk_bound_t* bnd);
  */
 extern opk_status_t
 opk_project_variables(opk_vector_t* dst,
-                          const opk_vector_t* x,
-                          const opk_bound_t* xl,
-                          const opk_bound_t* xu);
+                      const opk_vector_t* x,
+                      const opk_convexset_t* set);
 
 /**
  * Check whether the projection of the variables is implemented.
@@ -1552,8 +1554,7 @@ typedef enum {
  *
  * @param dst - The resulting projected direction.
  * @param x   - The current variables.
- * @param xl  - The lower bound.
- * @param xu  - The upper bound.
+ * @param set - The convex set which implements the constraints.
  * @param d   - The direction to project.
  * @param orient - The orientation of the direction `d`.  Strictly positive if
  *              `d` is a descent direction, strictly negative if `d` is an
@@ -1568,11 +1569,10 @@ typedef enum {
  */
 extern opk_status_t
 opk_project_direction(opk_vector_t* dst,
-                          const opk_vector_t* x,
-                          const opk_bound_t* xl,
-                          const opk_bound_t* xu,
-                          const opk_vector_t* d,
-                          opk_orientation_t orientation);
+                      const opk_vector_t* x,
+                      const opk_convexset_t* set,
+                      const opk_vector_t* d,
+                      opk_orientation_t orient);
 
 /**
  * Check whether projection of the search direction is implemented.
@@ -1594,8 +1594,7 @@ opk_can_project_directions(const opk_convexset_t* set);
  * @param dst - The resulting mask whose elements are set to 1 (resp. 0) if
  *              the corresponding variables are free (resp. binded).
  * @param x   - The current variables.
- * @param xl  - The lower bound.
- * @param xu  - The upper bound.
+ * @param set - The convex set which implements the constraints.
  * @param d   - The search direction.
  * @param orient - The orientation of the search direction (see {@link
  *              opk_project_direction}).
@@ -1607,11 +1606,10 @@ opk_can_project_directions(const opk_convexset_t* set);
  */
 extern opk_status_t
 opk_get_free_variables(opk_vector_t* dst,
-                           const opk_vector_t* x,
-                           const opk_bound_t* xl,
-                           const opk_bound_t* xu,
-                           const opk_vector_t* d,
-                           opk_orientation_t orient);
+                       const opk_vector_t* x,
+                       const opk_convexset_t* set,
+                       const opk_vector_t* d,
+                       opk_orientation_t orient);
 
 /**
  * Check whether determining the free variables is implemented.
@@ -1653,8 +1651,7 @@ opk_can_get_free_variables(const opk_convexset_t* set);
  * @param smin2  - The address to store the value of `smin2` or `NULL`.
  * @param smax   - The address to store the value of `smax` or `NULL`.
  * @param x      - The current variables (assumed to be feasible).
- * @param xl     - The lower bound.
- * @param xu     - The upper bound.
+ * @param set - The convex set which implements the constraints.
  * @param d      - The search direction.
  * @param orient - The orientation of the search direction (see
  *                 {@link opk_project_direction}).
@@ -1666,11 +1663,10 @@ opk_can_get_free_variables(const opk_convexset_t* set);
  */
 extern opk_status_t
 opk_get_step_limits(double* smin1, double* smin2, double *smax,
-                        const opk_vector_t* x,
-                        const opk_bound_t* xl,
-                        const opk_bound_t* xu,
-                        const opk_vector_t* d,
-                        opk_orientation_t orient);
+                    const opk_vector_t* x,
+                    const opk_convexset_t* set,
+                    const opk_vector_t* d,
+                    opk_orientation_t orient);
 
 /**
  * Check whether determining the step limits is implemented.
@@ -1682,6 +1678,27 @@ opk_get_step_limits(double* smin1, double* smin2, double *smax,
  */
 extern opk_bool_t
 opk_can_get_step_limits(const opk_convexset_t* set);
+
+/**
+ * Create a new box set.
+ *
+ * A box set is a convex set with separable bounds on the variables.
+ *
+ * @param space - The vector space of the variables.  The convex set is a
+ *                subset of this vector space.
+ * @param lower_type - The type of the lower bound(s).
+ * @param lower - The value of the lower bound(s).
+ * @param upper_type - The type of the upper bound(s).
+ * @param upper - The value of the upper bound(s).
+ *
+ * @return The address of a new box set, `NULL` in case of error (global
+ *         variable `errno` can be used to figure out the reason of the
+ *         failure).
+ */
+extern opk_convexset_t*
+opk_new_boxset(opk_vspace_t* space,
+               opk_bound_type_t lower_type, void* lower,
+               opk_bound_type_t upper_type, void* upper);
 
 /** @} */
 
@@ -1727,15 +1744,14 @@ typedef struct _opk_vmlmb_options {
  * Create a reverse communication optimizer implementing a limited memory
  * quasi-Newton method.
  *
- * The optimizer may account for bound constraints.
+ * The optimizer may account for bound constraints if argument `box` is
+ * non-`NULL`.
  *
  * @param space  - The space to which belong the variables.
  * @param m      - The number of previous steps to memorize (`m` > 0).
- * @param flags  - Bitwise options: `OPK_EMULATE_BLMVM`.
- * @param xl     - Optional lower bound for the variables; can be `NULL`
- *                 if there are no lower bounds.
- * @param xu     - Optional upper bound for the variables; can be `NULL`
- *                 if there are no upper bounds.
+ * @param flags  - Bitwise options: `OPK_EMULATE_BLMVM` or `0`.
+ * @param box    - An optional box set implementing the bound constraints (can
+ *                 be `NULL`).
  * @param lnsrch - Optional line search method to use; can be `NULL` to use a
  *                 default one.  Note that the optimizer will hold a reference
  *                 to the line search object.
@@ -1749,8 +1765,7 @@ extern opk_vmlmb_t*
 opk_new_vmlmb_optimizer(opk_vspace_t* space,
                         opk_index_t m,
                         unsigned int flags,
-                        opk_bound_t* xl,
-                        opk_bound_t* xu,
+                        opk_convexset_t* box,
                         opk_lnsrch_t* lnsrch);
 
 /** The variants implemented by VMLMB. */

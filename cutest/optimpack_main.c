@@ -90,12 +90,12 @@ static void getinfo(integer n, integer m, doublereal *bl, doublereal *bu,
 /* Return the (projected) gradient norm as in CG_DESCENT or ASA_CG */
 static double
 gradnorm(const opk_vector_t* x, const opk_vector_t* g, opk_vector_t* gp,
-         const opk_bound_t* xl, const opk_bound_t* xu)
+         const opk_convexset_t* box)
 {
-  if (gp != NULL) {
-    /* compute ||Projection(x_k - g_k) - x_k||_infty */
+  if (box != NULL) {
+    /* compute ||x_k - Projection(x_k - g_k)||_infty */
     opk_vaxpby(gp, 1, x, -1, g);
-    if (opk_project_variables(gp, gp, xl, xu) != OPK_SUCCESS) {
+    if (opk_project_variables(gp, gp, box) != OPK_SUCCESS) {
       printf("# Failed to project variables\n");
       exit(-1);
     }
@@ -150,8 +150,11 @@ int MAINENTRY(void)
   unsigned int vmlmb_flags = 0;
   unsigned int nlcg_flags = OPK_NLCG_DEFAULT;
   const char* algorithm_name;
-  opk_bound_t* lower;
-  opk_bound_t* upper;
+  opk_convexset_t* box;
+  void* lower_value;
+  void* upper_value;
+  opk_bound_type_t lower_type;
+  opk_bound_type_t upper_type;
   double f, gnorm, finalf, finalgnorm, gtest;
   double gatol = 1.0e-6;    /* required gradient absolute tolerance */
   double grtol = 0.0;       /* required gradient relative tolerance */
@@ -527,25 +530,32 @@ int MAINENTRY(void)
   vg  = opk_wrap_simple_double_vector(vspace, g,  free, g);
   vbl = opk_wrap_simple_double_vector(vspace, bl, free, bl);
   vbu = opk_wrap_simple_double_vector(vspace, bu, free, bu);
-  if (vx == NULL || vbl == NULL || vbu == NULL) {
+  if (vx == NULL || vg == NULL || vbl == NULL || vbu == NULL) {
     printf("# Failed to wrap vectors\n");
     exit(-1);
   }
   if ((bounds & 1) == 0) {
-    lower = NULL;
+    lower_value = NULL;
+    lower_type = OPK_BOUND_NONE;
   } else {
-    lower = opk_new_bound(vspace, OPK_BOUND_VECTOR, vbl);
-    if (lower == NULL) {
-      printf("# Failed to wrap lower bounds\n");
-      exit(-1);
-    }
+    lower_value = vbl;
+    lower_type = OPK_BOUND_VECTOR;
   }
   if ((bounds & 2) == 0) {
-    upper = NULL;
+    upper_value = NULL;
+    upper_type = OPK_BOUND_NONE;
   } else {
-    upper = opk_new_bound(vspace, OPK_BOUND_VECTOR, vbu);
-    if (upper == NULL) {
-      printf("# Failed to wrap upper bounds\n");
+    upper_value = vbu;
+    upper_type = OPK_BOUND_VECTOR;
+  }
+  if ((bounds & 3) == 0) {
+    box = NULL;
+  } else {
+    box = opk_new_boxset(vspace,
+                         lower_type, lower_value,
+                         upper_type, upper_value);
+    if (box == NULL) {
+      printf("# Failed to create box set\n");
       exit(-1);
     }
   }
@@ -555,16 +565,18 @@ int MAINENTRY(void)
   if (algorithm == VMLMB) {
     opk_vmlmb_options_t options;
     vmlmb = opk_new_vmlmb_optimizer(vspace, mem, vmlmb_flags,
-                                    lower, upper, lnsrch);
+                                    box, lnsrch);
     if (vmlmb == NULL) {
       printf("# Failed to create VMLMB optimizer\n");
       exit(-1);
     }
     algorithm_name = opk_get_vmlmb_method_name(vmlmb);
-    vgp = opk_vcreate(vspace);
-    if (vgp == NULL) {
-      printf("# Failed to create projected gradient vector\n");
-      exit(-1);
+    if (box != NULL) {
+      vgp = opk_vcreate(vspace);
+      if (vgp == NULL) {
+        printf("# Failed to create projected gradient vector\n");
+        exit(-1);
+      }
     }
     opk_get_vmlmb_options(&options, vmlmb);
     options.gatol = 0.0;
@@ -660,7 +672,7 @@ int MAINENTRY(void)
           printf("# CUTEst error, status = %d, aborting\n", status);
           exit(status);
         }
-        gnorm = gradnorm(vx, vg, vgp, lower, upper); /* FIXME: this adds some overhead */
+        gnorm = gradnorm(vx, vg, vgp, box); /* FIXME: this adds some overhead */
         ++evaluations;
         if (evaluations == 1) {
           gtest = gatol + grtol*gnorm;
