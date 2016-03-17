@@ -220,6 +220,14 @@ struct _opk_vspace_operations {
   void (*poke)(const opk_vspace_t* vspace, opk_vector_t* v,
                opk_index_t k, double value);
 
+  /* Copy the values of a conventional array into a vector. */
+  void (*import)(const opk_vspace_t* space, opk_vector_t* dst,
+                 const void* src, opk_type_t type);
+
+  /* Copy the values of a vector in a conventional array. */
+  void (*export)(const opk_vspace_t* space, void* dst, opk_type_t type,
+                 const opk_vector_t* src);
+
   /* Fill a vector with a scalar ALPHA.  When this method is called, it is
      guaranteed that X belong to VSPACE.  The implementation of this method
      may be optimized when ALPHA is equal to zero. */

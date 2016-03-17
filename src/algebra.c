@@ -184,6 +184,44 @@ opk_vpoke(opk_vector_t* vect, opk_index_t k, double value)
   return OPK_SUCCESS;
 }
 
+opk_status_t
+opk_vimport(opk_vector_t* dst, const void* src, opk_type_t type, opk_index_t n)
+{
+  if (dst == NULL || src == NULL) {
+    return OPK_ILLEGAL_ADDRESS;
+  }
+  if (type != OPK_FLOAT && type != OPK_DOUBLE) {
+    return OPK_INVALID_ARGUMENT;
+  }
+  if (n != dst->owner->size) {
+    return OPK_INVALID_ARGUMENT;
+  }
+  if (dst->owner->ops->import == NULL) {
+    return OPK_NOT_IMPLEMENTED;
+  }
+  dst->owner->ops->import(dst->owner, dst, src, type);
+  return OPK_SUCCESS;
+}
+
+opk_status_t
+opk_vexport(void* dst, opk_type_t type, opk_index_t n, const opk_vector_t* src)
+{
+  if (dst == NULL || src == NULL) {
+    return OPK_ILLEGAL_ADDRESS;
+  }
+  if (type != OPK_FLOAT && type != OPK_DOUBLE) {
+    return OPK_INVALID_ARGUMENT;
+  }
+  if (n != src->owner->size) {
+    return OPK_INVALID_ARGUMENT;
+  }
+  if (src->owner->ops->export == NULL) {
+    return OPK_NOT_IMPLEMENTED;
+  }
+  src->owner->ops->export(src->owner, dst, type, src);
+  return OPK_SUCCESS;
+}
+
 void
 opk_vprint(FILE* file, const char* name, const opk_vector_t* vect,
            opk_index_t nmax)
@@ -592,7 +630,8 @@ typedef struct _opk_bound {
     opk_vector_t* vector; /**< The bound as a vector. */
     double        scalar; /**< The bound as a scalar. */
   } value;                /**< Value of the bound. */
-  opk_bound_type_t type;  /**< Type of the bound. */
+  int              type;  /**< Type of the bound: 0 for none, 's' for a scalar
+                           *   and 'v' for a vector. */
 } opk_bound_t;
 
 typedef struct _opk_boxset {
@@ -605,10 +644,10 @@ static void
 finalize_boxset(opk_convexset_t* set)
 {
   opk_boxset_t* box = (opk_boxset_t*)set;
-  if (box->lower.type == OPK_BOUND_VECTOR) {
+  if (box->lower.type == 'v') {
     OPK_DROP(box->lower.value.vector);
   }
-  if (box->upper.type == OPK_BOUND_VECTOR) {
+  if (box->upper.type == 'v') {
     OPK_DROP(box->upper.value.vector);
   }
 }
@@ -618,20 +657,20 @@ get_bounds(const void** lower, const void** upper, const opk_boxset_t* box)
 {
   int type;
 
-  if (box->lower.type == OPK_BOUND_SCALAR) {
+  if (box->lower.type == 's') {
     type = 1;
     *lower = &box->lower.value.scalar;
-  } else if (box->lower.type == OPK_BOUND_VECTOR) {
+  } else if (box->lower.type == 'v') {
     type = 2;
     *lower = box->lower.value.vector;
   } else {
     type = 0;
     *lower = NULL;
   }
-  if (box->upper.type == OPK_BOUND_SCALAR) {
+  if (box->upper.type == 's') {
     type += 3;
     *upper = &box->upper.value.scalar;
-  } else if (box->upper.type == OPK_BOUND_VECTOR) {
+  } else if (box->upper.type == 'v') {
     type += 6;
     *upper = box->upper.value.vector;
   } else {
@@ -698,7 +737,7 @@ box_steplim(double* smin1, double* smin2, double *smax,
 }
 
 static opk_status_t
-set_bound(const opk_vspace_t* space, opk_bound_t* bound,
+set_bound(opk_vspace_t* space, opk_bound_t* bound,
           opk_bound_type_t type, void* value)
 {
   memset(bound, 0, sizeof(opk_bound_t));
@@ -706,11 +745,22 @@ set_bound(const opk_vspace_t* space, opk_bound_t* bound,
     if (value != NULL) {
       return OPK_INVALID_ARGUMENT;
     }
-  } else if (type == OPK_BOUND_SCALAR) {
+    return OPK_SUCCESS;
+  }
+  if (type == OPK_BOUND_SCALAR_FLOAT) {
+    if (value == NULL) {
+      return OPK_ILLEGAL_ADDRESS;
+    }
+    bound->value.scalar = *(float*)value;
+    bound->type = 's';
+    return OPK_SUCCESS;
+  }
+  if (type == OPK_BOUND_SCALAR_DOUBLE) {
     if (value == NULL) {
       return OPK_ILLEGAL_ADDRESS;
     }
     bound->value.scalar = *(double*)value;
+    bound->type = 's';
   } else if (type == OPK_BOUND_VECTOR) {
     if (value == NULL) {
       return OPK_ILLEGAL_ADDRESS;
@@ -719,11 +769,36 @@ set_bound(const opk_vspace_t* space, opk_bound_t* bound,
       return OPK_BAD_SPACE;
     }
     bound->value.vector = (opk_vector_t*)OPK_HOLD(value);
-  } else {
-    return OPK_INVALID_ARGUMENT;
+    bound->type = 'v';
+    return OPK_SUCCESS;
   }
-  bound->type = type;
-  return OPK_SUCCESS;
+  if (type == OPK_BOUND_VOLATILE_FLOAT || type == OPK_BOUND_VOLATILE_DOUBLE ||
+      type == OPK_BOUND_STATIC_FLOAT   || type == OPK_BOUND_STATIC_DOUBLE) {
+    /* Copy the array in a new vector.  In some case it may be possible to save
+       memory by just wrapping the static array in a vector (this is done in
+       the high level driver). */
+    opk_status_t status;
+    opk_vector_t* vector;
+    opk_type_t datatype = (type == OPK_BOUND_VOLATILE_FLOAT ||
+                           type == OPK_BOUND_STATIC_FLOAT ? OPK_FLOAT
+                           : OPK_DOUBLE);
+    if (value == NULL) {
+      return OPK_ILLEGAL_ADDRESS;
+    }
+    vector = opk_vcreate(space);
+    if (vector == NULL) {
+      return OPK_INSUFFICIENT_MEMORY;
+    }
+    status = opk_vimport(vector, value, datatype, space->size);
+    if (status != OPK_SUCCESS) {
+      OPK_DROP(vector);
+      return status;
+    }
+    bound->value.vector = vector;
+    bound->type = 'v';
+    return OPK_SUCCESS;
+  }
+  return OPK_INVALID_ARGUMENT;
 }
 
 opk_convexset_t*

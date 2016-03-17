@@ -387,6 +387,12 @@ typedef int opk_bool_t;
 #define OPK_TRUE  1
 #define OPK_FALSE 0
 
+/** Type of the variables in a conventional array. */
+typedef enum {
+  OPK_FLOAT, /**< Variables are single precision floating point numbers. */
+  OPK_DOUBLE /**< Variables are double precision floating point numbers. */
+} opk_type_t;
+
 /*---------------------------------------------------------------------------*/
 /* BASIC OBJECTS */
 
@@ -713,6 +719,34 @@ opk_vpeek(const opk_vector_t* vect, opk_index_t k, double* ptr);
  */
 extern opk_status_t
 opk_vpoke(opk_vector_t* vect, opk_index_t k, double value);
+
+/**
+ * Copy the values of a conventional array into a vector.
+ *
+ * @param dst  - The destination vector.
+ * @param src  - The source array.
+ * @param type - The type of the elements of the source array.
+ * @param n    - The number of elements in the source array.
+ *
+ * @return A standard status.  The number of elements of the source must match
+ *         those of the destination.
+ */
+extern opk_status_t
+opk_vimport(opk_vector_t* dst, const void* src, opk_type_t type, opk_index_t n);
+
+/**
+ * Copy the values of a vector into a conventional array.
+ *
+ * @param dst  - The destination array.
+ * @param type - The type of the elements of the destination array.
+ * @param n    - The number of elements in the destination array.
+ * @param src  - The source vector.
+ *
+ * @return A standard status.  The number of elements of the source must match
+ *         those of the destination.
+ */
+opk_status_t
+opk_vexport(void* dst, opk_type_t type, opk_index_t n, const opk_vector_t* src);
 
 /**
  * Fill a vector with zeros.
@@ -1444,24 +1478,40 @@ typedef struct _opk_convexset opk_convexset_t;
  * are specified by two parameters: a type and a value.  If the variables are
  * unbounded, then the corresponding bound type is `OPK_BOUND_NONE` and the
  * associated value must be `NULL`.  If all variables have the same bound, it
- * is more efficient to specify a scalar bound with type `OPK_BOUND_SCALAR` and
- * the address of a double precision variable which stores the bound as
- * associated value.  It is also possible to specify a componentwise bound in
- * three different ways depending how the bounds are stored.  If the bounds are
- * in an OptimPack vector (of the same vector space of the variables) use type
+ * is more efficient to specify a scalar bound with type
+ * `OPK_BOUND_SCALAR_FLOAT` or `OPK_BOUND_SCALAR_DOUBLE` and the address of a
+ * single or double precision variable which stores the bound as associated
+ * value.  It is also possible to specify a componentwise bound in three
+ * different ways depending how the bounds are stored.  If the bounds are in an
+ * OptimPack vector (of the same vector space of the variables) use type
  * `OPK_BOUND_VECTOR` and provide the address of the vector as the associated
  * value.  If the bounds are in a conventional array (with the same number of
- * elements and the same type `OPK_FLOAT` or `OPK_DOUBLE` as the variables),
- * then the associated value is the address of the array and the type is
- * `OPK_BOUND_STATIC` if the array will not be released while the bound is in
- * use or `OPK_BOUND_VOLATILE` otherwise.
+ * elements as the variables), then the associated value is the address of the
+ * array and the type is `OPK_BOUND_STATIC_FLOAT` or `OPK_BOUND_STATIC_DOUBLE`
+ * if the array will not be released while the bound is in use or
+ * `OPK_BOUND_VOLATILE_FLOAT` or `OPK_BOUND_VOLATILE_DOUBLE` otherwise.
  */
 typedef enum {
-  OPK_BOUND_NONE     = 0, /**< No-bound (associated value must be `NULL`). */
-  OPK_BOUND_SCALAR   = 1, /**< Scalar bound (associated value is the address of
-                           *   a double). */
-  OPK_BOUND_VECTOR   = 2  /**< Vector bound (associated value is the address of
-                           *   an `opk_vector_t`). */
+  OPK_BOUND_NONE            = 0, /**< No-bound (associated value must be
+                                  *   `NULL`). */
+  OPK_BOUND_SCALAR_FLOAT    = 1, /**< Scalar bound (associated value is the
+                                  *   address of a float). */
+  OPK_BOUND_SCALAR_DOUBLE   = 2, /**< Scalar bound (associated value is the
+                                  *   address of a double). */
+  OPK_BOUND_STATIC_FLOAT    = 3, /**< Bounds are stored in a static array of
+                                  *   float's (associated value is the address
+                                  *   of the array). */
+  OPK_BOUND_STATIC_DOUBLE   = 4, /**< Bounds are stored in a static array of
+                                  *   double's (associated value is the address
+                                  *   of the array). */
+  OPK_BOUND_VOLATILE_FLOAT  = 5, /**< Bounds are stored in a volatile array of
+                                  *   floats's (associated value is the address
+                                  *   of the array). */
+  OPK_BOUND_VOLATILE_DOUBLE = 6, /**< Bounds are stored in a volatile array of
+                                  *   double's (associated value is the address
+                                  *   of the array). */
+  OPK_BOUND_VECTOR          = 7  /**< Vector bound (associated value is the
+                                  *   address of an `opk_vector_t`). */
 } opk_bound_type_t;
 
 /**
@@ -1893,12 +1943,6 @@ opk_set_vmlmb_options(opk_vmlmb_t* dst, const opk_vmlmb_options_t* src);
  * @addtogroup LimitedMemory
  * @{
  */
-
-/** Type of the variables in a optimization problem. */
-typedef enum {
-  OPK_FLOAT, /**< Variables are single precision floating point numbers. */
-  OPK_DOUBLE /**< Variables are double precision floating point numbers. */
-} opk_type_t;
 
 /** Limited memory optimization algorithm. */
 typedef enum {

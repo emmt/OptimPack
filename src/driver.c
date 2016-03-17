@@ -40,10 +40,6 @@
 
 #include "optimpack-private.h"
 
-#define CHECK_BOUND_TYPE(t) ((t) == OPK_BOUND_NONE || \
-                             (t) == OPK_BOUND_SCALAR || \
-                             (t) == OPK_BOUND_VECTOR)
-
 /*---------------------------------------------------------------------------*/
 
 typedef struct _operations operations_t;
@@ -340,6 +336,9 @@ finalize_optimizer(opk_object_t* obj)
   OPK_DROP(opt->box);
 }
 
+#define CHECK_BOUND_TYPE(t) (OPK_BOUND_NONE <= (t) &&  \
+                             (t) <= OPK_BOUND_VECTOR)
+
 extern opk_optimizer_t *
 opk_new_optimizer(opk_algorithm_t algorithm, /* optimization algorithm */
                   opk_type_t type, /* type of variables: OPK_FLOAT or OPK_DOUBLE */
@@ -352,8 +351,8 @@ opk_new_optimizer(opk_algorithm_t algorithm, /* optimization algorithm */
                   opk_bound_type_t upper_type, void* upper,
                   opk_lnsrch_t* lnschr)
 {
-  opk_optimizer_t* opt;
-  int single;
+  opk_optimizer_t* opt = NULL;
+  opk_bool_t single, bounded;
 
   /* Check some generic parameters. */
   if (n < 1) {
@@ -378,9 +377,10 @@ opk_new_optimizer(opk_algorithm_t algorithm, /* optimization algorithm */
   }
 
   /* Check algorithm and bounds. */
+  bounded = (lower_type != OPK_BOUND_NONE ||
+             upper_type != OPK_BOUND_NONE);
   if (algorithm == OPK_ALGORITHM_NLCG) {
-    if (lower_type != OPK_BOUND_NONE ||
-        upper_type != OPK_BOUND_NONE) {
+    if (bounded) {
       errno = EINVAL;
       return NULL;
     }
@@ -422,10 +422,41 @@ opk_new_optimizer(opk_algorithm_t algorithm, /* optimization algorithm */
   if (opt->vspace == NULL || opt->x == NULL || opt->g == NULL) {
     goto failure;
   }
-  if (lower_type != OPK_BOUND_NONE || upper_type != OPK_BOUND_NONE) {
+  if (bounded) {
+    opk_vector_t* lower_vector = NULL;
+    opk_vector_t* upper_vector = NULL;
+    if (lower_type == (single ? OPK_BOUND_STATIC_FLOAT
+                       : OPK_BOUND_STATIC_DOUBLE)) {
+      if (single) {
+        lower_vector = WRAP_FLOAT(opt->vspace, lower);
+      } else {
+        lower_vector = WRAP_DOUBLE(opt->vspace, lower);
+      }
+      if (lower_vector == NULL) {
+        goto failure;
+      }
+      lower = lower_vector;
+      lower_type = OPK_BOUND_VECTOR;
+    }
+    if (upper_type == (single ? OPK_BOUND_STATIC_FLOAT
+                       : OPK_BOUND_STATIC_DOUBLE)) {
+      if (single) {
+        upper_vector = WRAP_FLOAT(opt->vspace, upper);
+      } else {
+        upper_vector = WRAP_DOUBLE(opt->vspace, upper);
+      }
+      if (upper_vector == NULL) {
+        OPK_DROP(lower_vector);
+        goto failure;
+      }
+      upper = upper_vector;
+      upper_type = OPK_BOUND_VECTOR;
+    }
     opt->box = opk_new_boxset(opt->vspace,
                               lower_type, lower,
                               upper_type, upper);
+    OPK_DROP(lower_vector);
+    OPK_DROP(upper_vector);
     if (opt->box == NULL) {
       goto failure;
     }

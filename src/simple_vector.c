@@ -48,6 +48,7 @@
 
 #if SINGLE_PRECISION
 #  define REAL     float
+#  define TYPE     OPK_FLOAT
 #  define ABS(x)   fabsf(x)
 #  define SQRT(x)  sqrtf(x)
 #  define ALPHA    _alpha
@@ -58,6 +59,7 @@
 #  define FLOAT_CHOICE(a,b) a
 #else
 #  define REAL     double
+#  define TYPE     OPK_DOUBLE
 #  define ABS(x)   fabs(x)
 #  define SQRT(x)  sqrt(x)
 #  define ALPHA    alpha
@@ -104,18 +106,58 @@ finalize(opk_vspace_t* vspace,
   }
 }
 
-static double peek(const opk_vspace_t* vspace,
-                   const opk_vector_t* vect,
-                   opk_index_t k)
+static double
+peek(const opk_vspace_t* vspace,
+     const opk_vector_t* vect,
+     opk_index_t k)
 {
   return DATA(vect)[k];
 }
 
-static void poke(const opk_vspace_t* vspace,
-                 opk_vector_t* vect,
-                 opk_index_t k, double value)
+static void
+poke(const opk_vspace_t* vspace,
+     opk_vector_t* vect,
+     opk_index_t k, double value)
 {
   DATA(vect)[k] = value;
+}
+
+static void
+import(const opk_vspace_t* space, opk_vector_t* dst,
+       const void* src, opk_type_t type)
+{
+  opk_index_t i, n = space->size;
+  REAL* out = DATA(dst);
+  if (type == OPK_FLOAT) {
+    const float* inp = src;
+    for (i = 0; i < n; ++i) {
+      out[i] = inp[i];
+    }
+  } else {
+    const double* inp = src;
+    for (i = 0; i < n; ++i) {
+      out[i] = inp[i];
+    }
+  }
+}
+
+static void
+export(const opk_vspace_t* space, void* dst, opk_type_t type,
+       const opk_vector_t* src)
+{
+  opk_index_t i, n = space->size;
+  const REAL* inp = DATA(src);
+  if (type == OPK_FLOAT) {
+    float* out = dst;
+    for (i = 0; i < n; ++i) {
+      out[i] = inp[i];
+    }
+  } else {
+    double* out = dst;
+    for (i = 0; i < n; ++i) {
+      out[i] = inp[i];
+    }
+  }
 }
 
 static void
@@ -860,6 +902,8 @@ static opk_vspace_operations_t operations = {
   finalize,
   peek,
   poke,
+  import,
+  export,
   fill,
   norm1,
   norm2,
