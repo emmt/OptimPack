@@ -42,13 +42,9 @@ EXTRA_PKGS=$(Y_EXE_PKGS)
 PKG_CLEAN=
 
 # autoload file for this package, if any
-PKG_I_START=
+PKG_I_START=${srcdir}/opky-start.i
 # non-pkg.i include files for this package, if any
 PKG_I_EXTRA=
-
-RELEASE_FILES = AUTHORS LICENSE Makefile NEWS README.md \
-	configure usb.i yusb.c
-RELEASE_NAME = $(PKG_NAME)-$(RELEASE_VERSION).tar.bz2
 
 # -------------------------------- standard targets and rules (in Makepkg)
 
@@ -140,36 +136,6 @@ newuoa.o: $(OPK_SRC)/newuoa.c $(OPK_SRC)/optimpack.h $(OPK_SRC)/newuoa.h
 ynewuoa.o: $(srcdir)/ynewuoa.c $(OPK_SRC)/optimpack.h $(OPK_SRC)/newuoa.h
 	$(CC) $(OPK_CFLAGS) -o $@ -c $<
 
-release: $(RELEASE_NAME)
-
-$(RELEASE_NAME):
-	@if test "x$(RELEASE_VERSION)" = "x"; then \
-	  echo >&2 "set package version:  make RELEASE_VERSION=... release"; \
-	else \
-          dir=`basename "$(RELEASE_NAME)" .tar.bz2`; \
-	  if test "x$$dir" = "x" -o "x$$dir" = "x."; then \
-	    echo >&2 "bad directory name for archive"; \
-	  elif test -d "$$dir"; then \
-	    echo >&2 "directory $$dir already exists"; \
-	  else \
-	    mkdir -p "$$dir"; \
-	    for file in $(RELEASE_FILES); do \
-	      src="$(srcdir)/$$file"; \
-	      dst="$$dir/$$file"; \
-	      if test "$$file" = "Makefile"; then \
-	        sed <"$$src" >"$$dst" -e 's/^\( *Y_\(MAKEDIR\|EXE\(\|_PKGS\|_HOME\|_SITE\)\|HOME_PKG\) *=\).*/\1/'; \
-	        touch -r "$$src" "$$dst"; \
-	      else \
-	        cp -p "$$src" "$$dst"; \
-	      fi; \
-	    done; \
-	    rm -f "$$dir"/*~ "$$dir"/*/*~; \
-	    echo "$(RELEASE_VERSION)" > "$$dir/VERSION"; \
-	    tar jcf "$(RELEASE_NAME)" "$$dir"; \
-	    rm -rf "$$dir"; \
-	    echo "$(RELEASE_NAME) created"; \
-	  fi; \
-	fi;
 
 .PHONY: clean release
 
