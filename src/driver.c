@@ -423,6 +423,8 @@ opk_new_optimizer(opk_algorithm_t algorithm, /* optimization algorithm */
     goto failure;
   }
   if (bounded) {
+    /* Take care of simply wrapping static arrays if the bounds are provided as
+       such. */
     opk_vector_t* lower_vector = NULL;
     opk_vector_t* upper_vector = NULL;
     if (lower_type == (single ? OPK_BOUND_STATIC_FLOAT
