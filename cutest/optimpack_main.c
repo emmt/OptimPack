@@ -99,7 +99,7 @@ gradnorm(const opk_vector_t* x, const opk_vector_t* g, opk_vector_t* gp,
       printf("# Failed to project variables\n");
       exit(-1);
     }
-    opk_vaxpby(gp, 1, gp, -1, x);
+    opk_vaxpby(gp, 1, x, -1, gp);
     return opk_vnorminf(gp);
   } else {
     return opk_vnorminf(g);
@@ -785,7 +785,8 @@ int MAINENTRY(void)
   OPK_DROP(vbu);
   OPK_DROP(vspace);
   OPK_DROP(nlcg);
-
+  OPK_DROP(vmlmb);
+  OPK_DROP(box);
   CUTEST_uterminate(&status);
 
   return 0;
