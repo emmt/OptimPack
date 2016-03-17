@@ -26,10 +26,6 @@ extern "C" {   /* To prevent C++ compilers from mangling symbols */
 #include "cutest.h"
 #include "optimpack.h"
 
-typedef enum {
-  NLCG = 0, VMLM, VMLMB
-} algorithm_t;
-
 static void getinfo(integer n, integer m, doublereal *bl, doublereal *bu,
                     doublereal *cl, doublereal *cu, logical *equatn,
                     logical *linear, VarTypes *vartypes)
@@ -139,20 +135,18 @@ int MAINENTRY(void)
   opk_vector_t* vgp;
   opk_vector_t* vbl;
   opk_vector_t* vbu;
-  opk_nlcg_t* nlcg  = NULL; /* non-linear conjugate gradient optimizer */
-  opk_vmlmb_t* vmlmb = NULL; /* idem with bound constraints */
+  opk_optimizer_t* opt = NULL;
   opk_lnsrch_t* lnsrch = NULL; /* Line search method */
   opk_task_t task;
   opk_status_t final_status;
-#define NLCG  1
-#define VMLMB 2
-  int algorithm = VMLMB;
+  opk_algorithm_t algorithm = OPK_ALGORITHM_VMLMB;
   unsigned int vmlmb_flags = 0;
   unsigned int nlcg_flags = OPK_NLCG_DEFAULT;
-  const char* algorithm_name;
+  char algorithm_name[20];
+  char algorithm_description[DESCRIPTION_MAX_SIZE];
   opk_convexset_t* box;
-  void* lower_value;
-  void* upper_value;
+  void* lower_addr;
+  void* upper_addr;
   opk_bound_type_t lower_type;
   opk_bound_type_t upper_type;
   double f, gnorm, finalf, finalgnorm, gtest;
@@ -359,11 +353,12 @@ int MAINENTRY(void)
       line[MAXLINE] = 0;
       if (sscanf(line, " algorithm %s", str) == 1) {
         if (strcasecmp(str, "nlcg") == 0) {
-          algorithm = NLCG;
+          algorithm = OPK_ALGORITHM_NLCG;
         } else if (strcasecmp(str, "vmlmb") == 0) {
-          algorithm = VMLMB;
+          algorithm = OPK_ALGORITHM_VMLMB;
+          vmlmb_flags = 0;
         } else if (strcasecmp(str, "blmvm") == 0) {
-          algorithm = VMLMB;
+          algorithm = OPK_ALGORITHM_VMLMB;
           vmlmb_flags = OPK_EMULATE_BLMVM;
         } else {
           printf("# Unknown algorithm\n");
@@ -520,7 +515,9 @@ int MAINENTRY(void)
     exit(-1);
   }
 
-  /* Build vector space and populate it with work vectors. */
+  /* Build vector space and populate it with work vectors.  FIXME: all this is
+     only needed because we want to compute the norm of the projected gradient
+     as is conventionally done: gp = x - proj(x - g). */
   vspace = opk_new_simple_double_vector_space(CUTEst_nvar);
   if (vspace == NULL) {
     printf("# Failed to allocate vector space\n");
@@ -535,50 +532,56 @@ int MAINENTRY(void)
     exit(-1);
   }
   if ((bounds & 1) == 0) {
-    lower_value = NULL;
+    lower_addr = NULL;
     lower_type = OPK_BOUND_NONE;
   } else {
-    lower_value = vbl;
-    lower_type = OPK_BOUND_VECTOR;
+    lower_addr = bl;
+    lower_type = OPK_BOUND_VOLATILE_DOUBLE;
   }
   if ((bounds & 2) == 0) {
-    upper_value = NULL;
+    upper_addr = NULL;
     upper_type = OPK_BOUND_NONE;
   } else {
-    upper_value = vbu;
-    upper_type = OPK_BOUND_VECTOR;
+    upper_addr = bu;
+    upper_type = OPK_BOUND_VOLATILE_DOUBLE;
   }
   if ((bounds & 3) == 0) {
     box = NULL;
+    vgp = NULL;
   } else {
     box = opk_new_boxset(vspace,
-                         lower_type, lower_value,
-                         upper_type, upper_value);
+                         lower_type, lower_addr,
+                         upper_type, upper_addr);
     if (box == NULL) {
       printf("# Failed to create box set\n");
+      exit(-1);
+    }
+    vgp = opk_vcreate(vspace);
+    if (vgp == NULL) {
+      printf("# Failed to create projected gradient vector\n");
       exit(-1);
     }
   }
 
   /* Create the optimizer */
-  vgp = NULL;
-  if (algorithm == VMLMB) {
+  if (bounds != 0 && algorithm != OPK_VMLMB) {
+    printf("# Algorithm cannot be used with bounds\n");
+    exit(-1);
+  }
+
+  opt = opk_new_optimizer(algorithm, OPK_DOUBLE, CUTEst_nvar, mem,
+                          (algorithm == OPK_ALGORITHM_VMLMB ? vmlmb_flags : nlcg_flags),
+                          lower_type, lower_addr,
+                          upper_type, upper_addr,
+                          lnsrch);
+  if (opt == NULL) {
+    printf("# Failed to create optimizer\n");
+    exit(-1);
+  }
+  opk_get_name(algorithm_name, sizeof(algorithm_name), opt);
+  if (algorithm == OPK_ALGORITHM_VMLMB) {
     opk_vmlmb_options_t options;
-    vmlmb = opk_new_vmlmb_optimizer(vspace, mem, vmlmb_flags,
-                                    box, lnsrch);
-    if (vmlmb == NULL) {
-      printf("# Failed to create VMLMB optimizer\n");
-      exit(-1);
-    }
-    algorithm_name = opk_get_vmlmb_method_name(vmlmb);
-    if (box != NULL) {
-      vgp = opk_vcreate(vspace);
-      if (vgp == NULL) {
-        printf("# Failed to create projected gradient vector\n");
-        exit(-1);
-      }
-    }
-    opk_get_vmlmb_options(&options, vmlmb);
+    opk_get_options(&options, opt);
     options.gatol = 0.0;
     options.grtol = 0.0;
     if (delta_given) {
@@ -591,25 +594,13 @@ int MAINENTRY(void)
     } else {
       epsilon = options.epsilon;
     }
-    if (opk_set_vmlmb_options(vmlmb, &options) != OPK_SUCCESS) {
+    if (opk_set_options(opt, &options) != OPK_SUCCESS) {
       printf("# Bad VMLMB options\n");
       exit(-1);
     }
-    task = opk_start_vmlmb(vmlmb, vx);
-  } else if (algorithm == NLCG) {
+  } else if (algorithm == OPK_ALGORITHM_NLCG) {
     opk_nlcg_options_t options;
-    algorithm_name = "NLCG";
-    if (bounds != 0) {
-      printf("# Algorithm %s cannot be used with bounds\n",
-             algorithm_name);
-      exit(-1);
-    }
-    nlcg = opk_new_nlcg_optimizer(vspace, nlcg_flags, lnsrch);
-    if (nlcg == NULL) {
-      printf("# Failed to create NLCG optimizer\n");
-      exit(-1);
-    }
-    opk_get_nlcg_options(&options, nlcg);
+    opk_get_options(&options, opt);
     options.gatol = 0.0;
     options.grtol = 0.0;
     if (delta_given) {
@@ -622,15 +613,15 @@ int MAINENTRY(void)
     } else {
       epsilon = options.epsilon;
     }
-    if (opk_set_nlcg_options(nlcg, &options) != OPK_SUCCESS) {
+    if (opk_set_options(opt, &options) != OPK_SUCCESS) {
       printf("# Bad NLCG options\n");
       exit(-1);
     }
-    task = opk_start_nlcg(nlcg, vx);
   } else {
     printf("# Bad algorithm\n");
     exit(-1);
   }
+  task = opk_start(opt, x);
 
   /* Iteratively call the optimizer */
   evaluations = 0;
@@ -661,6 +652,9 @@ int MAINENTRY(void)
   }
   final_status = OPK_SUCCESS;
   while (TRUE_) {
+    /************************
+     * PERFORM PENDING TASK *
+     ************************/
     if (task == OPK_TASK_COMPUTE_FG) {
       logical grad = TRUE_;
       if (maxeval > 0 && evaluations > maxeval) {
@@ -685,47 +679,45 @@ int MAINENTRY(void)
           finalgnorm = gnorm;
         }
       }
-    } else if (task != OPK_TASK_NEW_X) {
-      /* Either algorithm converged, or an exception (error or warning)
-         occured. */
-      if (vmlmb != NULL) {
-        final_status = opk_get_vmlmb_status(vmlmb);
-      } else {
-        final_status = opk_get_nlcg_status(nlcg);
-      }
-      task = OPK_TASK_FINAL_X; /* to force terminating */
-    }
-    if (task == OPK_TASK_NEW_X || task == OPK_TASK_FINAL_X) {
+    } else if (task == OPK_TASK_NEW_X || task == OPK_TASK_FINAL_X) {
       if (evaluations > 1) {
         ++iterations;
       }
+      if (maxiter > 0 && iterations >= maxiter) {
+        final_status = OPK_TOO_MANY_ITERATIONS;
+        task = OPK_TASK_FINAL_X; /* to force terminating */
+      }
+    } else {
+      /* An exception (error or warning) occured. */
+      final_status = opk_get_status(opt);
+      task = OPK_TASK_FINAL_X; /* to force terminating */
+    }
+
+    /**************************
+     * PRINT SOME INFORMATION *
+     **************************/
+    if (task == OPK_TASK_NEW_X || task == OPK_TASK_FINAL_X) {
+      if (task == OPK_TASK_FINAL_X) {
+        /* restore best solution found so far. */
+        f = finalf;
+        gnorm = finalgnorm;
+      }
       if (verbose > 0 && (task == OPK_TASK_FINAL_X ||
                           (iterations%verbose) == 0)) {
-        double alpha;
-        opk_index_t restarts;
-        if (vmlmb != NULL) {
-          alpha = opk_get_vmlmb_step(vmlmb);
-          restarts = opk_get_vmlmb_restarts(vmlmb);
-        } else {
-          alpha = opk_get_nlcg_step(nlcg);
-          restarts = 0;
-        }
+        double alpha = opk_get_step(opt);
+        opk_index_t restarts = opk_get_restarts(opt);
         printf("  %6d %6d %6ld %23.15e %11.3e %11.3e\n",
                iterations, evaluations, (long)restarts, f, gnorm, alpha);
       }
       if (task == OPK_TASK_FINAL_X) {
         break;
       }
-      if (maxiter > 0 && iterations >= maxiter) {
-        final_status = OPK_TOO_MANY_ITERATIONS;
-        break;
-      }
     }
-    if (vmlmb != NULL) {
-      task = opk_iterate_vmlmb(vmlmb, vx, f, vg);
-    } else {
-      task = opk_iterate_nlcg(nlcg, vx, f, vg);
-    }
+
+    /******************
+     * TAKE NEXT STEP *
+     ******************/
+    task = opk_iterate(opt, x, f, g);
   }
 #if 0
   opk_vprint(stderr, " x", vx, 10);
@@ -744,13 +736,8 @@ int MAINENTRY(void)
   /* Print statistics */
   printf("# *********************** CUTEst statistics ************************\n");
   printf("#                Algorithm = OptimPack/%s ", algorithm_name);
-  if (algorithm == VMLMB) {
-    printf("(mem=%d)\n", OPK_MIN(CUTEst_nvar, mem));
-  } else {
-    char temp[DESCRIPTION_MAX_SIZE];
-    opk_get_nlcg_description(temp, sizeof(temp), nlcg);
-    printf("(%s)\n", temp);
-  }
+  opk_get_description(algorithm_description, sizeof(algorithm_description), opt);
+  printf("(%s)\n", algorithm_description);
   printf("#                  Problem = %-s\n", pname);
   printf("#                Variables = %-10d\n", CUTEst_nvar);
   printf("#        Bound constraints = %-10d\n", vartypes.nbnds);
@@ -784,8 +771,7 @@ int MAINENTRY(void)
   OPK_DROP(vbl);
   OPK_DROP(vbu);
   OPK_DROP(vspace);
-  OPK_DROP(nlcg);
-  OPK_DROP(vmlmb);
+  OPK_DROP(opt);
   OPK_DROP(box);
   CUTEST_uterminate(&status);
 
