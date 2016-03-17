@@ -565,7 +565,7 @@ get_bound(int iarg, yopt_instance_t* opt, bound_t* bnd)
   if (rank == 0) {
     /* Got a scalar. */
     bnd->value.scalar = ygets_d(iarg);
-    bnd->type = OPK_BOUND_SCALAR;
+    bnd->type = OPK_BOUND_SCALAR_DOUBLE;
   } else if (rank > 0) {
     /* Got an array.  FIXME: for now we do a copy. */
     long ntot, dims[Y_DIMSIZE];
@@ -847,8 +847,10 @@ void Y_opk_vmlmb(int argc)
   }
   if (lower_bound.type != OPK_BOUND_NONE ||
       upper_bound.type != OPK_BOUND_NONE) {
-#define BOUND_VALUE(bnd) (bnd.type == OPK_BOUND_VECTOR ? (void*)bnd.value.vector \
-                          : (bnd.type == OPK_BOUND_SCALAR ? (void*)&bnd.value.scalar \
+#define BOUND_VALUE(bnd) (bnd.type == OPK_BOUND_VECTOR             \
+                          ? (void*)bnd.value.vector                \
+                          : (bnd.type == OPK_BOUND_SCALAR_DOUBLE ? \
+                             (void*)&bnd.value.scalar              \
                              : NULL))
     opt->box = opk_new_boxset(opt->vspace,
                               lower_bound.type, BOUND_VALUE(lower_bound),
