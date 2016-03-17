@@ -1490,21 +1490,21 @@ typedef struct _opk_convexset opk_convexset_t;
  * Type of bounds.
  *
  * Variables can be bounded or unbounded from below and from above.  The bounds
- * are specified by two parameters: a type and a value.  If the variables are
- * unbounded, then the corresponding bound type is `OPK_BOUND_NONE` and the
- * associated value must be `NULL`.  If all variables have the same bound, it
+ * are specified by two parameters: a type and an address.  If the variables
+ * are unbounded, then the corresponding bound type is `OPK_BOUND_NONE` and the
+ * associated address must be `NULL`.  If all variables have the same bound, it
  * is more efficient to specify a scalar bound with type
  * `OPK_BOUND_SCALAR_FLOAT` or `OPK_BOUND_SCALAR_DOUBLE` and the address of a
- * single or double precision variable which stores the bound as associated
- * value.  It is also possible to specify a componentwise bound in three
- * different ways depending how the bounds are stored.  If the bounds are in an
- * OptimPack vector (of the same vector space of the variables) use type
- * `OPK_BOUND_VECTOR` and provide the address of the vector as the associated
- * value.  If the bounds are in a conventional array (with the same number of
- * elements as the variables), then the associated value is the address of the
- * array and the type is `OPK_BOUND_STATIC_FLOAT` or `OPK_BOUND_STATIC_DOUBLE`
- * if the array will not be released while the bound is in use or
- * `OPK_BOUND_VOLATILE_FLOAT` or `OPK_BOUND_VOLATILE_DOUBLE` otherwise.
+ * single or double precision variable which stores the bound.  It is also
+ * possible to specify a componentwise bound in three different ways depending
+ * how the bounds are stored.  If the bounds are in an OptimPack vector (of the
+ * same vector space of the variables) use type `OPK_BOUND_VECTOR` and provide
+ * the address of the vector.  If the bounds are in a conventional array (with
+ * the same number of elements as the variables), then the address of the array
+ * must be provided with type `OPK_BOUND_STATIC_FLOAT` or
+ * `OPK_BOUND_STATIC_DOUBLE` if the array will not be released while the bound
+ * is in use or `OPK_BOUND_VOLATILE_FLOAT` or `OPK_BOUND_VOLATILE_DOUBLE`
+ * otherwise.
  */
 typedef enum {
   OPK_BOUND_NONE            = 0, /**< No-bound (associated value must be
@@ -1999,7 +1999,7 @@ typedef struct _opk_optimizer opk_optimizer_t;
  *                                          OPK_BOUND_NONE, NULL,
  *                                          OPK_BOUND_NONE, NULL,
  *                                          NULL);
- * task = opk_start(opt, type, n, x);
+ * task = opk_start(opt, x);
  * for (;;) {
  *     if (task == OPK_TASK_COMPUTE_FG) {
  *          fx = f(x);
@@ -2014,7 +2014,7 @@ typedef struct _opk_optimizer opk_optimizer_t;
  *      } else {
  *          break;
  *      }
- *      task = opk_iterate(opt, type, n, x, fx, gx);
+ *      task = opk_iterate(opt, x, fx, gx);
  * }
  * if (task != OPK_TASK_FINAL_X) {
  *     fprintf(stderr, "some error occured (%s)",
