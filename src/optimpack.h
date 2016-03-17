@@ -479,7 +479,6 @@ opk_get_object_references(opk_object_t* obj);
 #define OPK_HOLD_LNSRCH(lns)     ((opk_lnsrch_t*)OPK_HOLD(lns))
 #define OPK_HOLD_OPERATOR(op)    ((opk_operator_t*)OPK_HOLD(op))
 #define OPK_HOLD_CONVEXSET(set)  ((opk_convexset_t*)OPK_HOLD(set))
-#define OPK_HOLD_BOUND(bnd)      ((opk_bound_t*)OPK_HOLD(bnd))
 
 /** @} */
 
@@ -1465,24 +1464,6 @@ typedef enum {
                            *   an `opk_vector_t`). */
 } opk_bound_type_t;
 
-
-typedef struct _opk_bound opk_bound_t;
-
-extern opk_bound_t*
-opk_new_bound(opk_vspace_t* space, opk_bound_type_t type,
-              void* value);
-extern void
-opk_unset_bound(opk_bound_t* bnd);
-
-extern void
-opk_set_scalar_bound(opk_bound_t* bnd, double val);
-
-extern opk_status_t
-opk_set_vector_bound(opk_bound_t* bnd, opk_vector_t* vec);
-
-extern opk_bound_type_t
-opk_get_bound_type(const opk_bound_t* bnd);
-
 /**
  * Project the variables to the feasible set.
  *
@@ -1990,6 +1971,7 @@ typedef struct _opk_optimizer opk_optimizer_t;
  * @param m      - The number of previous steps to memorize for the variable
  *                 metric methods.  If `m` is less or equal zero, a default
  *                 value is used; if `m` is larger than `n`, `m = n` is used.
+ *                 For non-linear conjugate gradient methods, `m = 0`.
  * @param flags  - Bitwise algorithm flags.
  * @param lower_type - The type of the lower bound.
  * @param lower  - Optional lower bound for the variables.  Can be `NULL` if
@@ -2011,12 +1993,9 @@ typedef struct _opk_optimizer opk_optimizer_t;
  *
  */
 extern opk_optimizer_t *
-opk_new_optimizer(opk_algorithm_t algorithm, /* optimization algorithm */
-                  opk_type_t type, /* type of variables: OPK_FLOAT or OPK_DOUBLE */
-                  opk_index_t n,   /* number of variables */
-                  opk_index_t m,   /* number of memorized directions (m > 0, for quasi-Newton,
-                                      m = 0 for non-linear conjugate gradient) */
-                  unsigned int flags, /* algorithm flags */
+opk_new_optimizer(opk_algorithm_t algorithm,
+                  opk_type_t type, opk_index_t n,
+                  opk_index_t m, unsigned int flags,
                   opk_bound_type_t lower_type, void* lower,
                   opk_bound_type_t upper_type, void* upper,
                   opk_lnsrch_t* lnschr);

@@ -343,9 +343,10 @@ finalize_optimizer(opk_object_t* obj)
 extern opk_optimizer_t *
 opk_new_optimizer(opk_algorithm_t algorithm, /* optimization algorithm */
                   opk_type_t type, /* type of variables: OPK_FLOAT or OPK_DOUBLE */
-                  opk_index_t n,   /* number of variables */
-                  opk_index_t m,   /* number of memorized directions (m > 0, for quasi-Newton,
-                                      m = 0 for non-linear conjugate gradient) */
+                  opk_index_t n, /* number of variables */
+                  opk_index_t m, /* number of memorized directions (m > 0, for
+                                    quasi-Newton, m = 0 for non-linear
+                                    conjugate gradient) */
                   unsigned int flags, /* algorithm flags */
                   opk_bound_type_t lower_type, void* lower,
                   opk_bound_type_t upper_type, void* upper,

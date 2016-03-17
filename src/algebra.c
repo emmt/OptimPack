@@ -418,33 +418,6 @@ opk_vaxpbypcz(opk_vector_t* dst,
 /*---------------------------------------------------------------------------*/
 /* CONVEX SETS */
 
-extern opk_status_t
-opk_project_variables2(opk_vector_t* dst,
-                       const opk_vector_t* x,
-                       const opk_bound_t* xl,
-                       const opk_bound_t* xu);
-extern opk_status_t
-opk_project_direction2(opk_vector_t* dst,
-                       const opk_vector_t* x,
-                       const opk_bound_t* xl,
-                       const opk_bound_t* xu,
-                       const opk_vector_t* d,
-                       opk_orientation_t orient);
-extern opk_status_t
-opk_get_free_variables2(opk_vector_t* dst,
-                        const opk_vector_t* x,
-                        const opk_bound_t* xl,
-                        const opk_bound_t* xu,
-                        const opk_vector_t* d,
-                        opk_orientation_t orient);
-extern opk_status_t
-opk_get_step_limits2(double* smin1, double* smin2, double *smax,
-                     const opk_vector_t* x,
-                     const opk_bound_t* xl,
-                     const opk_bound_t* xu,
-                     const opk_vector_t* d,
-                     opk_orientation_t orient);
-
 static void
 finalize_convexset(opk_object_t* obj)
 {
@@ -453,8 +426,6 @@ finalize_convexset(opk_object_t* obj)
     set->finalize(set);
   }
   OPK_DROP(set->space);
-  OPK_DROP(set->lower);
-  OPK_DROP(set->upper);
 }
 
 opk_convexset_t*
@@ -531,13 +502,6 @@ opk_project_variables(opk_vector_t* dst,
                       const opk_vector_t* x,
                       const opk_convexset_t* set)
 {
-#if 1
-  if (set == NULL) {
-    return OPK_ILLEGAL_ADDRESS;
-  } else {
-    return opk_project_variables2(dst, x, set->lower, set->upper);
-  }
-#else
   opk_vspace_t* space;
 
   if (dst == NULL || x == NULL || set == NULL) {
@@ -551,7 +515,6 @@ opk_project_variables(opk_vector_t* dst,
     return OPK_NOT_IMPLEMENTED;
   }
   return set->projvar(dst, x, set);
-#endif
 }
 
 opk_status_t
@@ -561,13 +524,6 @@ opk_project_direction(opk_vector_t* dst,
                       const opk_vector_t* d,
                       opk_orientation_t orient)
 {
-#if 1
-  if (set == NULL) {
-    return OPK_ILLEGAL_ADDRESS;
-  } else {
-    return opk_project_direction2(dst, x, set->lower, set->upper, d, orient);
-  }
-#else
   opk_vspace_t* space;
 
   if (dst == NULL || x == NULL || set == NULL || d == NULL) {
@@ -581,7 +537,6 @@ opk_project_direction(opk_vector_t* dst,
     return OPK_NOT_IMPLEMENTED;
   }
   return set->projdir(dst, x, set, d, orient);
-#endif
 }
 
 opk_status_t
@@ -591,13 +546,6 @@ opk_get_free_variables(opk_vector_t* dst,
                        const opk_vector_t* d,
                        opk_orientation_t orient)
 {
-#if 1
-  if (set == NULL) {
-    return OPK_ILLEGAL_ADDRESS;
-  } else {
-    return opk_get_free_variables2(dst, x, set->lower, set->upper, d, orient);
-  }
-#else
   opk_vspace_t* space;
 
   if (dst == NULL || x == NULL || set == NULL || d == NULL) {
@@ -611,7 +559,6 @@ opk_get_free_variables(opk_vector_t* dst,
     return OPK_NOT_IMPLEMENTED;
   }
   return set->freevar(dst, x, set, d, orient);
-#endif
 }
 
 opk_status_t
@@ -621,14 +568,6 @@ opk_get_step_limits(double* smin1, double* smin2, double *smax,
                     const opk_vector_t* d,
                     opk_orientation_t orient)
 {
-#if 1
-  if (set == NULL) {
-    return OPK_ILLEGAL_ADDRESS;
-  } else {
-    return opk_get_step_limits2(smin1, smin2, smax,
-                                x, set->lower, set->upper, d, orient);
-  }
-#else
   opk_vspace_t* space;
 
   if (x == NULL || set == NULL || d == NULL) {
@@ -642,276 +581,156 @@ opk_get_step_limits(double* smin1, double* smin2, double *smax,
     return OPK_NOT_IMPLEMENTED;
   }
   return set->steplim(smin1, smin2, smax, x, set, d, orient);
-#endif
 }
 
 /* A box set is a convex set with simple separable bounds.  This type is not
    publically available (the caller receives an `opk_convexset_t` type
    instead. */
+
+typedef struct _opk_bound {
+  union {
+    opk_vector_t* vector; /**< The bound as a vector. */
+    double        scalar; /**< The bound as a scalar. */
+  } value;                /**< Value of the bound. */
+  opk_bound_type_t type;  /**< Type of the bound. */
+} opk_bound_t;
+
+typedef struct _opk_boxset {
+  opk_convexset_t base;  /**< Base type (must be the first member). */
+  opk_bound_t     lower; /**< Lower bound. */
+  opk_bound_t     upper; /**< Upper bound. */
+} opk_boxset_t;
+
 static void
-finalize_bound(opk_object_t* obj)
+finalize_boxset(opk_convexset_t* set)
 {
-  opk_bound_t* bnd = (opk_bound_t*)obj;
-  opk_unset_bound(bnd);
-  OPK_DROP(bnd->owner);
-}
-
-opk_bound_t*
-opk_new_bound(opk_vspace_t* space, opk_bound_type_t type,
-              void* value)
-{
-  opk_bound_t* bnd;
-
-  /* Check arguments. */
-  if (space == NULL || (type != OPK_BOUND_NONE && value == NULL)) {
-    errno = EFAULT;
-    return NULL;
+  opk_boxset_t* box = (opk_boxset_t*)set;
+  if (box->lower.type == OPK_BOUND_VECTOR) {
+    OPK_DROP(box->lower.value.vector);
   }
-  if (space->size < 1 || type < 0 || type > 2 ||
-      (type == OPK_BOUND_VECTOR && ((opk_vector_t*)value)->owner != space)) {
-    errno = EINVAL;
-    return NULL;
+  if (box->upper.type == OPK_BOUND_VECTOR) {
+    OPK_DROP(box->upper.value.vector);
   }
-
-  /* Allocate enough memory for the object and instanciate it. */
-  bnd = (opk_bound_t*)opk_allocate_object(finalize_bound, sizeof(opk_bound_t));
-  if (bnd == NULL) {
-    return NULL;
-  }
-  bnd->owner = (opk_vspace_t*)OPK_HOLD(space);
-  bnd->type = type;
-  if (type == OPK_BOUND_VECTOR) {
-    bnd->value.vector = (opk_vector_t*)OPK_HOLD(value);
-  } else if (type == OPK_BOUND_SCALAR) {
-    bnd->value.scalar = *(double*)value;
-  }
-  return bnd;
-}
-
-opk_bound_type_t
-opk_get_bound_type(const opk_bound_t* bnd)
-{
-  return (bnd == NULL ? OPK_BOUND_NONE : bnd->type);
-}
-
-void
-opk_unset_bound(opk_bound_t* bnd)
-{
-  opk_vector_t* vec;
-  if (bnd != NULL) {
-    vec = (bnd->type == OPK_BOUND_VECTOR ? bnd->value.vector : NULL);
-    bnd->type = OPK_BOUND_NONE;
-    bnd->value.vector = NULL;
-    if (vec != NULL) {
-      OPK_DROP(vec);
-    }
-  }
-}
-
-void
-opk_set_scalar_bound(opk_bound_t* bnd, double val)
-{
-  if (bnd != NULL) {
-    opk_unset_bound(bnd);
-    bnd->value.scalar = val;
-    bnd->type = OPK_BOUND_SCALAR;
-  }
-}
-
-opk_status_t
-opk_set_vector_bound(opk_bound_t* bnd, opk_vector_t* vec)
-{
-  if (bnd != NULL) {
-    if (vec != NULL && bnd->owner != vec->owner) {
-      return OPK_BAD_SPACE;
-    }
-    opk_unset_bound(bnd);
-    if (vec != NULL) {
-      bnd->value.vector = (opk_vector_t*)OPK_HOLD(vec);
-      bnd->type = OPK_BOUND_VECTOR;
-    }
-  }
-  return OPK_SUCCESS;
 }
 
 static int
-get_bound(const void** lower, const opk_bound_t* xl,
-          const void** upper, const opk_bound_t* xu)
+get_bounds(const void** lower, const void** upper, const opk_boxset_t* box)
 {
   int type;
 
-  if (xl != NULL && xl->type == OPK_BOUND_SCALAR) {
+  if (box->lower.type == OPK_BOUND_SCALAR) {
     type = 1;
-    *lower = &(xl->value.scalar);
-  } else if (xl != NULL && xl->type == OPK_BOUND_VECTOR) {
+    *lower = &box->lower.value.scalar;
+  } else if (box->lower.type == OPK_BOUND_VECTOR) {
     type = 2;
-    *lower = xl->value.vector;
+    *lower = box->lower.value.vector;
   } else {
     type = 0;
     *lower = NULL;
   }
-  if (xu != NULL && xu->type == OPK_BOUND_SCALAR) {
+  if (box->upper.type == OPK_BOUND_SCALAR) {
     type += 3;
-    *upper = &(xu->value.scalar);
-  } else if (xu != NULL && xu->type == OPK_BOUND_VECTOR) {
+    *upper = &box->upper.value.scalar;
+  } else if (box->upper.type == OPK_BOUND_VECTOR) {
     type += 6;
-    *upper = xu->value.vector;
+    *upper = box->upper.value.vector;
   } else {
     *upper = NULL;
   }
   return type;
 }
 
-opk_status_t
-opk_project_variables2(opk_vector_t* dst,
-                       const opk_vector_t* x,
-                       const opk_bound_t* xl,
-                       const opk_bound_t* xu)
+static opk_status_t
+box_projvar(opk_vector_t* dst,
+            const opk_vector_t* x,
+            const opk_convexset_t* set)
 {
-  opk_vspace_t* space;
   const void* lower;
   const void* upper;
-  int type;
-
-  if (dst == NULL || x == NULL) {
-    return OPK_ILLEGAL_ADDRESS;
-  }
-  space = dst->owner;
-  if (x->owner != space
-      || (xl != NULL && xl->owner != space)
-      || (xu != NULL && xu->owner != space)) {
-    return OPK_BAD_SPACE;
-  }
-  type = get_bound(&lower, xl, &upper, xu);
-  if (space->ops->boxprojvar == NULL) {
-    return OPK_NOT_IMPLEMENTED;
-  }
+  opk_vspace_t* space = set->space;
+  int type = get_bounds(&lower, &upper, (opk_boxset_t*)set);
   return space->ops->boxprojvar(space, dst, x, lower, upper, type);
 }
 
-opk_status_t
-opk_project_direction2(opk_vector_t* dst,
-                      const opk_vector_t* x,
-                      const opk_bound_t* xl,
-                      const opk_bound_t* xu,
-                      const opk_vector_t* d,
-                      opk_orientation_t orient)
+static opk_status_t
+box_projdir(opk_vector_t* dst,
+            const opk_vector_t* x,
+            const opk_convexset_t* set,
+            const opk_vector_t* d,
+            opk_orientation_t orient)
 {
-  opk_vspace_t* space;
   const void* lower;
   const void* upper;
-  int type;
-
-  if (dst == NULL || x == NULL || d == NULL) {
-    return OPK_ILLEGAL_ADDRESS;
-  }
-  space = dst->owner;
-  if (x->owner != space || d->owner != space
-      || (xl != NULL && xl->owner != space)
-      || (xu != NULL && xu->owner != space)) {
-    return OPK_BAD_SPACE;
-  }
-  type = get_bound(&lower, xl, &upper, xu);
-  if (space->ops->boxprojdir == NULL) {
-    return OPK_NOT_IMPLEMENTED;
-  }
-  return space->ops->boxprojdir(space, dst, x, lower, upper, type,
-                                d, orient);
+  opk_vspace_t* space = set->space;
+  int type = get_bounds(&lower, &upper, (opk_boxset_t*)set);
+  return space->ops->boxprojdir(space, dst,
+                                x, lower, upper, type, d, orient);
 }
 
-opk_status_t
-opk_get_free_variables2(opk_vector_t* dst,
-                       const opk_vector_t* x,
-                       const opk_bound_t* xl,
-                       const opk_bound_t* xu,
-                       const opk_vector_t* d,
-                       opk_orientation_t orient)
+static opk_status_t
+box_freevar(opk_vector_t* dst,
+            const opk_vector_t* x,
+            const opk_convexset_t* set,
+            const opk_vector_t* d,
+            opk_orientation_t orient)
 {
-  opk_vspace_t* space;
   const void* lower;
   const void* upper;
-  int type;
-
-  if (dst == NULL || x == NULL || d == NULL) {
-    return OPK_ILLEGAL_ADDRESS;
-  }
-  space = dst->owner;
-  if (x->owner != space || d->owner != space
-      || (xl != NULL && xl->owner != space)
-      || (xu != NULL && xu->owner != space)) {
-    return OPK_BAD_SPACE;
-  }
-  type = get_bound(&lower, xl, &upper, xu);
-  if (space->ops->boxfreevar == NULL) {
-    return OPK_NOT_IMPLEMENTED;
-  }
-  return space->ops->boxfreevar(space, dst, x, lower, upper, type,
-                                d, orient);
+  opk_vspace_t* space = set->space;
+  int type = get_bounds(&lower, &upper, (opk_boxset_t*)set);
+  return space->ops->boxfreevar(set->space, dst,
+                                x, lower, upper, type, d, orient);
 }
 
-opk_status_t
-opk_get_step_limits2(double* smin1, double* smin2, double *smax,
-                        const opk_vector_t* x,
-                        const opk_bound_t* xl,
-                        const opk_bound_t* xu,
-                        const opk_vector_t* d,
-                        opk_orientation_t orient)
+static opk_status_t
+box_steplim(double* smin1, double* smin2, double *smax,
+            const opk_vector_t* x,
+            const opk_convexset_t* set,
+            const opk_vector_t* d,
+            opk_orientation_t orient)
 {
-  opk_vspace_t* space;
   const void* lower;
   const void* upper;
-  int type;
-
-  if (x == NULL || d == NULL) {
-    return OPK_ILLEGAL_ADDRESS;
-  }
-  space = x->owner;
-  if (d->owner != space
-      || (xl != NULL && xl->owner != space)
-      || (xu != NULL && xu->owner != space)) {
-    return OPK_BAD_SPACE;
-  }
-  type = get_bound(&lower, xl, &upper, xu);
-  if (space->ops->boxsteplim == NULL) {
-    return OPK_NOT_IMPLEMENTED;
-  }
+  opk_vspace_t* space = set->space;
+  int type = get_bounds(&lower, &upper, (opk_boxset_t*)set);
   return space->ops->boxsteplim(space, smin1, smin2, smax,
-                                   x, lower, upper, type, d, orient);
+                                x, lower, upper, type, d, orient);
 }
 
-/* A box set is a convex set with simple separable bounds.  This type is not
-   publically available (the caller receives an `opk_convexset_t` type
-   instead. */
+static opk_status_t
+set_bound(const opk_vspace_t* space, opk_bound_t* bound,
+          opk_bound_type_t type, void* value)
+{
+  memset(bound, 0, sizeof(opk_bound_t));
+  if (type == OPK_BOUND_NONE) {
+    if (value != NULL) {
+      return OPK_INVALID_ARGUMENT;
+    }
+  } else if (type == OPK_BOUND_SCALAR) {
+    if (value == NULL) {
+      return OPK_ILLEGAL_ADDRESS;
+    }
+    bound->value.scalar = *(double*)value;
+  } else if (type == OPK_BOUND_VECTOR) {
+    if (value == NULL) {
+      return OPK_ILLEGAL_ADDRESS;
+    }
+    if (((opk_vector_t*)value)->owner != space) {
+      return OPK_BAD_SPACE;
+    }
+    bound->value.vector = (opk_vector_t*)OPK_HOLD(value);
+  } else {
+    return OPK_INVALID_ARGUMENT;
+  }
+  bound->type = type;
+  return OPK_SUCCESS;
+}
 
 opk_convexset_t*
 opk_new_boxset(opk_vspace_t* space,
                opk_bound_type_t lower_type, void* lower,
                opk_bound_type_t upper_type, void* upper)
 {
-#if 1
-  opk_convexset_t* set;
-
-  if (space == NULL) {
-    errno = EFAULT;
-    return NULL;
-  }
-  set = opk_allocate_convexset(space,
-                               NULL,
-                               NULL,
-                               NULL,
-                               NULL,
-                               NULL,
-                               sizeof(opk_convexset_t));
-  if (set != NULL) {
-    set->lower = opk_new_bound(space, lower_type, lower);
-    set->upper = opk_new_bound(space, upper_type, upper);
-    if (set->lower == NULL || set->upper == NULL) {
-      OPK_DROP(set);
-      set = NULL;
-    }
-  }
-  return set;
-#else
   opk_boxset_t* box;
   const opk_vspace_operations_t* ops;
   opk_status_t (*projvar)(opk_vector_t* dst,
@@ -943,12 +762,9 @@ opk_new_boxset(opk_vspace_t* space,
   projdir = (ops->boxprojdir != NULL ? box_projdir : NULL);
   freevar = (ops->boxfreevar != NULL ? box_freevar : NULL);
   steplim = (ops->boxsteplim != NULL ? box_steplim : NULL);
-  box = (opk_boxset_t*)opk_allocate_convexset(space,
-                                              box_finalize,
-                                              projvar,
-                                              projdir,
-                                              freevar,
-                                              steplim,
+  box = (opk_boxset_t*)opk_allocate_convexset(space, finalize_boxset,
+                                              projvar, projdir,
+                                              freevar, steplim,
                                               sizeof(opk_boxset_t));
   if (box != NULL) {
     if (set_bound(space, &box->lower, lower_type, lower) != OPK_SUCCESS ||
@@ -959,7 +775,6 @@ opk_new_boxset(opk_vspace_t* space,
     }
   }
   return (opk_convexset_t*)box;
-#endif
 }
 
 /*---------------------------------------------------------------------------*/

@@ -370,16 +370,6 @@ opk_allocate_vector(opk_vspace_t* vspace, size_t nbytes);
  * @{
  */
 
-struct _opk_bound {
-  opk_object_t base;      /**< Base type (must be the first member). */
-  opk_vspace_t* owner;    /**< Vector space of the bounded variables. */
-  opk_bound_type_t type;  /**< Type of bound. */
-  union {
-    opk_vector_t* vector; /**< Value for a vectorial bound. */
-    double        scalar; /**< Value for a scalar bound. */
-  } value;
-};
-
 /**
  * Private structure to store the base of an instance derived from a convex
  * set.
@@ -406,8 +396,6 @@ struct _opk_convexset {
                           const opk_convexset_t* set,
                           const opk_vector_t* d,
                           opk_orientation_t orient);
-  opk_bound_t* lower;
-  opk_bound_t* upper;
 };
 
 /**
