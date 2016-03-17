@@ -14,6 +14,10 @@ specific information, see:
 - [Software installation.](./doc/INSTALL.md)
 - [Developer notes.](./doc/NOTES.md)
 - [Software changes and history.](./doc/CHANGES.md)
+- [Large Scale Smooth Problems](./doc/LARGE_SCALE.md)
+
+Most of the documentation is in the header files, *e.g.*
+[src/optimpack.h](src/optimpack.h), in Doxygen format.
 
 
 ## Large scale problems
@@ -31,14 +35,14 @@ For large scale problems involving millions of variables (or more),
 
 - linear conjugate gradients [1].
 
-Most of the documentation is in the header files, *e.g.*
-[src/optimpack.h](src/optimpack.h), in Doxygen format.
-
 The large scale optimizers of the **OptimPack** library can work with the
 unknowns stored in almost any form (providing a minimal set of functions to
 manipulate them are implemented).  This feature may be used to exploit hardware
 acceleration, multi-threading or to distribute the storage and computation
 across multiple machines.
+
+See [Large Scale Smooth Problems](./doc/LARGE_SCALE.md) for examples and
+more information about using Optimpack to solve large scale problems.
 
 
 ## Problems of small to moderate size
