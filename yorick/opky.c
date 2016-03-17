@@ -142,8 +142,7 @@ struct _yopt_instance {
   opk_vspace_t* vspace;
   opk_vector_t* x;
   opk_vector_t* gx;
-  opk_bound_t* xl;
-  opk_bound_t* xu;
+  opk_convexset_t* box;
   int single;
 };
 
@@ -169,8 +168,7 @@ yopt_free(void* ptr)
   OPK_DROP(opt->vspace);
   OPK_DROP(opt->x);
   OPK_DROP(opt->gx);
-  OPK_DROP(opt->xl);
-  OPK_DROP(opt->xu);
+  OPK_DROP(opt->box);
 }
 
 static void
@@ -551,17 +549,23 @@ rewrap(int iarg, yopt_instance_t* opt, opk_vector_t* vect)
   }
 }
 
-static opk_bound_t*
-get_bound(int iarg, yopt_instance_t* opt)
-{
-  opk_bound_t* bnd = NULL;
-  int rank;
+typedef struct _bound {
+  union {
+    opk_vector_t* vector; /**< The bound as a vector. */
+    double        scalar; /**< The bound as a scalar. */
+  } value;                /**< Value of the bound. */
+  opk_bound_type_t type;  /**< Type of the bound. */
+} bound_t;
 
-  rank = yarg_rank(iarg);
+static int
+get_bound(int iarg, yopt_instance_t* opt, bound_t* bnd)
+{
+  int rank = yarg_rank(iarg);
+  memset(bnd, 0, sizeof(*bnd));
   if (rank == 0) {
     /* Got a scalar. */
-    double value = ygets_d(iarg);
-    bnd = opk_new_bound(opt->vspace, OPK_BOUND_SCALAR, &value);
+    bnd->value.scalar = ygets_d(iarg);
+    bnd->type = OPK_BOUND_SCALAR;
   } else if (rank > 0) {
     /* Got an array.  FIXME: for now we do a copy. */
     long ntot, dims[Y_DIMSIZE];
@@ -582,11 +586,6 @@ get_bound(int iarg, yopt_instance_t* opt)
     if (vector == NULL) {
       y_error("failed to create a \"vector\" for the bound");
     }
-    bnd = opk_new_bound(opt->vspace, OPK_BOUND_VECTOR, vector);
-    OPK_DROP(vector); /* must be done before error checking */
-    if (bnd == NULL) {
-      y_error("failed to create the bound");
-    }
     if (opt->single) {
       float* dst = opk_get_simple_float_vector_data(vector);
       memcpy(dst, src, ntot*sizeof(float));
@@ -594,10 +593,14 @@ get_bound(int iarg, yopt_instance_t* opt)
       double* dst = opk_get_simple_double_vector_data(vector);
       memcpy(dst, src, ntot*sizeof(double));
     }
-  } else if (! yarg_nil(iarg)) {
-    y_error("invalid bound");
+    bnd->value.vector = vector;
+    bnd->type = OPK_BOUND_VECTOR;
+  } else if (yarg_nil(iarg)) {
+     bnd->type = OPK_BOUND_NONE;
+  } else {
+    return -1;
   }
-  return bnd;
+  return 0;
 }
 
 static void assign_int(long index, int value)
@@ -778,6 +781,7 @@ void Y_opk_nlcg(int argc)
 
 void Y_opk_vmlmb(int argc)
 {
+  bound_t lower_bound, upper_bound;
   yopt_instance_t* opt;
   long n = -1, mem = 5;
   long dims[Y_DIMSIZE];
@@ -832,12 +836,37 @@ void Y_opk_vmlmb(int argc)
   if (opt->x == NULL || opt->gx == NULL) {
     y_error("failed to create working vectors");
   }
-  opt->xl = (lower >= 0 ? get_bound(lower + 1, opt) : NULL);
-  opt->xu = (upper >= 0 ? get_bound(upper + 1, opt) : NULL);
+  if (get_bound(lower + 1, opt, &lower_bound) != 0) {
+    y_error("invalid lower bound");
+  }
+  if (get_bound(upper + 1, opt, &upper_bound) != 0) {
+    if (lower_bound.type == OPK_BOUND_VECTOR) {
+      OPK_DROP(lower_bound.value.vector);
+    }
+    y_error("invalid upper bound");
+  }
+  if (lower_bound.type != OPK_BOUND_NONE ||
+      upper_bound.type != OPK_BOUND_NONE) {
+#define BOUND_VALUE(bnd) (bnd.type == OPK_BOUND_VECTOR ? (void*)bnd.value.vector \
+                          : (bnd.type == OPK_BOUND_SCALAR ? (void*)&bnd.value.scalar \
+                             : NULL))
+    opt->box = opk_new_boxset(opt->vspace,
+                              lower_bound.type, BOUND_VALUE(lower_bound),
+                              upper_bound.type, BOUND_VALUE(upper_bound));
+#undef BOUND_VALUE
+    if (lower_bound.type == OPK_BOUND_VECTOR) {
+      OPK_DROP(lower_bound.value.vector);
+    }
+    if (upper_bound.type == OPK_BOUND_VECTOR) {
+      OPK_DROP(upper_bound.value.vector);
+    }
+    if (opt->box == NULL) {
+      y_error("failed to create box set");
+    }
+  }
   opt->optimizer = (opk_object_t*)opk_new_vmlmb_optimizer(opt->vspace,
                                                           mem, flags,
-                                                          opt->xl, opt->xu,
-                                                          NULL);
+                                                          opt->box, NULL);
   if (opt->optimizer == NULL) {
     y_error(opk_get_reason(opk_guess_status(errno)));
   }
