@@ -14,7 +14,7 @@ specific information, see:
 - [Software installation.](./doc/INSTALL.md)
 - [Developer notes.](./doc/NOTES.md)
 - [Software changes and history.](./doc/CHANGES.md)
-- [Large Scale Smooth Problems](./doc/LARGE_SCALE.md)
+- [Solving Large Scale Smooth Problems.](./doc/LARGE_SCALE.md)
 
 Most of the documentation is in the header files, *e.g.*
 [src/optimpack.h](src/optimpack.h), in Doxygen format.
@@ -41,8 +41,8 @@ manipulate them are implemented).  This feature may be used to exploit hardware
 acceleration, multi-threading or to distribute the storage and computation
 across multiple machines.
 
-See [Large Scale Smooth Problems](./doc/LARGE_SCALE.md) for examples and
-more information about using Optimpack to solve large scale problems.
+See [Solving Large Scale Smooth Problems](./doc/LARGE_SCALE.md) for examples
+and more information about using Optimpack to solve large scale problems.
 
 
 ## Problems of small to moderate size
