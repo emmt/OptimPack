@@ -724,6 +724,21 @@ void Y_opk_init(int argc)
   ypush_nil();
 }
 
+void Y_opk_get_constant(int argc)
+{
+  const char* name;
+  long value;
+  if (argc != 1) {
+    y_error("expecting exactly one argument");
+  }
+  name = ygets_q(0);
+  if (opk_get_integer_constant(name, &value) != OPK_SUCCESS) {
+    ypush_nil();
+  } else {
+    ypush_int((int)value);
+  }
+}
+
 void Y_opk_nlcg(int argc)
 {
   yopt_instance_t* opt;

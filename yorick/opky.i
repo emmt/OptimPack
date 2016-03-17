@@ -175,11 +175,17 @@ extern opk_get_task;
 
 extern opk_get_status;
 extern opk_get_reason;
+extern opk_get_constant;
 /* DOCUMENT status = opk_get_status(opt);
          or reason = opk_get_reason(status);
+         or value = opk_get_constant(name);
 
-     Query the last status of optimizer OPT and the textual reason for a given
-     status value.
+     The first function queries the last status of optimizer OPT.
+
+     The second function returns the textual reason for a given status value.
+
+     The third function returns a constant value given its name (or nothing if
+     the constant is unknown).
 
 
    SEE ALSO: opk_nlcg, opk_vmlmb, opk_iterate, opk_start.
