@@ -135,9 +135,9 @@ struct _opk_vmlmb {
                                 as: x1 = x0 - stp*d with stp > 0. */
   opk_vector_t* w;         /**< Vector whose elements are set to 1 for free
                                 variables and 0 otherwise. */
-  opk_vector_t* tmp;       /**< Scratch work vector used to store the effective
-                                step size and the projected gradient (for the
-                                BLMVM method). */
+  opk_vector_t* gp;        /**< Work vector used to store the effective step
+                                size and the projected gradient (for the BLMVM
+                                method). */
   opk_convexset_t* box;    /**< Convex set implementing the box constraints (or
                             *   `NULL`). */
   int method;              /**< The method to use/emulate. */
@@ -191,7 +191,7 @@ finalize_vmlmb(opk_object_t* obj)
 #endif
   OPK_DROP(opt->d);
   OPK_DROP(opt->w);
-  OPK_DROP(opt->tmp);
+  OPK_DROP(opt->gp);
   OPK_DROP(opt->box);
   if (opt->s != NULL) {
     for (k = 0; k < opt->m; ++k) {
@@ -283,8 +283,8 @@ opk_new_vmlmb_optimizer(opk_vspace_t* space,
     /* For the BLMVM method, the scratch vector is used to store the
        projected gradient. */
     opt->method = OPK_BLMVM;
-    opt->tmp = opk_vcreate(space);
-    if (opt->tmp == NULL) {
+    opt->gp = opk_vcreate(space);
+    if (opt->gp == NULL) {
       goto error;
     }
   } else {
@@ -482,9 +482,6 @@ apply(opk_vmlmb_t* opt, const opk_vector_t* g)
         UPDATE(opt->d, ALPHA(k) - beta, S(k));
       }
     }
-  }
-
-  if (opt->box != NULL) {
     /* Enforce search direction to belong to the subset of the free
        variables. */
     opk_vproduct(opt->d, opt->w, opt->d);
@@ -571,8 +568,8 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
       opt->gnorm = WNORM2(g);
     } else if (opt->method == OPK_BLMVM) {
       /* Compute the projected gradient and its norm. */
-      opk_vproduct(opt->tmp, opt->w, g);
-      opt->gnorm = NORM2(opt->tmp);
+      opk_vproduct(opt->gp, opt->w, g);
+      opt->gnorm = NORM2(opt->gp);
     } else {
       /* Compute the Euclidean norm of the gradient. */
       opt->gnorm = NORM2(g);
@@ -591,25 +588,32 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
     /* Compute a new search direction. */
     if (opt->iterations >= 1) {
       /* Update L-BFGS approximation of the Hessian. */
-      update(opt, x, (opt->method == OPK_BLMVM ? opt->tmp : g));
+      update(opt, x, (opt->method == OPK_BLMVM ? opt->gp : g));
     }
     if (apply(opt, g) == OPK_SUCCESS) {
-      /* We take care of checking whether -D is a sufficient descent direction
-         (that is to say that D is a sufficient ascent direction).  As shown by
-         Zoutendijk, this is true if cos(theta) = (D/|D|)'.(G/|G|) is larger or
-         equal EPSILON > 0, where G is the gradient at X and D the (ascent for
-         us) search direction. */
+      /* The L-BFGS approximation produces a search direction D.  To warrant
+         convergence, we have to check whether -D is a sufficient descent
+         direction (that is to say that D is a sufficient ascent direction).
+         As shown by Zoutendijk, this is true if cos(theta) = (D/|D|)'.(G/|G|)
+         is larger or equal EPSILON > 0, where G is the gradient at X and D
+         the, ascent for us, search direction. */
+      if (bounded) {
+        /* Project the search direction produced by the L-BFGS recursion. */
+        status = opk_project_direction(opt->d, x, opt->box, opt->d, OPK_ASCENT);
+        if (status != OPK_SUCCESS) {
+          return failure(opt, status);
+        }
+      }
       dtg = -DOT(opt->d, g);
-      if (opt->epsilon > 0 &&
-          dtg > -opt->epsilon*NORM2(opt->d)*opt->gnorm) {
-        /* We do not have a sufficient descent direction.  Set the directional
+      if (opt->epsilon > 0 && -dtg < opt->epsilon*NORM2(opt->d)*opt->gnorm) {
+        /* -D is not a sufficient descent direction.  Set the directional
            derivative to zero to force using the steepest descent direction. */
         dtg = 0.0;
       }
     } else {
-      /* The L-BFGS approximation is unset (first iteration) or failed to
-         produce a direction.  Set the directional derivative to zero to use
-         the steepest descent direction. */
+      /* The L-BFGS approximation is not available (first iteration or just
+         after a reset) or failed to produce a direction.  Set the directional
+         derivative to zero to use the steepest descent direction. */
       dtg = 0.0;
     }
 
@@ -633,7 +637,7 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
       } else if (opt->method == OPK_BLMVM) {
         /* Use the projected gradient (which has already been computed and
          * stored in the scratch vector). */
-        opk_vcopy(opt->d, opt->tmp);
+        opk_vcopy(opt->d, opt->gp);
       } else {
         /* Use the gradient. */
         opk_vcopy(opt->d, g);
@@ -683,7 +687,7 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
     }
 #endif
     COPY(opt->x0, x);
-    COPY(opt->g0, (opt->method == OPK_BLMVM ? opt->tmp : g));
+    COPY(opt->g0, (opt->method == OPK_BLMVM ? opt->gp : g));
     opt->f0 = f;
 
     /* Start the line search and break to take the first step along the line
@@ -704,7 +708,7 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
 
   /* Compute a new trial point along the line search. */
   opk_vaxpby(x, 1, opt->x0, -opt->stp, opt->d);
-  if (bounded /*FIXME: && opt->stp > opt->bsmin*/) {
+  if (bounded && opt->stp > opt->bsmin) {
     opk_status_t status = opk_project_variables(x, x, opt->box);
     if (status != OPK_SUCCESS) {
       return failure(opt, status);
