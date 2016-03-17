@@ -2076,25 +2076,25 @@ opk_destroy_optimizer(opk_optimizer_t *opt);
  * Start the optimization with given initial variables.
  *
  * @param opt  - An optimizer created by {@link #opk_new_optimizer}.
- * @param type - The type of variables.
- * @param n    - The number of variables.
- * @param x    - The variables.
+ * @param x    - The variables which must be of the same type (`float` or
+ *               `double`) as assumed when creating the optimizer and have the
+ *               correct number of elements.
  *
  * @return An integer indicating the next thing to do for the caller.
  *         Unless an error occured, it should be {@link OPK_TASK_COMPUTE_FG}.
  */
 extern opk_task_t
-opk_start(opk_optimizer_t *opt, opk_type_t type, opk_index_t n, void* x);
+opk_start(opk_optimizer_t *opt, void* x);
 
 /**
  * Proceed with next optimization step.
  *
- * Note that the variables must not be changed by the caller after
- * calling {@link opk_start} and between calls to {@link opk_iterate}.
+ * Note that the variables must not be changed by the caller after calling
+ * {@link opk_start} and between calls to {@link opk_iterate}.  Arrays `x` and
+ * `g` must be of the same type (`float` or `double`) as assumed when creating
+ * the optimizer and have the correct number of elements.
  *
  * @param opt  - An optimizer created by {@link #opk_new_optimizer}.
- * @param type - The type of variables.
- * @param n    - The number of variables.
  * @param x    - The current variables.
  * @param f    - The value of the objective function at the current variables.
  * @param g    - The gradient of the objective function at the current
@@ -2103,8 +2103,7 @@ opk_start(opk_optimizer_t *opt, opk_type_t type, opk_index_t n, void* x);
  * @return An integer indicating the next thing to do for the caller.
  */
 extern opk_task_t
-opk_iterate(opk_optimizer_t *opt, opk_type_t type, opk_index_t n,
-            void* x, double f, void* g);
+opk_iterate(opk_optimizer_t *opt, void* x, double f, void* g);
 
 /**
  * Get the current pending task.

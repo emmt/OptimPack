@@ -676,6 +676,15 @@ opk_get_nlcg_status(const opk_nlcg_t* opt)
   return opt->status;
 }
 
+void
+_opk_set_nlcg_status(opk_nlcg_t* opt, opk_status_t status)
+{
+  opt->status = status;
+  if (status != OPK_SUCCESS) {
+    opt->task = OPK_TASK_ERROR;
+  }
+}
+
 double
 opk_get_nlcg_beta(const opk_nlcg_t* opt)
 {

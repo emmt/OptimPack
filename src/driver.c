@@ -62,6 +62,7 @@ struct _operations {
   opk_task_t   (*iterate)(opk_optimizer_t* opt, double f);
   opk_task_t   (*get_task)(const opk_optimizer_t* opt);
   opk_status_t (*get_status)(const opk_optimizer_t* opt);
+  void         (*set_status)(opk_optimizer_t* opt, opk_status_t status);
   opk_status_t (*get_options)(void* dst, const opk_optimizer_t* src);
   opk_status_t (*set_options)(opk_optimizer_t* dst, const void* src);
   unsigned int (*get_flags)(const opk_optimizer_t* opt);
@@ -104,6 +105,12 @@ static opk_status_t
 nlcg_get_status(const opk_optimizer_t* opt)
 {
   return opk_get_nlcg_status(NLCG(opt->optimizer));
+}
+
+static void
+nlcg_set_status(opk_optimizer_t* opt, opk_status_t status)
+{
+  _opk_set_nlcg_status(NLCG(opt->optimizer), status);
 }
 
 static opk_status_t
@@ -179,6 +186,7 @@ static operations_t nlcg_ops = {
   nlcg_iterate,
   nlcg_get_task,
   nlcg_get_status,
+  nlcg_set_status,
   nlcg_get_options,
   nlcg_set_options,
   nlcg_get_flags,
@@ -219,6 +227,12 @@ static opk_status_t
 vmlmb_get_status(const opk_optimizer_t* opt)
 {
   return opk_get_vmlmb_status(VMLMB(opt->optimizer));
+}
+
+static void
+vmlmb_set_status(opk_optimizer_t* opt, opk_status_t status)
+{
+  _opk_set_vmlmb_status(VMLMB(opt->optimizer), status);
 }
 
 static opk_status_t
@@ -295,6 +309,7 @@ static operations_t vmlmb_ops = {
   vmlmb_iterate,
   vmlmb_get_task,
   vmlmb_get_status,
+  vmlmb_set_status,
   vmlmb_get_options,
   vmlmb_set_options,
   vmlmb_get_flags,
@@ -347,8 +362,8 @@ opk_new_optimizer(opk_algorithm_t algorithm, /* optimization algorithm */
                                     quasi-Newton, m = 0 for non-linear
                                     conjugate gradient) */
                   unsigned int flags, /* algorithm flags */
-                  opk_bound_type_t lower_type, void* lower,
-                  opk_bound_type_t upper_type, void* upper,
+                  opk_bound_type_t lower_type, void* lower_addr,
+                  opk_bound_type_t upper_type, void* upper_addr,
                   opk_lnsrch_t* lnschr)
 {
   opk_optimizer_t* opt = NULL;
@@ -370,8 +385,8 @@ opk_new_optimizer(opk_algorithm_t algorithm, /* optimization algorithm */
     errno = EINVAL;
     return NULL;
   }
-  if ((lower_type == OPK_BOUND_NONE) != (lower == NULL) ||
-      (upper_type == OPK_BOUND_NONE) != (upper == NULL)) {
+  if ((lower_type == OPK_BOUND_NONE) != (lower_addr == NULL) ||
+      (upper_type == OPK_BOUND_NONE) != (upper_addr == NULL)) {
     errno = EFAULT;
     return NULL;
   }
@@ -430,33 +445,33 @@ opk_new_optimizer(opk_algorithm_t algorithm, /* optimization algorithm */
     if (lower_type == (single ? OPK_BOUND_STATIC_FLOAT
                        : OPK_BOUND_STATIC_DOUBLE)) {
       if (single) {
-        lower_vector = WRAP_FLOAT(opt->vspace, lower);
+        lower_vector = WRAP_FLOAT(opt->vspace, lower_addr);
       } else {
-        lower_vector = WRAP_DOUBLE(opt->vspace, lower);
+        lower_vector = WRAP_DOUBLE(opt->vspace, lower_addr);
       }
       if (lower_vector == NULL) {
         goto failure;
       }
-      lower = lower_vector;
+      lower_addr = lower_vector;
       lower_type = OPK_BOUND_VECTOR;
     }
     if (upper_type == (single ? OPK_BOUND_STATIC_FLOAT
                        : OPK_BOUND_STATIC_DOUBLE)) {
       if (single) {
-        upper_vector = WRAP_FLOAT(opt->vspace, upper);
+        upper_vector = WRAP_FLOAT(opt->vspace, upper_addr);
       } else {
-        upper_vector = WRAP_DOUBLE(opt->vspace, upper);
+        upper_vector = WRAP_DOUBLE(opt->vspace, upper_addr);
       }
       if (upper_vector == NULL) {
         OPK_DROP(lower_vector);
         goto failure;
       }
-      upper = upper_vector;
+      upper_addr = upper_vector;
       upper_type = OPK_BOUND_VECTOR;
     }
     opt->box = opk_new_boxset(opt->vspace,
-                              lower_type, lower,
-                              upper_type, upper);
+                              lower_type, lower_addr,
+                              upper_type, upper_addr);
     OPK_DROP(lower_vector);
     OPK_DROP(upper_vector);
     if (opt->box == NULL) {
@@ -490,44 +505,53 @@ opk_destroy_optimizer(opk_optimizer_t *opt)
 }
 
 opk_task_t
-opk_start(opk_optimizer_t *opt, opk_type_t type, opk_index_t n,  void* x)
+opk_start(opk_optimizer_t *opt,  void* x)
 {
-  if (opt == NULL || x == NULL ||
-      type != (opt->single ? OPK_FLOAT : OPK_DOUBLE) ||
-      opt->n != n) {
+  opk_status_t status;
+  if (opt == NULL) {
+    return OPK_TASK_ERROR;
+  }
+  if (x == NULL) {
+    opt->ops->set_status(opt, OPK_ILLEGAL_ADDRESS);
     return OPK_TASK_ERROR;
   }
   if (opt->single) {
-    if (REWRAP_FLOAT(opt->x, x) != OPK_SUCCESS) {
-      return OPK_TASK_ERROR;
-    }
+    status = REWRAP_FLOAT(opt->x, x);
   } else {
-    if (REWRAP_DOUBLE(opt->x, x) != OPK_SUCCESS) {
-      return OPK_TASK_ERROR;
-    }
+    status = REWRAP_DOUBLE(opt->x, x);
+  }
+  if (status != OPK_SUCCESS) {
+    opt->ops->set_status(opt, status);
+    return OPK_TASK_ERROR;
   }
   return opt->ops->start(opt);
 }
 
 opk_task_t
-opk_iterate(opk_optimizer_t *opt, opk_type_t type, opk_index_t n,
-            void* x, double f, void* g)
+opk_iterate(opk_optimizer_t *opt, void* x, double f, void* g)
 {
-  if (opt == NULL || x == NULL || g == NULL ||
-      type != (opt->single ? OPK_FLOAT : OPK_DOUBLE) ||
-      opt->n != n) {
+  opk_status_t status;
+  if (opt == NULL) {
+    return OPK_TASK_ERROR;
+  }
+  if (x == NULL || g == NULL) {
+    opt->ops->set_status(opt, OPK_ILLEGAL_ADDRESS);
     return OPK_TASK_ERROR;
   }
   if (opt->single) {
-    if (REWRAP_FLOAT(opt->x, x) != OPK_SUCCESS ||
-        REWRAP_FLOAT(opt->g, g) != OPK_SUCCESS) {
-      return OPK_TASK_ERROR;
+    status = REWRAP_FLOAT(opt->x, x);
+    if (status == OPK_SUCCESS) {
+      status = REWRAP_FLOAT(opt->g, g);
     }
   } else {
-    if (REWRAP_DOUBLE(opt->x, x) != OPK_SUCCESS ||
-        REWRAP_DOUBLE(opt->g, g) != OPK_SUCCESS) {
-      return OPK_TASK_ERROR;
+    status = REWRAP_DOUBLE(opt->x, x);
+    if (status == OPK_SUCCESS) {
+      status = REWRAP_DOUBLE(opt->g, g);
     }
+  }
+  if (status != OPK_SUCCESS) {
+    opt->ops->set_status(opt, status);
+    return OPK_TASK_ERROR;
   }
   return opt->ops->iterate(opt, f);
 }

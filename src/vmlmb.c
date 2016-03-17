@@ -778,6 +778,15 @@ opk_get_vmlmb_status(const opk_vmlmb_t* opt)
   return opt->status;
 }
 
+void
+_opk_set_vmlmb_status(opk_vmlmb_t* opt, opk_status_t status)
+{
+  opt->status = status;
+  if (status != OPK_SUCCESS) {
+    opt->task = OPK_TASK_ERROR;
+  }
+}
+
 opk_index_t
 opk_get_vmlmb_iterations(const opk_vmlmb_t* opt)
 {

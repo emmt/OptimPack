@@ -496,6 +496,12 @@ extern opk_lnsrch_t*
 opk_allocate_line_search(opk_lnsrch_operations_t *ops,
                          size_t size);
 
+extern void
+_opk_set_nlcg_status(opk_nlcg_t* opt, opk_status_t status);
+
+extern void
+_opk_set_vmlmb_status(opk_vmlmb_t* opt, opk_status_t status);
+
 /** @} */
 
 /*---------------------------------------------------------------------------*/
