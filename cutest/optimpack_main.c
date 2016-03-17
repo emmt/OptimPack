@@ -674,7 +674,7 @@ int MAINENTRY(void)
         if (gnorm <= gtest) {
           task = OPK_TASK_FINAL_X;
         }
-        if (evaluations == 1 || f < finalf) {
+        if (evaluations == 1 || f < finalf || (f <= finalf && gnorm < finalgnorm)) {
           finalf = f;
           finalgnorm = gnorm;
         }
