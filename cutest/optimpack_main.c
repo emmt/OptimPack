@@ -536,14 +536,14 @@ int MAINENTRY(void)
     lower_type = OPK_BOUND_NONE;
   } else {
     lower_addr = bl;
-    lower_type = OPK_BOUND_VOLATILE_DOUBLE;
+    lower_type = OPK_BOUND_STATIC_DOUBLE;
   }
   if ((bounds & 2) == 0) {
     upper_addr = NULL;
     upper_type = OPK_BOUND_NONE;
   } else {
     upper_addr = bu;
-    upper_type = OPK_BOUND_VOLATILE_DOUBLE;
+    upper_type = OPK_BOUND_STATIC_DOUBLE;
   }
   if ((bounds & 3) == 0) {
     box = NULL;
