@@ -4,7 +4,7 @@ ACLOCAL_AMFLAGS = -I m4
 
 # Additional files to include in the distribution.
 EXTRA_DIST = doc yorick .dir-locals.el \
-             LICENSE.md README.md NOTES.md INSTALL.md CHANGES.md \
+             LICENSE.md README.md doc/NOTES.md doc/INSTALL.md doc/CHANGES.md \
              cutest/install cutest/optimpack cutest/README.md \
              cutest/makemaster cutest/optimpack_main.c \
              cutest/OPTIMPACK.SPC cutest/README.optimpack

@@ -11,9 +11,9 @@ smaller size.
 This document provides a general overview of **OptimPack**, for more
 specific information, see:
 
-- [Software installation.](./INSTALL.md)
-- [Developer notes.](./NOTES.md)
-- [Software changes and history.](./CHANGES.md)
+- [Software installation.](./doc/INSTALL.md)
+- [Developer notes.](./doc/NOTES.md)
+- [Software changes and history.](./doc/CHANGES.md)
 
 
 ## Large scale problems
@@ -156,7 +156,7 @@ The development of OptimPack was supported by the
 (ref. ANR-09-EMER-008).
 
 The older version of OptimPack is available
-[here](http://cral.univ-lyon1.fr/labo/perso/eric.thiebaut/?Software/OptimPack)***
+[here](http://cral.univ-lyon1.fr/labo/perso/eric.thiebaut/?Software/OptimPack).
 
 
 ## License
