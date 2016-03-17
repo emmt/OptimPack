@@ -375,7 +375,8 @@ opk_copy_string(char* dst, size_t size, const char* src);
  * Get a constant given its name.
  *
  * This function is mostly need for OptimPack wrappers in other languages than
- * C to avoid hardcoding the constants of the library.
+ * C to avoid hardcoding the constants of the library.  For now this function
+ * is not particularly efficient so it should be sparsely used.
  *
  * @param name  - The name of the constant; for instance: `"OPK_SUCCESS"`.
  * @param ptr   - The address where to store the value of the constant.
