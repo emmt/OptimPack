@@ -1,7 +1,7 @@
 /*
- * error.c --
+ * utils.c --
  *
- * Implementation of error management in OptimPack library.
+ * Error management and miscellaneaous functions in OptimPack library.
  *
  *-----------------------------------------------------------------------------
  *
@@ -113,4 +113,87 @@ opk_guess_status()
 #endif
   default: return -1;
   }
+}
+
+extern opk_status_t
+opk_get_integer_constant(const char* name, long* ptr)
+{
+  long dummy;
+  if (ptr == NULL) {
+    ptr = &dummy;
+  }
+
+  if (name != NULL && name[0] != 0) {
+#define TEST(sym) if (strcmp(name, #sym) == 0) { *ptr = (long)(sym); \
+                                                  return OPK_SUCCESS; }
+#define _OPK_STATUS(val,sym,msg) TEST(sym);
+    _OPK_STATUS_LIST;
+#undef _OPK_STATUS
+
+    TEST(OPK_TRUE);
+    TEST(OPK_FALSE);
+
+    TEST(OPK_FLOAT);
+    TEST(OPK_DOUBLE);
+
+    TEST(OPK_TASK_ERROR);
+    TEST(OPK_TASK_START);
+    TEST(OPK_TASK_COMPUTE_FG);
+    TEST(OPK_TASK_NEW_X);
+    TEST(OPK_TASK_FINAL_X);
+    TEST(OPK_TASK_WARNING);
+
+    TEST(OPK_LNSRCH_ERROR);
+    TEST(OPK_LNSRCH_SEARCH);
+    TEST(OPK_LNSRCH_CONVERGENCE);
+    TEST(OPK_LNSRCH_WARNING);
+
+    TEST(OPK_NLCG_FLETCHER_REEVES);
+    TEST(OPK_NLCG_HESTENES_STIEFEL);
+    TEST(OPK_NLCG_POLAK_RIBIERE_POLYAK);
+    TEST(OPK_NLCG_FLETCHER);
+    TEST(OPK_NLCG_LIU_STOREY);
+    TEST(OPK_NLCG_DAI_YUAN);
+    TEST(OPK_NLCG_PERRY_SHANNO);
+    TEST(OPK_NLCG_HAGER_ZHANG);
+    TEST(OPK_NLCG_POWELL);
+    TEST(OPK_NLCG_SHANNO_PHUA);
+    TEST(OPK_NLCG_POLAK_RIBIERE_POLYAK);
+
+    TEST(OPK_BOUND_NONE);
+    TEST(OPK_BOUND_SCALAR_FLOAT);
+    TEST(OPK_BOUND_SCALAR_DOUBLE);
+    TEST(OPK_BOUND_STATIC_FLOAT);
+    TEST(OPK_BOUND_STATIC_DOUBLE);
+    TEST(OPK_BOUND_VOLATILE_FLOAT);
+    TEST(OPK_BOUND_VOLATILE_DOUBLE);
+    TEST(OPK_BOUND_VECTOR);
+
+    TEST(OPK_ASCENT);
+    TEST(OPK_DESCENT);
+
+    TEST(OPK_SCALING_NONE);
+    TEST(OPK_SCALING_OREN_SPEDICATO);
+    TEST(OPK_SCALING_BARZILAI_BORWEIN);
+    TEST(OPK_EMULATE_BLMVM);
+
+    TEST(OPK_LBFGS);
+    TEST(OPK_VMLMB);
+    TEST(OPK_BLMVM);
+
+    TEST(OPK_ALGORITHM_NLCG);
+    TEST(OPK_ALGORITHM_VMLMB);
+
+    TEST(OPK_FMIN_BOUNDED_BY_A);
+    TEST(OPK_FMIN_BOUNDED_BY_B);
+    TEST(OPK_FMIN_SMOOTH);
+    TEST(OPK_FMIN_ERROR);
+    TEST(OPK_FMIN_START);
+    TEST(OPK_FMIN_FX);
+    TEST(OPK_FMIN_NEWX);
+    TEST(OPK_FMIN_CONVERGENCE);
+
+#undef TEST
+  }
+  return OPK_INVALID_ARGUMENT;
 }

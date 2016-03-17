@@ -371,6 +371,20 @@ opk_guess_status();
 extern size_t
 opk_copy_string(char* dst, size_t size, const char* src);
 
+/**
+ * Get a constant given its name.
+ *
+ * This function is mostly need for OptimPack wrappers in other languages than
+ * C to avoid hardcoding the constants of the library.
+ *
+ * @param name  - The name of the constant; for instance: `"OPK_SUCCESS"`.
+ * @param ptr   - The address where to store the value of the constant.
+ *
+ * @return `OPK_SUCCESS` or `OPK_INVALID_ARGUMENT` if the name is unknown.
+ */
+extern opk_status_t
+opk_get_integer_constant(const char* name, long* ptr);
+
 /*---------------------------------------------------------------------------*/
 /* DATA TYPES */
 
