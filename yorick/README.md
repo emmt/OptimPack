@@ -20,11 +20,11 @@ configure for building.
 If the plug-in has been properly installed, it is sufficient to use any
 function of OptimPack to automatically load the plug-in.  You may force the
 loading of the plug-in by something like:
-````{.sh}
+````{.cpp}
 #include "opky.i"
 ````
 or
-````{.sh}
+````{.cpp}
 require, "opky.i";
 ````
 in your code.
