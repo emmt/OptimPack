@@ -193,7 +193,7 @@ extern opk_get_constant;
 
 func opk_minimize(fg, x0, &fx, &gx,
                   mem=, nlcg=, flags=, single=, lower=, upper=,
-                  maxiter=, maxeval=, verb=, output=)
+                  maxiter=, maxeval=, verb=, output=, printer=)
 /* DOCUMENT x = opk_minimize(fg, x0);
          or x = opk_minimize(fg, x0, fx, gx);
 
@@ -242,6 +242,20 @@ func opk_minimize(fg, x0, &fx, &gx,
      information about the current iterate at every VERB iterations and at the
      final one.
 
+     Keyword PRINTER can be set with a function (or an object calable as a
+     function), e.g a viewer, to be called after every iteration as:
+ 
+          printer, fg, x, fx, gx, iter, eval, t;
+ 
+     where FG can be a closure function which embeds required data for the
+     PRINTER function, X are the current variables, FX
+     the corresponding function value, GX the corresponding gradient, ITER
+     the number of iterations, EVAL the number of function evaluations and
+     T the elasped time in seconds (as an array of 3 values as returned by
+     the timer function).
+
+     
+
      Keyword OUPTPUT can be used to specify the output for verbose mode.  Its
      value can be a string (interpreted as the name of the file to which
      append the output lines) or a text file stream opened for writing.  If
@@ -268,6 +282,15 @@ func opk_minimize(fg, x0, &fx, &gx,
     type = double;
     single = FALSE;
   }
+
+  if (is_void(printer)) {
+    use_printer = 0n;
+  } else if (is_func(printer)) {
+    use_printer = 1n;
+  } else {
+    error, "bad value for keyword PRINTER";
+  }
+
   x = type(unref(x0));
   gx = array(type, dimsof(x));
   dims = dimsof(x);
@@ -330,6 +353,9 @@ func opk_minimize(fg, x0, &fx, &gx,
           write, output, format="%5d %5d %5d %10.3f  %+-24.15e%-9.1e%-9.1e\n",
             opt.iterations, opt.evaluations, opt.restarts, cpu*1e3, fx,
             opt.gnorm, opt.step;
+          if (use_printer) {
+            printer, fg, x, fx, gx, opt.iterations, opt.evaluations, cpu;
+          }   
         }
       }
       if (stage >= 2) {
