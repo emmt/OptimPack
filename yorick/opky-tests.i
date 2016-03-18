@@ -62,8 +62,21 @@ func opkt_rosenbrock(n, single=, nlcg=, flags=)
   if (n%2 == 1) error, "number of variables must be even";
   type = (single ? float : double);
   x0 = array(type, n);
+
+  write, format="\n*** %s ***\n", "Testing without bounds";
   opkt_rosenbrock_xinit, x0;
-  x = opk_minimize(opkt_rosenbrock_fg, x0, nlcg=nlcg, flags=flags, verb=1n);
+  x = opk_minimize(opkt_rosenbrock_fg, x0,
+                   nlcg=nlcg, flags=flags, verb=1n);
+
+  write, format="\n*** %s ***\n", "Testing without scalar lower bound";
+  opkt_rosenbrock_xinit, x0;
+  x = opk_minimize(opkt_rosenbrock_fg, x0, lower=0,
+                   nlcg=nlcg, flags=flags, verb=1n);
+
+  write, format="\n*** %s ***\n", "Testing without array lower bound and scalar upper bound";
+  opkt_rosenbrock_xinit, x0;
+  x = opk_minimize(opkt_rosenbrock_fg, x0, lower=array(0.0,n), upper=0.7,
+                   nlcg=nlcg, flags=flags, verb=1n);
 }
 
 func opkt_nonnegative(m, n, mem=, single=, flags=, verb=, maxiter=, maxeval=)
@@ -166,3 +179,4 @@ func _opkt_nonnegative(x,&gx,ws)
   gx = ws.H(+,)*wr(+);
   return 0.5*sum(wr*r);
 }
+opkt_rosenbrock,4;
