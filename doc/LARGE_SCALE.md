@@ -1,4 +1,4 @@
-# Solving Large Scale Smooth Problems
+# Solving large scale smooth problems
 
 Suppose you want to solve the following problem:
 ```
@@ -22,7 +22,7 @@ implemented in OptimpPack can cope with unconstrained and bound constrained
 problems.
 
 
-## Simple Driver
+## Simple driver
 
 OptimPack manages the variables in a way which is agnostic to the actual layout
 of the data.  This is a strength of OptimPack but result in some additional
@@ -41,7 +41,7 @@ constraints can be taken into account (providing the variable metric method
 is selected).
 
 
-### Unconstrained Minimization Example
+### Unconstrained minimization example
 
 The following example shows how to solve an unconstrained problem by
 a limited memory variable metric method (`OPK_ALGORITHM_VMLMB`):
@@ -89,7 +89,7 @@ It is sufficient to use `OPK_ALGORITHM_NLCG` as the first argument of
 `mem` is ignored in this case).
 
 
-### Bound Constrained Minimization Example
+### Bound constrained minimization example
 
 In order to solve a bound constrained problem, you have to provide the upper
 and lower bounds to `opk_new_optimizer()`.  Each bound is specified by its type

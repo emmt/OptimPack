@@ -14,7 +14,7 @@ specific information, see:
 - [Software installation.](./doc/INSTALL.md)
 - [Developer notes.](./doc/NOTES.md)
 - [Software changes and history.](./doc/CHANGES.md)
-- [Solving Large Scale Smooth Problems.](./doc/LARGE_SCALE.md)
+- [Solving large scale smooth problems.](./doc/LARGE_SCALE.md)
 
 Most of the documentation is in the header files, *e.g.*
 [src/optimpack.h](src/optimpack.h), in Doxygen format.
@@ -41,7 +41,7 @@ manipulate them are implemented).  This feature may be used to exploit hardware
 acceleration, multi-threading or to distribute the storage and computation
 across multiple machines.
 
-See [Solving Large Scale Smooth Problems](./doc/LARGE_SCALE.md) for examples
+See [Solving large scale smooth problems](./doc/LARGE_SCALE.md) for examples
 and more information about using Optimpack to solve large scale problems.
 
 
@@ -62,7 +62,7 @@ For problems of small to moderate size, **OptimPack** provides:
   Ref. [14]).
 
 
-## OptimPack Bindings
+## OptimPack bindings
 
 OptimPack library is written in C but, in order to make embedding
 OptimPack into another language as easy as possible, the routines use
