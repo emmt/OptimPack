@@ -761,7 +761,9 @@ set_bound(opk_vspace_t* space, opk_bound_t* bound,
     }
     bound->value.scalar = *(double*)value;
     bound->type = 's';
-  } else if (type == OPK_BOUND_VECTOR) {
+    return OPK_SUCCESS;
+  }
+  if (type == OPK_BOUND_VECTOR) {
     if (value == NULL) {
       return OPK_ILLEGAL_ADDRESS;
     }
