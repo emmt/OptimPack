@@ -175,7 +175,6 @@ opk_get_integer_constant(const char* name, long* ptr)
     TEST(OPK_SCALING_NONE);
     TEST(OPK_SCALING_OREN_SPEDICATO);
     TEST(OPK_SCALING_BARZILAI_BORWEIN);
-    TEST(OPK_EMULATE_BLMVM);
 
     TEST(OPK_LBFGS);
     TEST(OPK_VMLMB);

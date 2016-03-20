@@ -420,21 +420,35 @@ finalize_nlcg(opk_object_t* obj)
 /* PUBLIC INTERFACE */
 
 opk_nlcg_t*
-opk_new_nlcg_optimizer(opk_vspace_t* vspace,
-                       unsigned int flags,
+opk_new_nlcg_optimizer(const opk_nlcg_options_t* opts,
+                       opk_vspace_t* vspace,
                        opk_lnsrch_t* lnsrch)
 {
+  opk_nlcg_options_t options;
   opk_nlcg_t* opt;
   opk_bool_t g0_needed, y_needed;
+  unsigned int flags;
   int (*update)(opk_nlcg_t* opt,
                 const opk_vector_t* x,
                 const opk_vector_t* g);
+
+  /* Check options. */
+  if (opts == NULL) {
+    /* Use default options. */
+    opk_get_nlcg_default_options(&options);
+    opts = &options;
+  }
+  if (opk_check_nlcg_options(opts) != OPK_SUCCESS) {
+    errno = EINVAL;
+    return NULL;
+  }
 
   /* Check the input arguments for errors. */
   if (vspace == NULL) {
     errno = EFAULT;
     return NULL;
   }
+  flags = opts->flags;
   if (flags == 0) {
     flags = OPK_NLCG_DEFAULT;
   }
@@ -484,7 +498,6 @@ opk_new_nlcg_optimizer(opk_vspace_t* vspace,
     return NULL;
   }
 
-
   /* We allocate enough memory for the workspace and instanciate it. */
   opt = (opk_nlcg_t*)opk_allocate_object(finalize_nlcg, sizeof(opk_nlcg_t));
   if (opt == NULL) {
@@ -500,10 +513,16 @@ opk_new_nlcg_optimizer(opk_vspace_t* vspace,
       goto error;
     }
   }
-  opt->fmin_given = FALSE;
+  opt->delta = opts->delta;
+  opt->epsilon = opts->epsilon;
+  opt->grtol = opts->grtol;
+  opt->gatol = opts->gatol;
+  opt->stpmin = opts->stpmin;
+  opt->stpmax = opts->stpmax;
+  opt->fmin = opts->fmin;
   opt->flags = flags;
+  opt->fmin_given = FALSE;
   opt->update_Hager_Zhang_orig = FALSE;
-  opk_set_nlcg_options(opt, NULL);
 
   /* Allocate work vectors. */
   opt->x0 = opk_vcreate(vspace);
@@ -548,46 +567,6 @@ opk_get_nlcg_gnorm(const opk_nlcg_t* opt)
   return (opt == NULL ? -1.0 : opt->gnorm);
 }
 
-opk_status_t
-opk_get_nlcg_fmin(const opk_nlcg_t* opt, double* fmin)
-{
-  if (opt == NULL) {
-    return OPK_ILLEGAL_ADDRESS;
-  }
-  if (opt->fmin_given) {
-    if (fmin != NULL) {
-      *fmin = opt->fmin;
-    }
-    return OPK_SUCCESS;
-  } else {
-    return OPK_UNDEFINED_VALUE;
-  }
-}
-
-opk_status_t
-opk_set_nlcg_fmin(opk_nlcg_t* opt, double fmin)
-{
-  if (opt == NULL) {
-    return OPK_ILLEGAL_ADDRESS;
-  }
-  if (isnan(fmin) || isinf(fmin)) {
-    return OPK_INVALID_ARGUMENT;
-  }
-  opt->fmin = fmin;
-  opt->fmin_given = TRUE;
-  return OPK_SUCCESS;
-}
-
-opk_status_t
-opk_unset_nlcg_fmin(opk_nlcg_t* opt)
-{
-  if (opt == NULL) {
-    return OPK_ILLEGAL_ADDRESS;
-  }
-  opt->fmin_given = FALSE;
-  return OPK_SUCCESS;
-}
-
 opk_index_t
 opk_get_nlcg_iterations(const opk_nlcg_t* opt)
 {
@@ -604,12 +583,6 @@ opk_index_t
 opk_get_nlcg_evaluations(const opk_nlcg_t* opt)
 {
   return opt->evaluations;
-}
-
-unsigned int
-opk_get_nlcg_flags(const opk_nlcg_t* opt)
-{
-  return (opt != NULL ? opt->flags : -1);
 }
 
 size_t
@@ -691,62 +664,36 @@ opk_get_nlcg_beta(const opk_nlcg_t* opt)
   return opt->beta;
 }
 
-opk_status_t
-opk_get_nlcg_options(opk_nlcg_options_t* dst, const opk_nlcg_t* src)
+void
+opk_get_nlcg_default_options(opk_nlcg_options_t* opts)
 {
-  if (dst == NULL) {
-    return OPK_ILLEGAL_ADDRESS;
+  if (opts != NULL) {
+    opts->delta = DELTA;
+    opts->epsilon = EPSILON;
+    opts->grtol = GRTOL;
+    opts->gatol = GATOL;
+    opts->stpmin = STPMIN;
+    opts->stpmax = STPMAX;
+    opts->fmin = 0;
+    opts->flags = OPK_NLCG_DEFAULT;
+    opts->fmin_given = FALSE;
   }
-  if (src == NULL) {
-    /* Get default options. */
-    dst->delta = DELTA;
-    dst->epsilon = EPSILON;
-    dst->grtol = GRTOL;
-    dst->gatol = GATOL;
-    dst->stpmin = STPMIN;
-    dst->stpmax = STPMAX;
-  } else {
-    /* Get current options. */
-    dst->delta = src->delta;
-    dst->epsilon = src->epsilon;
-    dst->grtol = src->grtol;
-    dst->gatol = src->gatol;
-    dst->stpmin = src->stpmin;
-    dst->stpmax = src->stpmax;
-  }
-  return OPK_SUCCESS;
 }
 
 opk_status_t
-opk_set_nlcg_options(opk_nlcg_t* dst, const opk_nlcg_options_t* src)
+opk_check_nlcg_options(const opk_nlcg_options_t* opts)
 {
-  if (dst == NULL) {
+  if (opts == NULL) {
     return OPK_ILLEGAL_ADDRESS;
   }
-  if (src == NULL) {
-    /* Set default options. */
-    dst->delta = DELTA;
-    dst->epsilon = EPSILON;
-    dst->grtol = GRTOL;
-    dst->gatol = GATOL;
-    dst->stpmin = STPMIN;
-    dst->stpmax = STPMAX;
-  } else {
-    /* Check and set given options. */
-    if (non_finite(src->gatol) || src->gatol < 0 ||
-        non_finite(src->grtol) || src->grtol < 0 ||
-        non_finite(src->delta) || src->delta <= 0 ||
-        non_finite(src->epsilon) || src->epsilon < 0 ||
-        non_finite(src->stpmin) || src->stpmin < 0 ||
-        non_finite(src->stpmax) || src->stpmax <=  src->stpmin) {
-      return OPK_INVALID_ARGUMENT;
-    }
-    dst->delta = src->delta;
-    dst->epsilon = src->epsilon;
-    dst->grtol = src->grtol;
-    dst->gatol = src->gatol;
-    dst->stpmin = src->stpmin;
-    dst->stpmax = src->stpmax;
+  if (non_finite(opts->gatol) || opts->gatol < 0 ||
+      non_finite(opts->grtol) || opts->grtol < 0 ||
+      non_finite(opts->delta) || opts->delta <= 0 ||
+      non_finite(opts->epsilon) || opts->epsilon < 0 || opts->epsilon >= 1 ||
+      non_finite(opts->stpmin) || opts->stpmin < 0 ||
+      non_finite(opts->stpmax) || opts->stpmax <= opts->stpmin ||
+      (opts->fmin_given && non_finite(opts->fmin))) {
+    return OPK_INVALID_ARGUMENT;
   }
   return OPK_SUCCESS;
 }

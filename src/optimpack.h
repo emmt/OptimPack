@@ -1298,7 +1298,7 @@ opk_cstep(double *stx_ptr, double *fx_ptr, double *dx_ptr,
 typedef struct _opk_nlcg opk_nlcg_t;
 
 /**
- * Structure used to store the settings of a NLCG optimizer.
+ * Structure used to specify the settings of a NLCG optimizer.
  *
  * The absolute threshold for the norm or the gradient for convergence are
  * specified by the members `gatol` and `grtol` of this structure.  The
@@ -1319,131 +1319,20 @@ typedef struct _opk_nlcg opk_nlcg_t;
  * ~~~~~
  */
 typedef struct _opk_nlcg_options {
-  double delta;   /**< Relative size for a small step. */
-  double epsilon; /**< Threshold to accept descent direction. */
-  double grtol;   /**< Relative threshold for the norm or the gradient
-                       (relative to the norm of the initial gradient) for
-                       convergence. */
-  double gatol;   /**< Absolute threshold for the norm or the gradient for
-                       convergence. */
-  double stpmin;  /**< Relative minimum step length. */
-  double stpmax;  /**< Relative maximum step length. */
+  double delta;          /**< Relative size for a small step. */
+  double epsilon;        /**< Threshold to accept descent direction. */
+  double grtol;          /**< Relative threshold for the norm or the gradient
+                              (relative to the norm of the initial gradient)
+                              for convergence. */
+  double gatol;          /**< Absolute threshold for the norm or the gradient
+                              for convergence. */
+  double stpmin;         /**< Relative minimum step length. */
+  double stpmax;         /**< Relative maximum step length. */
+  double fmin;           /**< Minimal function value if provided. */
+  unsigned int flags;    /**< A bitwise combination of the non-linear conjugate
+                              gradient update method and options. */
+  opk_bool_t fmin_given; /**< Minimal function value is provided? */
 } opk_nlcg_options_t;
-
-/**
- * Create a new optimizer instance for non-linear conjugate gradient method.
- *
- * This function creates an optimizer instance for minimization by a non-linear
- * conjugate gradient method over a given vector space.  The returned instance
- * must be unreferenced by calling the function `opk_drop_object()`, or th
- * macro `OPK_DROP()` when no longer needed.
- *
- * @param vspace   The vector space of the unknowns.
- * @param flags    A bitwise combination of the non-linear conjugate gradient
- *                 update method and options.
- * @param lnsrch - Optional line search method to use; can be `NULL` to use a
- *                 default one.  Note that the optimizer will hold a reference
- *                 to the line search object.
- *
- * @return The address of a new optimizer instance, or NULL in case of error.
- *         Global variable errno may be ENOMEM if there is not enough memory
- *         or EINVAL if one of the arguments is invalid or EFAULT if vspace is
- *         NULL.
- */
-extern opk_nlcg_t*
-opk_new_nlcg_optimizer(opk_vspace_t* vspace, unsigned int flags,
-                       opk_lnsrch_t* lnsrch);
-
-extern opk_task_t
-opk_start_nlcg(opk_nlcg_t* opt, opk_vector_t* x);
-
-extern opk_task_t
-opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x,
-                 double f, opk_vector_t* g);
-
-/**
- * Get the current step length.
- *
- * This function retrieves the value of the current step size.
- *
- * @param opt - The NLCG optimizer.
- *
- * @return The value of the current step size, should be strictly positive.
- *
- * @see opk_get_nlcg_stpmax(), opk_set_nlcg_stpmin_and_stpmax().
- */
-extern double
-opk_get_nlcg_step(const opk_nlcg_t* opt);
-
-extern double
-opk_get_nlcg_gnorm(const opk_nlcg_t* opt);
-
-extern opk_status_t
-opk_get_nlcg_fmin(const opk_nlcg_t* opt, double* fmin);
-
-extern opk_status_t
-opk_set_nlcg_fmin(opk_nlcg_t* opt, double fmin);
-
-extern opk_status_t
-opk_unset_nlcg_fmin(opk_nlcg_t* opt);
-
-extern opk_index_t
-opk_get_nlcg_iterations(const opk_nlcg_t* opt);
-
-extern opk_index_t
-opk_get_nlcg_restarts(const opk_nlcg_t* opt);
-
-extern opk_index_t
-opk_get_nlcg_evaluations(const opk_nlcg_t* opt);
-
-extern unsigned int
-opk_get_nlcg_flags(const opk_nlcg_t* opt);
-
-extern opk_task_t
-opk_get_nlcg_task(const opk_nlcg_t* opt);
-
-extern opk_status_t
-opk_get_nlcg_status(const opk_nlcg_t* opt);
-
-/**
- * Get description of nonlinear conjugate gradient method.
- *
- * @param opt - The optimizer.
- * @param buf - A string buffer to copy the description (can be `NULL`).
- * @param size - The number of available bytes in `buf`.
- * @return The minimum number of bytes required to store the description
- *         (including the terminating '\0' character).
- */
-extern size_t
-opk_get_nlcg_description(char* buf, size_t size, const opk_nlcg_t* opt);
-
-extern double
-opk_get_nlcg_beta(const opk_nlcg_t* opt);
-
-/**
- * Query NLCG optimizer parameters.
- *
- * @param dst - The structure where to store the parameters.
- * @param src - The NLCG optimizer from which to fetch the parameters; if
- *              `NULL`, default parameters are retrieved.
- *
- * @return A standard status.
- */
-extern opk_status_t
-opk_get_nlcg_options(opk_nlcg_options_t* dst, const opk_nlcg_t* src);
-
-/**
- * Set NLCG optimizer parameters.
- *
- * @param dst - The NLCG optimizer whose parameters to set.
- * @param src - The structure with the new parameter values; if `NULL`, default
- *              parameters are used.
- *
- * @return A standard status.
- */
-extern opk_status_t
-opk_set_nlcg_options(opk_nlcg_t* dst, const opk_nlcg_options_t* src);
-
 
 /* Rules to compute the search direction in NLCG: */
 #define OPK_NLCG_FLETCHER_REEVES        1
@@ -1472,6 +1361,101 @@ opk_set_nlcg_options(opk_nlcg_t* dst, const opk_nlcg_options_t* src);
    the method which is, in general, the most successful). */
 #define OPK_NLCG_DEFAULT (OPK_NLCG_POLAK_RIBIERE_POLYAK | \
                           OPK_NLCG_POWELL | OPK_NLCG_SHANNO_PHUA)
+
+/**
+ * Query default nonlinear conjugate gradient optimizer parameters.
+ *
+ * @param opts - The address of the structure where to store the parameters.
+ */
+extern void
+opk_get_nlcg_default_options(opk_nlcg_options_t* opts);
+
+/**
+ * Check nonlinear conjugate gradient optimizer parameters.
+ *
+ * @param opts - The address of the structure with the parameters to check.
+ *
+ * @return A standard status.
+ */
+extern opk_status_t
+opk_check_nlcg_options(const opk_nlcg_options_t* opts);
+
+/**
+ * Create a new optimizer instance for non-linear conjugate gradient method.
+ *
+ * This function creates an optimizer instance for minimization by a non-linear
+ * conjugate gradient method over a given vector space.  The returned instance
+ * must be unreferenced by calling the function `opk_drop_object()`, or th
+ * macro `OPK_DROP()` when no longer needed.
+ *
+ * @param vspace   The vector space of the unknowns.
+ * @param lnsrch - Optional line search method to use; can be `NULL` to use a
+ *                 default one.  Note that the optimizer will hold a reference
+ *                 to the line search object.
+ *
+ * @return The address of a new optimizer instance, or NULL in case of error.
+ *         Global variable errno may be ENOMEM if there is not enough memory
+ *         or EINVAL if one of the arguments is invalid or EFAULT if vspace is
+ *         NULL.
+ */
+extern opk_nlcg_t*
+opk_new_nlcg_optimizer(const opk_nlcg_options_t* opts,
+                       opk_vspace_t* vspace,
+                       opk_lnsrch_t* lnsrch);
+
+extern opk_task_t
+opk_start_nlcg(opk_nlcg_t* opt, opk_vector_t* x);
+
+extern opk_task_t
+opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x,
+                 double f, opk_vector_t* g);
+
+/**
+ * Get the current step length.
+ *
+ * This function retrieves the value of the current step size.
+ *
+ * @param opt - The NLCG optimizer.
+ *
+ * @return The value of the current step size, should be strictly positive.
+ *
+ * @see opk_get_nlcg_stpmax(), opk_set_nlcg_stpmin_and_stpmax().
+ */
+extern double
+opk_get_nlcg_step(const opk_nlcg_t* opt);
+
+extern double
+opk_get_nlcg_gnorm(const opk_nlcg_t* opt);
+
+extern opk_index_t
+opk_get_nlcg_iterations(const opk_nlcg_t* opt);
+
+extern opk_index_t
+opk_get_nlcg_restarts(const opk_nlcg_t* opt);
+
+extern opk_index_t
+opk_get_nlcg_evaluations(const opk_nlcg_t* opt);
+
+extern opk_task_t
+opk_get_nlcg_task(const opk_nlcg_t* opt);
+
+extern opk_status_t
+opk_get_nlcg_status(const opk_nlcg_t* opt);
+
+/**
+ * Get description of nonlinear conjugate gradient method.
+ *
+ * @param opt - The optimizer.
+ * @param buf - A string buffer to copy the description (can be `NULL`).
+ * @param size - The number of available bytes in `buf`.
+ * @return The minimum number of bytes required to store the description
+ *         (including the terminating '\0' character).
+ */
+extern size_t
+opk_get_nlcg_description(char* buf, size_t size, const opk_nlcg_t* opt);
+
+extern double
+opk_get_nlcg_beta(const opk_nlcg_t* opt);
 
 /** @} */
 
@@ -1763,26 +1747,46 @@ typedef struct _opk_vmlmb opk_vmlmb_t;
 /** Rules for scaling the inverse Hessian approximation. */
 typedef enum {
   OPK_SCALING_NONE             = 0, /**< No-scaling. */
-  OPK_SCALING_OREN_SPEDICATO   = 1, /**< Scaling by: {@code gamma = (s'.y)/(y'.y)} */
-  OPK_SCALING_BARZILAI_BORWEIN = 2  /**< Scaling by: {@code gamma = (s'.s)/(s'.y)} */
+  OPK_SCALING_OREN_SPEDICATO   = 1, /**< Scaling by:
+                                         {@code gamma = (s'.y)/(y'.y)} */
+  OPK_SCALING_BARZILAI_BORWEIN = 2  /**< Scaling by:
+                                         {@code gamma = (s'.s)/(s'.y)} */
 } opk_bfgs_scaling_t;
 
 /** Structure used to store the settings of a VMLMB optimizer. */
 typedef struct _opk_vmlmb_options {
-  double delta;   /**< Relative size for a small step. */
-  double epsilon; /**< Threshold to accept descent direction. */
-  double grtol;   /**< Relative threshold for the norm or the projected
-                       gradient (relative to the norm of the initial projected
-                       gradient) for convergence. */
-  double gatol;   /**< Absolute threshold for the norm or the projected
-                       gradient for convergence. */
-  double stpmin;  /**< Relative minimum step length. */
-  double stpmax;  /**< Relative maximum step length. */
+  double delta;           /**< Relative size for a small step. */
+  double epsilon;         /**< Threshold to accept descent direction. */
+  double grtol;           /**< Relative threshold for the norm or the projected
+                               gradient (relative to the norm of the initial
+                               projected gradient) for convergence. */
+  double gatol;           /**< Absolute threshold for the norm or the projected
+                               gradient for convergence. */
+  double stpmin;          /**< Relative minimum step length. */
+  double stpmax;          /**< Relative maximum step length. */
+  opk_index_t mem;        /**< Maximum number of memorized steps. */
+  opk_bool_t blmvm;       /**< Emulate Benson & Moré BLMVM method? */
+  opk_bool_t save_memory; /**< Save some memory? */
 } opk_vmlmb_options_t;
 
-/** Options for VMLMB. */
-#define OPK_EMULATE_BLMVM              (1 << 1) /**< Emulate Benson & Moré
-                                                     BLMVM method. */
+/**
+ * Query default VMLMB optimizer parameters.
+ *
+ * @param opts - The address of the structure where to store the parameters.
+ */
+extern void
+opk_get_vmlmb_default_options(opk_vmlmb_options_t* opts);
+
+/**
+ * Check VMLMB optimizer parameters.
+ *
+ * @param opts - The address of the structure with the parameters to check.
+ *
+ * @return A standard status.
+ */
+extern opk_status_t
+opk_check_vmlmb_options(const opk_vmlmb_options_t* opts);
+
 /**
  * Create a reverse communication optimizer implementing a limited memory
  * quasi-Newton method.
@@ -1790,14 +1794,13 @@ typedef struct _opk_vmlmb_options {
  * The optimizer may account for bound constraints if argument `box` is
  * non-`NULL`.
  *
+ * @param opts   - The options to sue (can be `NULL` to use default options).
  * @param space  - The space to which belong the variables.
- * @param m      - The number of previous steps to memorize (`m` > 0).
- * @param flags  - Bitwise options: `OPK_EMULATE_BLMVM` or `0`.
- * @param box    - An optional box set implementing the bound constraints (can
- *                 be `NULL`).
  * @param lnsrch - Optional line search method to use; can be `NULL` to use a
  *                 default one.  Note that the optimizer will hold a reference
  *                 to the line search object.
+ * @param box    - An optional box set implementing the bound constraints (can
+ *                 be `NULL`).
  *
  * @return The address of a new optimizer instance, or NULL in case of error.
  *         Global variable errno may be ENOMEM if there is not enough memory
@@ -1805,11 +1808,10 @@ typedef struct _opk_vmlmb_options {
  *         NULL.
  */
 extern opk_vmlmb_t*
-opk_new_vmlmb_optimizer(opk_vspace_t* space,
-                        opk_index_t m,
-                        unsigned int flags,
-                        opk_convexset_t* box,
-                        opk_lnsrch_t* lnsrch);
+opk_new_vmlmb_optimizer(const opk_vmlmb_options_t* opts,
+                        opk_vspace_t* space,
+                        opk_lnsrch_t* lnsrch,
+                        opk_convexset_t* box);
 
 /** The variants implemented by VMLMB. */
 typedef enum { OPK_LBFGS, OPK_VMLMB, OPK_BLMVM } opk_vmlmb_method_t;
@@ -1825,9 +1827,6 @@ opk_start_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x);
 extern opk_task_t
 opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
                   double f, opk_vector_t* g);
-
-extern unsigned int
-opk_get_vmlmb_flags(const opk_vmlmb_t* opt);
 
 extern opk_task_t
 opk_get_vmlmb_task(const opk_vmlmb_t* opt);
@@ -1925,30 +1924,6 @@ opk_get_vmlmb_s(const opk_vmlmb_t* opt, opk_index_t j);
 extern opk_vector_t*
 opk_get_vmlmb_y(const opk_vmlmb_t* opt, opk_index_t j);
 
-/**
- * Query VMLMB optimizer parameters.
- *
- * @param dst - The structure where to store the parameters.
- * @param src - The VMLMB optimizer from which to fetch the parameters; if
- *              `NULL`, default parameters are retrieved.
- *
- * @return A standard status.
- */
-extern opk_status_t
-opk_get_vmlmb_options(opk_vmlmb_options_t* dst, const opk_vmlmb_t* src);
-
-/**
- * Set VMLMB optimizer parameters.
- *
- * @param dst - The VMLMB optimizer whose parameters to set.
- * @param src - The structure with the new parameter values; if `NULL`, default
- *              parameters are used.
- *
- * @return A standard status.
- */
-extern opk_status_t
-opk_set_vmlmb_options(opk_vmlmb_t* dst, const opk_vmlmb_options_t* src);
-
 /** @} */
 
 /*---------------------------------------------------------------------------*/
@@ -1995,7 +1970,7 @@ typedef struct _opk_optimizer opk_optimizer_t;
  * float x[n];
  * float gx[n];
  * opk_optimizer_t* opt = opk_new_optimizer(OPK_ALGORITHM_VMLMB,
- *                                          type, n, 0, 0,
+ *                                          NULL, type, n,
  *                                          OPK_BOUND_NONE, NULL,
  *                                          OPK_BOUND_NONE, NULL,
  *                                          NULL);
@@ -2024,14 +1999,10 @@ typedef struct _opk_optimizer opk_optimizer_t;
  * ~~~~~
  *
  * @param algorithm - The limited memory algorithm to use.
+ * @param opts   - Address of structure with algorithm options (can be `NULL`).
  * @param type   - The type of the variable limited memory algorithm to use
  *                 ({@link OPK_FLOAT} or {@link OPK_DOUBLE}).
  * @param n      - The number of variables (`n` > 0).
- * @param m      - The number of previous steps to memorize for the variable
- *                 metric methods.  If `m` is less or equal zero, a default
- *                 value is used; if `m` is larger than `n`, `m = n` is used.
- *                 For non-linear conjugate gradient methods, `m = 0`.
- * @param flags  - Bitwise algorithm flags.
  * @param lower_type - The type of the lower bound.
  * @param lower  - Optional lower bound for the variables.  Can be `NULL` if
  *                 there are no lower bounds and `lower_type` is {@link
@@ -2052,9 +2023,8 @@ typedef struct _opk_optimizer opk_optimizer_t;
  *
  */
 extern opk_optimizer_t *
-opk_new_optimizer(opk_algorithm_t algorithm,
+opk_new_optimizer(opk_algorithm_t algorithm, const void* opts,
                   opk_type_t type, opk_index_t n,
-                  opk_index_t m, unsigned int flags,
                   opk_bound_type_t lower_type, void* lower,
                   opk_bound_type_t upper_type, void* upper,
                   opk_lnsrch_t* lnschr);

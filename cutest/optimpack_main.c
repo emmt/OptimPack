@@ -140,8 +140,8 @@ int MAINENTRY(void)
   opk_task_t task;
   opk_status_t final_status;
   opk_algorithm_t algorithm = OPK_ALGORITHM_VMLMB;
-  unsigned int vmlmb_flags = 0;
-  unsigned int nlcg_flags = OPK_NLCG_DEFAULT;
+  opk_vmlmb_options_t vmlmb_options;
+  opk_nlcg_options_t nlcg_options;
   char algorithm_name[20];
   char algorithm_description[DESCRIPTION_MAX_SIZE];
   opk_convexset_t* box;
@@ -152,21 +152,14 @@ int MAINENTRY(void)
   double f, gnorm, finalf, finalgnorm, gtest;
   double gatol = 1.0e-6;    /* required gradient absolute tolerance */
   double grtol = 0.0;       /* required gradient relative tolerance */
-  double delta = 5e-2;
-  double epsilon = 1e-2;
   double sftol = 1e-4;
   double sgtol = 0.9;
   double sxtol = 1e-15;
   double samin = 0.1;
-  int delta_given = FALSE_;
-  int epsilon_given = FALSE_;
   int maxiter = -1;
   int maxeval = -1;
   int verbose = 0;
   int evaluations, iterations, bounds;
-  int mem = 5; /* number of saved (Y,S) pairs memorized by the quasi-Newton
-                  method to approximate the Hessian, if zero non-linear
-                  conjugate gradient is used */
 
 
   /* Open problem description file OUTSDIF.d */
@@ -332,7 +325,14 @@ int MAINENTRY(void)
   */
 
   /* Set any parameter values here
-     First read in the default parameter values */
+     First set in the default parameter values */
+
+  opk_get_nlcg_default_options(&nlcg_options);
+
+  opk_get_vmlmb_default_options(&vmlmb_options);
+  vmlmb_options.mem = 5; /* number of saved (Y,S) pairs memorized by the
+                            quasi-Newton method to approximate the Hessian, if
+                            zero non-linear conjugate gradient is used */
 
   /* Parameter values are overwritten using any values stored in the
      OPTIMPACK.SPC file. The format of the file is parameter name at
@@ -347,7 +347,7 @@ int MAINENTRY(void)
     double dval;
     int powell = FALSE_;
     unsigned int autostep = 0;
-    nlcg_flags = OPK_NLCG_POLAK_RIBIERE_POLYAK;
+    nlcg_options.flags = OPK_NLCG_POLAK_RIBIERE_POLYAK;
     while (fgets(line, MAXLINE, spec) != (char*)NULL) {
       /* determine the parameter and its value */
       line[MAXLINE] = 0;
@@ -356,10 +356,10 @@ int MAINENTRY(void)
           algorithm = OPK_ALGORITHM_NLCG;
         } else if (strcasecmp(str, "vmlmb") == 0) {
           algorithm = OPK_ALGORITHM_VMLMB;
-          vmlmb_flags = 0;
+          vmlmb_options.blmvm = FALSE_;
         } else if (strcasecmp(str, "blmvm") == 0) {
           algorithm = OPK_ALGORITHM_VMLMB;
-          vmlmb_flags = OPK_EMULATE_BLMVM;
+          vmlmb_options.blmvm = TRUE_;
         } else {
           printf("# Unknown algorithm\n");
           exit(-1);
@@ -407,58 +407,58 @@ int MAINENTRY(void)
 #endif
       if (sscanf(line, " FletcherReeves %d", &ival) == 1) {
         if (ival != 0) {
-          nlcg_flags = OPK_NLCG_FLETCHER_REEVES;
+          nlcg_options.flags = OPK_NLCG_FLETCHER_REEVES;
         }
         continue;
       }
       if (sscanf(line, " HestenesStiefel %d", &ival) == 1) {
         if (ival != 0) {
-          nlcg_flags = OPK_NLCG_HESTENES_STIEFEL;
+          nlcg_options.flags = OPK_NLCG_HESTENES_STIEFEL;
         }
         continue;
       }
       if (sscanf(line, " PolakRibierePolyak %d", &ival) == 1) {
         if (ival != 0) {
-          nlcg_flags = OPK_NLCG_POLAK_RIBIERE_POLYAK;
+          nlcg_options.flags = OPK_NLCG_POLAK_RIBIERE_POLYAK;
         }
         continue;
       }
       if (sscanf(line, " Fletcher %d", &ival) == 1) {
         if (ival != 0) {
-          nlcg_flags = OPK_NLCG_FLETCHER;
+          nlcg_options.flags = OPK_NLCG_FLETCHER;
         }
         continue;
       }
       if (sscanf(line, " LiuStorey %d", &ival) == 1) {
         if (ival != 0) {
-          nlcg_flags = OPK_NLCG_LIU_STOREY;
+          nlcg_options.flags = OPK_NLCG_LIU_STOREY;
         }
         continue;
       }
       if (sscanf(line, " DaiYuan %d", &ival) == 1) {
         if (ival != 0) {
-          nlcg_flags = OPK_NLCG_DAI_YUAN;
+          nlcg_options.flags = OPK_NLCG_DAI_YUAN;
         }
         continue;
       }
       if (sscanf(line, " PerryShanno %d", &ival) == 1) {
         if (ival != 0) {
-          nlcg_flags = OPK_NLCG_PERRY_SHANNO;
+          nlcg_options.flags = OPK_NLCG_PERRY_SHANNO;
         }
         continue;
       }
       if (sscanf(line, " HagerZhang %d", &ival) == 1) {
         if (ival != 0) {
-          nlcg_flags = OPK_NLCG_HAGER_ZHANG;
+          nlcg_options.flags = OPK_NLCG_HAGER_ZHANG;
         }
         continue;
       }
       if (sscanf(line, " mem %d", &ival) == 1) {
-        if (mem <= 0) {
+        if (ival < 1) {
           printf("# Illegal value for option MEM\n");
           exit(-1);
         }
-        mem = ival;
+        vmlmb_options.mem = ival;
         continue;
       }
       if (sscanf(line, " maxiter %d", &ival) == 1) {
@@ -474,43 +474,55 @@ int MAINENTRY(void)
         continue;
       }
       if (sscanf(line, " delta %lf", &dval) == 1) {
-        delta = dval;
-        delta_given = TRUE_;
+        if (dval <= 0) {
+          printf("# Illegal value for option DELTA\n");
+          exit(-1);
+        }
+        nlcg_options.delta = dval;
+        vmlmb_options.delta = dval;
         continue;
       }
       if (sscanf(line, " epsilon %lf", &dval) == 1) {
-        epsilon = dval;
-        epsilon_given = TRUE_;
+        if (dval < 0 || dval >= 1) {
+          printf("# Illegal value for option EPSILON\n");
+          exit(-1);
+        }
+        nlcg_options.epsilon = dval;
+        vmlmb_options.epsilon = dval;
         continue;
       }
       if (sscanf(line, " gatol %lf", &dval) == 1) {
+        if (dval < 0) {
+          printf("# Illegal value for option GATOL\n");
+          exit(-1);
+        }
         gatol = dval;
         continue;
       }
       if (sscanf(line, " grtol %lf", &dval) == 1) {
+        if (dval < 0 || dval >= 1) {
+          printf("# Illegal value for option GRTOL\n");
+          exit(-1);
+        }
         grtol = dval;
         continue;
       }
     }
     if (powell) {
-      nlcg_flags |= OPK_NLCG_POWELL;
+      nlcg_options.flags |= OPK_NLCG_POWELL;
     }
     if (autostep != 0) {
-      nlcg_flags |= autostep;
+      nlcg_options.flags |= autostep;
     }
     fclose(spec);
   }
-  if (gatol < 0) {
-    printf("# Bad value for GATOL\n");
-    exit(-1);
-  }
-  if (grtol < 0) {
-    printf("# Bad value for GRTOL\n");
-    exit(-1);
-  }
+  nlcg_options.gatol = gatol;
+  nlcg_options.grtol = grtol;
+  vmlmb_options.gatol = gatol;
+  vmlmb_options.grtol = grtol;
 
   /* Check whether the problem has constraints */
-  if (bounds != 0 && mem == 0) {
+  if (bounds != 0 && algorithm != OPK_VMLMB) {
     printf("# Use VMLMB or BLMVM for bound constrained optimization\n");
     exit(-1);
   }
@@ -569,8 +581,10 @@ int MAINENTRY(void)
     exit(-1);
   }
 
-  opt = opk_new_optimizer(algorithm, OPK_DOUBLE, CUTEst_nvar, mem,
-                          (algorithm == OPK_ALGORITHM_VMLMB ? vmlmb_flags : nlcg_flags),
+  opt = opk_new_optimizer(algorithm, (algorithm == OPK_ALGORITHM_VMLMB
+                                      ? (void*)&vmlmb_options
+                                      : (void*)&nlcg_options),
+                          OPK_DOUBLE, CUTEst_nvar,
                           lower_type, lower_addr,
                           upper_type, upper_addr,
                           lnsrch);
@@ -579,48 +593,6 @@ int MAINENTRY(void)
     exit(-1);
   }
   opk_get_name(algorithm_name, sizeof(algorithm_name), opt);
-  if (algorithm == OPK_ALGORITHM_VMLMB) {
-    opk_vmlmb_options_t options;
-    opk_get_options(&options, opt);
-    options.gatol = 0.0;
-    options.grtol = 0.0;
-    if (delta_given) {
-      options.delta = delta;
-    } else {
-      delta = options.delta;
-    }
-    if (epsilon_given) {
-      options.epsilon = epsilon;
-    } else {
-      epsilon = options.epsilon;
-    }
-    if (opk_set_options(opt, &options) != OPK_SUCCESS) {
-      printf("# Bad VMLMB options\n");
-      exit(-1);
-    }
-  } else if (algorithm == OPK_ALGORITHM_NLCG) {
-    opk_nlcg_options_t options;
-    opk_get_options(&options, opt);
-    options.gatol = 0.0;
-    options.grtol = 0.0;
-    if (delta_given) {
-      options.delta = delta;
-    } else {
-      delta = options.delta;
-    }
-    if (epsilon_given) {
-      options.epsilon = epsilon;
-    } else {
-      epsilon = options.epsilon;
-    }
-    if (opk_set_options(opt, &options) != OPK_SUCCESS) {
-      printf("# Bad NLCG options\n");
-      exit(-1);
-    }
-  } else {
-    printf("# Bad algorithm\n");
-    exit(-1);
-  }
   task = opk_start(opt, x);
 
   /* Iteratively call the optimizer */
@@ -752,8 +724,14 @@ int MAINENTRY(void)
   printf("#              Final ||g|| = %-15.7e\n", finalgnorm);
   printf("#              Set up time = %#-14.6f seconds\n", cpu[0]);
   printf("#               Solve time = %#-14.6f seconds\n", cpu[1]);
-  printf("#      Relative small step = %g\n", delta);
-  printf("#        Descent threshold = %g\n", epsilon);
+  printf("#      Relative small step = %g\n",
+         (algorithm == OPK_ALGORITHM_VMLMB
+          ? vmlmb_options.delta
+          : nlcg_options.delta));
+  printf("#        Descent threshold = %g\n",
+         (algorithm == OPK_ALGORITHM_VMLMB
+          ? vmlmb_options.epsilon
+          : nlcg_options.epsilon));
   printf("# ******************************************************************\n");
 
   ierr = 0;

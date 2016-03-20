@@ -63,9 +63,6 @@ struct _operations {
   opk_task_t   (*get_task)(const opk_optimizer_t* opt);
   opk_status_t (*get_status)(const opk_optimizer_t* opt);
   void         (*set_status)(opk_optimizer_t* opt, opk_status_t status);
-  opk_status_t (*get_options)(void* dst, const opk_optimizer_t* src);
-  opk_status_t (*set_options)(opk_optimizer_t* dst, const void* src);
-  unsigned int (*get_flags)(const opk_optimizer_t* opt);
   opk_index_t  (*get_iterations)(const opk_optimizer_t* opt);
   opk_index_t  (*get_evaluations)(const opk_optimizer_t* opt);
   opk_index_t  (*get_restarts)(const opk_optimizer_t* opt);
@@ -111,26 +108,6 @@ static void
 nlcg_set_status(opk_optimizer_t* opt, opk_status_t status)
 {
   _opk_set_nlcg_status(NLCG(opt->optimizer), status);
-}
-
-static opk_status_t
-nlcg_get_options(void* dst, const opk_optimizer_t* src)
-{
-  return opk_get_nlcg_options((opk_nlcg_options_t*)dst,
-                              NLCG(src->optimizer));
-}
-
-static opk_status_t
-nlcg_set_options(opk_optimizer_t* dst, const void* src)
-{
-  return opk_set_nlcg_options(NLCG(dst->optimizer),
-                              (const opk_nlcg_options_t*)src);
-}
-
-static unsigned int
-nlcg_get_flags(const opk_optimizer_t* opt)
-{
-  return opk_get_nlcg_flags(NLCG(opt->optimizer));
 }
 
 static opk_index_t
@@ -187,9 +164,6 @@ static operations_t nlcg_ops = {
   nlcg_get_task,
   nlcg_get_status,
   nlcg_set_status,
-  nlcg_get_options,
-  nlcg_set_options,
-  nlcg_get_flags,
   nlcg_get_iterations,
   nlcg_get_evaluations,
   nlcg_get_restarts,
@@ -233,26 +207,6 @@ static void
 vmlmb_set_status(opk_optimizer_t* opt, opk_status_t status)
 {
   _opk_set_vmlmb_status(VMLMB(opt->optimizer), status);
-}
-
-static opk_status_t
-vmlmb_get_options(void* dst, const opk_optimizer_t* src)
-{
-  return opk_get_vmlmb_options((opk_vmlmb_options_t*)dst,
-                               VMLMB(src->optimizer));
-}
-
-static opk_status_t
-vmlmb_set_options(opk_optimizer_t* dst, const void* src)
-{
-  return opk_set_vmlmb_options(VMLMB(dst->optimizer),
-                               (const opk_vmlmb_options_t*)src);
-}
-
-static unsigned int
-vmlmb_get_flags(const opk_optimizer_t* opt)
-{
-  return opk_get_vmlmb_flags(VMLMB(opt->optimizer));
 }
 
 static opk_index_t
@@ -310,9 +264,6 @@ static operations_t vmlmb_ops = {
   vmlmb_get_task,
   vmlmb_get_status,
   vmlmb_set_status,
-  vmlmb_get_options,
-  vmlmb_set_options,
-  vmlmb_get_flags,
   vmlmb_get_iterations,
   vmlmb_get_evaluations,
   vmlmb_get_restarts,
@@ -356,12 +307,10 @@ finalize_optimizer(opk_object_t* obj)
 
 extern opk_optimizer_t *
 opk_new_optimizer(opk_algorithm_t algorithm, /* optimization algorithm */
-                  opk_type_t type, /* type of variables: OPK_FLOAT or OPK_DOUBLE */
+                  const void* opts, /* options */
+                  opk_type_t type, /* type of variables: OPK_FLOAT or
+                                      OPK_DOUBLE */
                   opk_index_t n, /* number of variables */
-                  opk_index_t m, /* number of memorized directions (m > 0, for
-                                    quasi-Newton, m = 0 for non-linear
-                                    conjugate gradient) */
-                  unsigned int flags, /* algorithm flags */
                   opk_bound_type_t lower_type, void* lower_addr,
                   opk_bound_type_t upper_type, void* upper_addr,
                   opk_lnsrch_t* lnschr)
@@ -399,15 +348,7 @@ opk_new_optimizer(opk_algorithm_t algorithm, /* optimization algorithm */
       errno = EINVAL;
       return NULL;
     }
-  } else if (algorithm == OPK_ALGORITHM_VMLMB) {
-    if (m < 1) {
-      /* Default memory parameter. */
-      m = 3;
-    }
-    if (m > n) {
-      m = n;
-    }
-  } else {
+  } else if (algorithm != OPK_ALGORITHM_VMLMB) {
     /* Illegal algorithm. */
     errno = EINVAL;
     return NULL;
@@ -479,14 +420,12 @@ opk_new_optimizer(opk_algorithm_t algorithm, /* optimization algorithm */
     }
   }
   if (algorithm == OPK_ALGORITHM_NLCG) {
-    opt->optimizer = (opk_object_t*)opk_new_nlcg_optimizer(opt->vspace,
-                                                           flags, lnschr);
+    opt->optimizer = (opk_object_t*)opk_new_nlcg_optimizer(opts, opt->vspace,
+                                                           lnschr);
     opt->ops = &nlcg_ops;
   } else {
-    opt->optimizer = (opk_object_t*)opk_new_vmlmb_optimizer(opt->vspace,
-                                                            m, flags,
-                                                            opt->box,
-                                                            lnschr);
+    opt->optimizer = (opk_object_t*)opk_new_vmlmb_optimizer(opts, opt->vspace,
+                                                            lnschr, opt->box);
     opt->ops = &vmlmb_ops;
   }
   if (opt->optimizer != NULL) {
@@ -566,26 +505,6 @@ opk_status_t
 opk_get_status(const opk_optimizer_t* opt)
 {
   return (opt == NULL ? OPK_ILLEGAL_ADDRESS : opt->ops->get_status(opt));
-}
-
-opk_status_t
-opk_get_options(void* dst, const opk_optimizer_t* src)
-{
-  return (src == NULL || dst == NULL ? OPK_ILLEGAL_ADDRESS :
-          src->ops->get_options(dst, src));
-}
-
-opk_status_t
-opk_set_options(opk_optimizer_t* dst, const void* src)
-{
-  return (src == NULL || dst == NULL ? OPK_ILLEGAL_ADDRESS :
-          dst->ops->set_options(dst, src));
-}
-
-unsigned int
-opk_get_flags(const opk_optimizer_t* opt)
-{
-  return (opt == NULL ? 0 : opt->ops->get_flags(opt));
 }
 
 opk_index_t

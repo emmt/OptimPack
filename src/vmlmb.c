@@ -141,7 +141,6 @@ struct _opk_vmlmb {
   opk_convexset_t* box;    /**< Convex set implementing the box constraints (or
                             *   `NULL`). */
   int method;              /**< The method to use/emulate. */
-  unsigned int flags;      /**< Bitwise options. */
   opk_index_t evaluations; /**< Number of functions (and gradients)
                                 evaluations. */
   opk_index_t iterations;  /**< Number of iterations (successful steps
@@ -149,6 +148,7 @@ struct _opk_vmlmb {
   opk_index_t restarts;    /**< Number of LBFGS recurrence restarts. */
   opk_status_t status;     /**< Last error. */
   opk_task_t task;         /**< Pending task. */
+  opk_bool_t save_memory;  /**< Save some memory? */
 
   /* Limited memory BFGS approximation of the Hessian of the objective
      function. */
@@ -185,10 +185,10 @@ finalize_vmlmb(opk_object_t* obj)
      references to specific vectors in opt->s and opt->y). */
   OPK_DROP(opt->vspace);
   OPK_DROP(opt->lnsrch);
-#if ! SAVE_MEMORY
-  OPK_DROP(opt->x0);
-  OPK_DROP(opt->g0);
-#endif
+  if (! opt->save_memory) {
+    OPK_DROP(opt->x0);
+    OPK_DROP(opt->g0);
+  }
   OPK_DROP(opt->d);
   OPK_DROP(opt->w);
   OPK_DROP(opt->gp);
@@ -233,17 +233,29 @@ failure(opk_vmlmb_t* opt, opk_status_t status)
 }
 
 opk_vmlmb_t*
-opk_new_vmlmb_optimizer(opk_vspace_t* space,
-                        opk_index_t m,
-                        unsigned int flags,
-                        opk_convexset_t* box,
-                        opk_lnsrch_t* lnsrch)
+opk_new_vmlmb_optimizer(const opk_vmlmb_options_t* opts,
+                        opk_vspace_t* space,
+                        opk_lnsrch_t* lnsrch,
+                        opk_convexset_t* box)
 {
+  opk_vmlmb_options_t options;
   opk_vmlmb_t* opt;
   size_t s_offset, y_offset, alpha_offset, rho_offset, size;
-  opk_index_t k;
+  opk_index_t k, m;
 
-  /* Check the input arguments for errors. */
+  /* Check options. */
+  if (opts == NULL) {
+    /* Use default options. */
+    opk_get_vmlmb_default_options(&options);
+    opts = &options;
+  }
+  if (opk_check_vmlmb_options(opts) != OPK_SUCCESS) {
+    errno = EINVAL;
+    return NULL;
+  }
+  m = opts->mem;
+
+  /* Check other input arguments for errors. */
   if (space == NULL) {
     errno = EFAULT;
     return NULL;
@@ -270,16 +282,22 @@ opk_new_vmlmb_optimizer(opk_vspace_t* space,
   if (opt == NULL) {
     return NULL;
   }
-  opt->s      = ADDRESS(opk_vector_t*, opt,     s_offset);
-  opt->y      = ADDRESS(opk_vector_t*, opt,     y_offset);
-  opt->alpha  = ADDRESS(double,        opt, alpha_offset);
-  opt->rho    = ADDRESS(double,        opt,   rho_offset);
-  opt->m      = m;
-  opt->gamma  = 1.0;
-  opt->flags  = flags;
+  opt->s           = ADDRESS(opk_vector_t*, opt,     s_offset);
+  opt->y           = ADDRESS(opk_vector_t*, opt,     y_offset);
+  opt->alpha       = ADDRESS(double,        opt, alpha_offset);
+  opt->rho         = ADDRESS(double,        opt,   rho_offset);
+  opt->m           = m;
+  opt->gamma       = 1.0;
+  opt->delta       = opts->delta;
+  opt->epsilon     = opts->epsilon;
+  opt->grtol       = opts->grtol;
+  opt->gatol       = opts->gatol;
+  opt->stpmin      = opts->stpmin;
+  opt->stpmax      = opts->stpmax;
+  opt->save_memory = opts->save_memory;
   if (box == NULL) {
     opt->method = OPK_LBFGS;
-  } else if ((flags & OPK_EMULATE_BLMVM) != 0) {
+  } else if (opts->blmvm) {
     /* For the BLMVM method, the scratch vector is used to store the
        projected gradient. */
     opt->method = OPK_BLMVM;
@@ -290,7 +308,6 @@ opk_new_vmlmb_optimizer(opk_vspace_t* space,
   } else {
     opt->method = OPK_VMLMB;
   }
-  opk_set_vmlmb_options(opt, NULL);
 
   /* Allocate work vectors.  If saving memory, x0 and g0 will be weak
      references to one of the saved vectors in the LBFGS operator. */
@@ -317,16 +334,16 @@ opk_new_vmlmb_optimizer(opk_vspace_t* space,
       goto error;
     }
   }
-#if ! SAVE_MEMORY
-  opt->x0 = opk_vcreate(space);
-  if (opt->x0 == NULL) {
-    goto error;
+  if (! opt->save_memory) {
+    opt->x0 = opk_vcreate(space);
+    if (opt->x0 == NULL) {
+      goto error;
+    }
+    opt->g0 = opk_vcreate(space);
+    if (opt->g0 == NULL) {
+      goto error;
+    }
   }
-  opt->g0 = opk_vcreate(space);
-  if (opt->g0 == NULL) {
-    goto error;
-  }
-#endif
   opt->d = opk_vcreate(space);
   if (opt->d == NULL) {
     goto error;
@@ -663,7 +680,8 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
       status = opk_get_step_limits(&bsmin1, &bsmin2, &bsmax,
                                    x, opt->box, opt->d, OPK_ASCENT);
       if (bsmin1 < 0) {
-        fprintf(stderr, "FIXME: SMIN1 =%g, SMIN2 =%g, SMAX =%g\n", bsmin1, bsmin2, bsmax);
+        fprintf(stderr, "FIXME: SMIN1 =%g, SMIN2 =%g, SMAX =%g\n",
+                bsmin1, bsmin2, bsmax);
       }
       if (status != OPK_SUCCESS) {
         return failure(opt, status);
@@ -678,14 +696,14 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
     }
 
     /* Save current point. */
-#if SAVE_MEMORY
-    k = slot(opt, 0);
-    opt->x0 = S(k); /* weak reference */
-    opt->g0 = Y(k); /* weak reference */
-    if (opt->mp == opt->m) {
-      --opt->mp;
+    if (opt->save_memory) {
+      k = slot(opt, 0);
+      opt->x0 = S(k); /* weak reference */
+      opt->g0 = Y(k); /* weak reference */
+      if (opt->mp == opt->m) {
+        --opt->mp;
+      }
     }
-#endif
     COPY(opt->x0, x);
     COPY(opt->g0, (opt->method == OPK_BLMVM ? opt->gp : g));
     opt->f0 = f;
@@ -716,13 +734,6 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
   }
   return success(opt, OPK_TASK_COMPUTE_FG);
 }
-
-unsigned int
-opk_get_vmlmb_flags(const opk_vmlmb_t* opt)
-{
-  return opt->flags;
-}
-
 
 opk_vmlmb_method_t
 opk_get_vmlmb_method(const opk_vmlmb_t* opt)
@@ -835,62 +846,36 @@ opk_get_vmlmb_y(const opk_vmlmb_t* opt, opk_index_t k)
   return (0 <= k && k <= opt->mp ? opt->y[slot(opt, k)] : NULL);
 }
 
-opk_status_t
-opk_get_vmlmb_options(opk_vmlmb_options_t* dst, const opk_vmlmb_t* src)
+void
+opk_get_vmlmb_default_options(opk_vmlmb_options_t* opts)
 {
-  if (dst == NULL) {
-    return OPK_ILLEGAL_ADDRESS;
+  if (opts != NULL) {
+    opts->delta = DELTA;
+    opts->epsilon = EPSILON;
+    opts->grtol = GRTOL;
+    opts->gatol = GATOL;
+    opts->stpmin = STPMIN;
+    opts->stpmax = STPMAX;
+    opts->mem = 5;
+    opts->blmvm = FALSE;
+    opts->save_memory = TRUE;
   }
-  if (src == NULL) {
-    /* Get default options. */
-    dst->delta = DELTA;
-    dst->epsilon = EPSILON;
-    dst->grtol = GRTOL;
-    dst->gatol = GATOL;
-    dst->stpmin = STPMIN;
-    dst->stpmax = STPMAX;
-  } else {
-    /* Get current options. */
-    dst->delta = src->delta;
-    dst->epsilon = src->epsilon;
-    dst->grtol = src->grtol;
-    dst->gatol = src->gatol;
-    dst->stpmin = src->stpmin;
-    dst->stpmax = src->stpmax;
-  }
-  return OPK_SUCCESS;
 }
 
 opk_status_t
-opk_set_vmlmb_options(opk_vmlmb_t* dst, const opk_vmlmb_options_t* src)
+opk_check_vmlmb_options(const opk_vmlmb_options_t* opts)
 {
-  if (dst == NULL) {
+  if (opts == NULL) {
     return OPK_ILLEGAL_ADDRESS;
   }
-  if (src == NULL) {
-    /* Set default options. */
-    dst->delta = DELTA;
-    dst->epsilon = EPSILON;
-    dst->grtol = GRTOL;
-    dst->gatol = GATOL;
-    dst->stpmin = STPMIN;
-    dst->stpmax = STPMAX;
-  } else {
-    /* Check and set given options. */
-    if (non_finite(src->gatol) || src->gatol < 0 ||
-        non_finite(src->grtol) || src->grtol < 0 ||
-        non_finite(src->delta) || src->delta <= 0 ||
-        non_finite(src->epsilon) || src->epsilon < 0 ||
-        non_finite(src->stpmin) || src->stpmin < 0 ||
-        non_finite(src->stpmax) || src->stpmax <=  src->stpmin) {
-      return OPK_INVALID_ARGUMENT;
-    }
-    dst->delta = src->delta;
-    dst->epsilon = src->epsilon;
-    dst->grtol = src->grtol;
-    dst->gatol = src->gatol;
-    dst->stpmin = src->stpmin;
-    dst->stpmax = src->stpmax;
+  if (non_finite(opts->gatol) || opts->gatol < 0 ||
+      non_finite(opts->grtol) || opts->grtol < 0 ||
+      non_finite(opts->delta) || opts->delta <= 0 ||
+      non_finite(opts->epsilon) || opts->epsilon < 0 || opts->epsilon >= 1 ||
+      non_finite(opts->stpmin) || opts->stpmin < 0 ||
+      non_finite(opts->stpmax) || opts->stpmax <= opts->stpmin ||
+      opts->mem < 1) {
+    return OPK_INVALID_ARGUMENT;
   }
   return OPK_SUCCESS;
 }
