@@ -2098,15 +2098,6 @@ opk_get_task(const opk_optimizer_t* opt);
 extern opk_status_t
 opk_get_status(const opk_optimizer_t* opt);
 
-extern opk_status_t
-opk_get_options(void* dst, const opk_optimizer_t* src);
-
-extern opk_status_t
-opk_set_options(opk_optimizer_t* dst, const void* src);
-
-extern unsigned int
-opk_get_flags(const opk_optimizer_t* opt);
-
 extern opk_index_t
 opk_get_iterations(const opk_optimizer_t* opt);
 
