@@ -41,7 +41,7 @@ local OPK_NLCG_DEFAULT;
 extern opk_nlcg;
 /* DOCUMENT opt = opk_nlcg(dims, flags=..., single=...);
 
-     The function opk_nlcg() creates a new instance of OPKY reverse
+     The function opk_nlcg() creates a new instance of OptimPack reverse
      communication optimizer implementing a non-linear conjugate gradient
      method.  DIMS is the dimension list of the variables of the problem.
 
@@ -93,12 +93,11 @@ extern opk_nlcg;
    SEE ALSO: opk_iterate, opk_task, opk_start, opk_vmlmb.
  */
 
-local OPK_EMULATE_BLMVM;
 extern opk_vmlmb;
 /* DOCUMENT opt = opk_vmlmb(dims, mem=..., lower=..., upper=..., flags=...,
                                   single=...);
 
-     The function opk_vmlmb() creates a new instance of OPKY reverse
+     The function opk_vmlmb() creates a new instance of OptimPack reverse
      communication optimizer implementing VMLM-B algorithm.  This algorithm is
      a limited memory variant of the BFGS variable metric (quasi-Newton)
      method for solving an optimization problem with optional bound
@@ -127,13 +126,26 @@ extern opk_vmlmb;
          opt.iterations  - number of iterations;
          opt.evaluations - number of function (and gradient) evaluations;
          opt.restarts    - number of restarts;
-         opt.projections - number of projections;
          opt.step        - current step length;
          opt.gnorm       - Euclidean norm of the (projected) gradient;
+         opt.lower       - lower bound;
+         opt.upper       - upper bound;
 
    SEE ALSO: opk_iterate, opk_task, opk_start, opk_nlcg.
  */
 
+
+extern opk_blmvm;
+/* DOCUMENT opt = opk_blmvm(dims, mem=..., lower=..., upper=..., flags=...,
+                                  single=...);
+
+     The function opk_blmvm() creates a new instance of OptimPack reverse
+     communication optimizer implementing Benson & Moré BLMVM algorithm.  See
+     opk_vmlmb for more explanations.
+
+
+   SEE ALSO: opk_vmlmb.
+*/
 
 extern opk_iterate;
 /* DOCUMENT task = opk_iterate(opt, x, fx, gx);
@@ -192,7 +204,7 @@ extern opk_get_constant;
 */
 
 func opk_minimize(fg, x0, &fx, &gx,
-                  mem=, nlcg=, flags=, single=, lower=, upper=,
+                  mem=, nlcg=, blmvm=, flags=, single=, lower=, upper=,
                   maxiter=, maxeval=, verb=, output=)
 /* DOCUMENT x = opk_minimize(fg, x0);
          or x = opk_minimize(fg, x0, fx, gx);
@@ -210,6 +222,10 @@ func opk_minimize(fg, x0, &fx, &gx,
 
      Keyword NLCG can be set true to use a non-linear conjugate gradient (see
      opk_nlcg).  By default, a limited memory variable metric method is used
+     (see opk_vmlmb).
+
+     Keyword BLMVM can be set true to use BLMVM instead of VMLMB (see
+     opk_blmvm).  By default, a limited memory variable metric method is used
      (see opk_vmlmb).
 
      By default, the limited memory variable metric method memorizes 5
@@ -256,8 +272,13 @@ func opk_minimize(fg, x0, &fx, &gx,
   if (identof(x0) > Y_DOUBLE) {
     error, "bad data type for X0";
   }
-  if (nlcg && !(is_void(mem) && is_void(lower) && is_void(upper))) {
-    error, "keywords MEM, LOWER and UPPER cannot be used for a non-linear conjugate gradient method";
+  if (nlcg) {
+    if (blmvm) {
+      error, "at most only one of NLCG and BLMVM can be true";
+    }
+    if (!(is_void(mem) && is_void(lower) && is_void(upper))) {
+      error, "keywords MEM, LOWER and UPPER cannot be used for a non-linear conjugate gradient method";
+    }
   }
   check_eval = ! is_void(maxeval);
   check_iter = ! is_void(maxiter);
@@ -274,8 +295,8 @@ func opk_minimize(fg, x0, &fx, &gx,
   if (nlcg) {
     opt = opk_nlcg(dims, flags=flags, single=single);
   } else {
-    opt = opk_vmlmb(dims, mem=mem, single=single, lower=lower, upper=upper,
-                    flags=flags);
+    opt = (blmvm ? opk_blmvm : opk_vmlmb)(dims, mem=mem, single=single,
+                                          lower=lower, upper=upper);
   }
   task = opk_start(opt, x);
   for (;;) {
@@ -345,14 +366,16 @@ func opk_minimize(fg, x0, &fx, &gx,
 
 extern opk_init;
 /* DOCUMENT opk_init;
-     This procedure initializes internals of OPKY.  It can safely be called to
-     re-initialize and restore values of global variables.  It is
+
+     This procedure initializes internals of OptimPack.  It can safely be
+     called to re-initialize and restore values of global variables.  It is
      automatically called when the plug-in is loaded.
  */
 opk_init;
 
 func opk_scaling(x, scl)
-/* DOCUMENT opk_scaling(x, scl)
+/* DOCUMENT opk_scaling(x, scl);
+
      Get scaling of variables X.  If SCL is void, an array of ones of same
      dimensions as X is returned; otherwise SCL is returned after checking
      that it is an array of same dimensions as X with strictly nonnegative

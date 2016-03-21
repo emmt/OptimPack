@@ -20,8 +20,8 @@ TGT=$(DEFAULT_TGT)
 PKG_NAME=opky
 PKG_I=${srcdir}/opky.i
 
-OBJS=opky.o algebra.o fltvector.o dblvector.o utils.o gqtpar.o linalg.o \
-     nlcg.o lnsrch.o vmlmb.o cobyla.o ycobyla.o newuoa.o ynewuoa.o
+OBJS=opky.o algebra.o fltvector.o dblvector.o driver.o utils.o gqtpar.o \
+     linalg.o nlcg.o lnsrch.o vmlmb.o cobyla.o ycobyla.o newuoa.o ynewuoa.o
 
 # change to give the executable a name other than yorick
 PKG_EXENAME=yorick
@@ -105,6 +105,9 @@ fltvector.o: $(OPK_SRC)/simple_vector.c $(OPK_HEADERS)
 
 dblvector.o: $(OPK_SRC)/simple_vector.c $(OPK_HEADERS)
 	$(CC) $(OPK_CFLAGS) -DSINGLE_PRECISION=0 -o $@ -c $<
+
+driver.o: $(OPK_SRC)/driver.c $(OPK_HEADERS)
+	$(CC) $(OPK_CFLAGS) -o $@ -c $<
 
 utils.o: $(OPK_SRC)/utils.c $(OPK_HEADERS)
 	$(CC) $(OPK_CFLAGS) -o $@ -c $<

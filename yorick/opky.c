@@ -59,7 +59,7 @@
 PLUG_API void y_error(const char *) __attribute__ ((noreturn));
 
 /*---------------------------------------------------------------------------*/
-/* PRIVATE DATA AND DEFINTIONS */
+/* PRIVATE DATA AND DEFINITIONS */
 
 /* Indices of keywords. */
 static long atol_index = -1L;
@@ -73,7 +73,6 @@ static long lower_index = -1L;
 static long maxiter_index = -1L;
 static long mem_index = -1L;
 static long name_index = -1L;
-static long projections_index = -1L;
 static long reason_index = -1L;
 static long restarts_index = -1L;
 static long rtol_index = -1L;
@@ -100,49 +99,107 @@ static void assign_long(long index, long value);
 static void assign_double(long index, double value);
 
 /*---------------------------------------------------------------------------*/
+/* YORICK VALUE */
+
+/* Structure to store a Yorick value. */
+typedef struct _value  value_t;
+
+#if 0
+/* Get a reference for a Yorick value from the stack. */
+static void hold_value(int iarg, value_t* v);
+#endif
+
+/* Push a Yorick value to the stack. */
+static void push_value(value_t* v);
+
+/* Finalize a Yorick value. */
+static void drop_value(value_t* v);
+
+struct _value {
+  union {
+    int i;
+    long l;
+    double d;
+    void* p;
+  } data;
+# define VALUE_NONE    0
+# define VALUE_INT     1
+# define VALUE_LONG    2
+# define VALUE_DOUBLE  3
+# define VALUE_HANDLE   4
+  int type;
+};
+
+#if 0
+static void
+hold_value(int iarg, value_t* v)
+{
+  int type = yarg_typeid(iarg);
+  if (type == Y_VOID) {
+    memset(v, 0, sizeof(*v));
+    return;
+  } else if (type == Y_INT) {
+    if (yarg_rank(iarg) == 0) {
+      v->data.i = ygets_i(iarg);
+      v->type = VALUE_INT;
+      return;
+    }
+  } else if (type == Y_LONG) {
+    if (yarg_rank(iarg) == 0) {
+      v->data.l = ygets_l(iarg);
+      v->type = VALUE_LONG;
+      return;
+    }
+  } else if (type == Y_DOUBLE) {
+    if (yarg_rank(iarg) == 0) {
+      v->data.d = ygets_d(iarg);
+      v->type = VALUE_DOUBLE;
+      return;
+    }
+  }
+  v->data.p = yget_use(iarg);
+  v->type = VALUE_HANDLE;
+}
+#endif
+
+static void
+push_value(value_t* v)
+{
+  int type = (v == NULL ? VALUE_NONE : v->type);
+  if (type == VALUE_INT) {
+    ypush_int(v->data.i);
+  } else if (type == VALUE_LONG) {
+    ypush_long(v->data.l);
+   } else if (type == VALUE_DOUBLE) {
+    ypush_double(v->data.d);
+  } else if (type == VALUE_HANDLE && v->data.p != NULL) {
+    ykeep_use(v->data.p);
+  } else {
+    ypush_nil();
+  }
+}
+
+static void
+drop_value(value_t* v)
+{
+  if (v != NULL && v->type == VALUE_HANDLE && v->data.p != NULL) {
+    v->type = VALUE_NONE;
+    ydrop_use(v->data.p);
+  }
+}
+
+/*---------------------------------------------------------------------------*/
 /* OPTIMIZER OBJECT */
 
 typedef struct _yopt_instance yopt_instance_t;
-typedef struct _yopt_operations yopt_operations_t;
-
-struct _yopt_operations {
-  opk_task_t   (*start)(yopt_instance_t* opt);
-  opk_task_t   (*iterate)(yopt_instance_t* opt, double fx);
-  opk_task_t   (*get_task)(yopt_instance_t* opt);
-  opk_status_t (*get_status)(yopt_instance_t* opt);
-  unsigned int (*get_flags)(yopt_instance_t* opt);
-  long         (*get_iterations)(yopt_instance_t* opt);
-  long         (*get_evaluations)(yopt_instance_t* opt);
-  long         (*get_restarts)(yopt_instance_t* opt);
-  long         (*get_projections)(yopt_instance_t* opt);
-  size_t       (*get_name)(char* buf, size_t size, yopt_instance_t* opt);
-  size_t       (*get_description)(char* buf, size_t size, yopt_instance_t* opt);
-  double       (*get_step)(yopt_instance_t* opt);
-  double       (*get_gnorm)(yopt_instance_t* opt);
-};
-
-#define START(opt)                       ((opt)->ops->start(opt))
-#define ITERATE(opt, fx)                 ((opt)->ops->iterate(opt, fx))
-#define GET_TASK(opt)                    ((opt)->ops->get_task(opt))
-#define GET_FLAGS(opt)                   ((opt)->ops->get_flags(opt))
-#define GET_STATUS(opt)                  ((opt)->ops->get_status(opt))
-#define GET_ITERATIONS(opt)              ((opt)->ops->get_iterations(opt))
-#define GET_EVALUATIONS(opt)             ((opt)->ops->get_evaluations(opt))
-#define GET_RESTARTS(opt)                ((opt)->ops->get_restarts(opt))
-#define GET_PROJECTIONS(opt)             ((opt)->ops->get_projections(opt))
-#define GET_NAME(opt, buf, siz)          ((opt)->ops->get_name(buf, siz, opt))
-#define GET_DESCRIPTION(opt, buf, siz)   ((opt)->ops->get_description(buf, siz, opt))
-#define GET_GNORM(opt)                   ((opt)->ops->get_gnorm(opt))
-#define GET_STEP(opt)                    ((opt)->ops->get_step(opt))
 
 struct _yopt_instance {
+  opk_optimizer_t* optimizer;
+  value_t lower;
+  value_t upper;
   long dims[Y_DIMSIZE];
-  yopt_operations_t* ops;
-  opk_object_t* optimizer;
-  opk_vspace_t* vspace;
-  opk_vector_t* x;
-  opk_vector_t* gx;
-  opk_convexset_t* box;
+  long size;
+  opk_algorithm_t algorithm;
   int single;
 };
 
@@ -155,7 +212,7 @@ static y_userobj_t yopt_type = {
   "OPKY optimizer",
   yopt_free,
   yopt_print,
-  /*yopt_eval*/NULL,
+  NULL,
   yopt_extract,
   NULL
 };
@@ -164,11 +221,9 @@ static void
 yopt_free(void* ptr)
 {
   yopt_instance_t* opt = (yopt_instance_t*)ptr;
-  OPK_DROP(opt->optimizer);
-  OPK_DROP(opt->vspace);
-  OPK_DROP(opt->x);
-  OPK_DROP(opt->gx);
-  OPK_DROP(opt->box);
+  opk_destroy_optimizer(opt->optimizer);
+  drop_value(&opt->lower);
+  drop_value(&opt->upper);
 }
 
 static void
@@ -176,13 +231,13 @@ yopt_print(void* ptr)
 {
   yopt_instance_t* opt = (yopt_instance_t*)ptr;
   char buffer[100];
-  GET_NAME(opt, buffer, sizeof(buffer));
+  opk_get_name(buffer, sizeof(buffer), opt->optimizer);
   y_print(buffer, FALSE);
   y_print(" implementing ", FALSE);
-  GET_DESCRIPTION(opt, buffer, sizeof(buffer));
+  opk_get_description(buffer, sizeof(buffer), opt->optimizer);
   y_print(buffer, FALSE);
   sprintf(buffer, " (size=%ld, type=%s)",
-          (long)opt->vspace->size,
+          (long)opt->size,
           (opt->single ? "float" : "double"));
   y_print(buffer, TRUE);
 }
@@ -196,33 +251,33 @@ yopt_extract(void* ptr, char* member)
   yopt_instance_t* opt = (yopt_instance_t*)ptr;
   long index = yget_global(member, 0);
   if (index == task_index) {
-    ypush_int(GET_TASK(opt));
+    ypush_int(opk_get_task(opt->optimizer));
   } else if (index == status_index) {
-    ypush_int(GET_STATUS(opt));
+    ypush_int(opk_get_status(opt->optimizer));
   } else if (index == reason_index) {
-    push_string(opk_get_reason(GET_STATUS(opt)));
+    push_string(opk_get_reason(opk_get_status(opt->optimizer)));
   } else if (index == iterations_index) {
-    ypush_long(GET_ITERATIONS(opt));
+    ypush_long(opk_get_iterations(opt->optimizer));
   } else if (index == evaluations_index) {
-    ypush_long(GET_EVALUATIONS(opt));
+    ypush_long(opk_get_evaluations(opt->optimizer));
   } else if (index == restarts_index) {
-    ypush_long(GET_RESTARTS(opt));
-  } else if (index == projections_index) {
-    ypush_long(GET_PROJECTIONS(opt));
+    ypush_long(opk_get_restarts(opt->optimizer));
   } else if (index == gnorm_index) {
-    ypush_double(GET_GNORM(opt));
+    ypush_double(opk_get_gnorm(opt->optimizer));
   } else if (index == step_index) {
-    ypush_double(GET_STEP(opt));
-  } else if (index == flags_index) {
-    ypush_long(GET_FLAGS(opt));
+    ypush_double(opk_get_step(opt->optimizer));
   } else if (index == description_index) {
-    GET_DESCRIPTION(opt, buffer, sizeof(buffer));
+    opk_get_description(buffer, sizeof(buffer), opt->optimizer);
     push_string(buffer);
   } else if (index == name_index) {
-    GET_NAME(opt, buffer, sizeof(buffer));
+    opk_get_name(buffer, sizeof(buffer), opt->optimizer);
     push_string(buffer);
+  } else if (index == lower_index) {
+    push_value(&opt->lower);
+  } else if (index == upper_index) {
+    push_value(&opt->upper);
   } else if (index == size_index) {
-    ypush_long(opt->vspace->size);
+    ypush_long(opt->size);
   } else if (index == dims_index) {
     long ndims, dims[2];
     ndims = opt->dims[0];
@@ -235,205 +290,6 @@ yopt_extract(void* ptr, char* member)
     ypush_nil();
   }
 }
-
-/*---------------------------------------------------------------------------*/
-/* NON-LINEAR CONJUGATE GRADIENT (NLCG) METHOD */
-
-#define NLCG(obj) ((opk_nlcg_t*)(obj))
-
-static opk_task_t
-nlcg_start(yopt_instance_t* opt)
-{
-  return opk_start_nlcg(NLCG(opt->optimizer), opt->x);
-}
-
-static opk_task_t
-nlcg_iterate(yopt_instance_t* opt, double fx)
-{
-  return opk_iterate_nlcg(NLCG(opt->optimizer), opt->x, fx, opt->gx);
-}
-
-static opk_task_t
-nlcg_get_task(yopt_instance_t* opt)
-{
-  return opk_get_nlcg_task(NLCG(opt->optimizer));
-}
-
-static opk_status_t
-nlcg_get_status(yopt_instance_t* opt)
-{
-  return opk_get_nlcg_status(NLCG(opt->optimizer));
-}
-
-static unsigned int
-nlcg_get_flags(yopt_instance_t* opt)
-{
-  return opk_get_nlcg_flags(NLCG(opt->optimizer));
-}
-
-static long
-nlcg_get_iterations(yopt_instance_t* opt)
-{
-  return opk_get_nlcg_iterations(NLCG(opt->optimizer));
-}
-
-static long
-nlcg_get_evaluations(yopt_instance_t* opt)
-{
-  return opk_get_nlcg_evaluations(NLCG(opt->optimizer));
-}
-
-static long
-nlcg_get_restarts(yopt_instance_t* opt)
-{
-  return opk_get_nlcg_restarts(NLCG(opt->optimizer));
-}
-
-static long
-nlcg_get_projections(yopt_instance_t* opt)
-{
-  return 0L;
-}
-
-static size_t
-nlcg_get_name(char* buf, size_t size, yopt_instance_t* opt)
-{
-  return opk_copy_string(buf, size, "NLCG");
-}
-
-static size_t
-nlcg_get_description(char* buf, size_t size, yopt_instance_t* opt)
-{
-  return opk_get_nlcg_description(buf, size, NLCG(opt->optimizer));
-}
-
-static double
-nlcg_get_step(yopt_instance_t* opt)
-{
-  return opk_get_nlcg_step(NLCG(opt->optimizer));
-}
-
-static double
-nlcg_get_gnorm(yopt_instance_t* opt)
-{
-  return opk_get_nlcg_gnorm(NLCG(opt->optimizer));
-}
-
-static yopt_operations_t nlcg_ops = {
-  nlcg_start,
-  nlcg_iterate,
-  nlcg_get_task,
-  nlcg_get_status,
-  nlcg_get_flags,
-  nlcg_get_iterations,
-  nlcg_get_evaluations,
-  nlcg_get_restarts,
-  nlcg_get_projections,
-  nlcg_get_name,
-  nlcg_get_description,
-  nlcg_get_step,
-  nlcg_get_gnorm
-};
-
-/*---------------------------------------------------------------------------*/
-/* LIMITED MEMORY VARIABLE METRIC METHOD WITH BOUNDS */
-
-#define VMLMB(obj) ((opk_vmlmb_t*)(obj))
-
-static opk_task_t
-vmlmb_start(yopt_instance_t* opt)
-{
-  return opk_start_vmlmb(VMLMB(opt->optimizer), opt->x);
-}
-
-static opk_task_t
-vmlmb_iterate(yopt_instance_t* opt, double fx)
-{
-  return opk_iterate_vmlmb(VMLMB(opt->optimizer), opt->x, fx, opt->gx);
-}
-
-static opk_task_t
-vmlmb_get_task(yopt_instance_t* opt)
-{
-  return opk_get_vmlmb_task(VMLMB(opt->optimizer));
-}
-
-static opk_status_t
-vmlmb_get_status(yopt_instance_t* opt)
-{
-  return opk_get_vmlmb_status(VMLMB(opt->optimizer));
-}
-
-static unsigned int
-vmlmb_get_flags(yopt_instance_t* opt)
-{
-  return opk_get_vmlmb_flags(VMLMB(opt->optimizer));
-}
-
-static long
-vmlmb_get_iterations(yopt_instance_t* opt)
-{
-  return opk_get_vmlmb_iterations(VMLMB(opt->optimizer));
-}
-
-static long
-vmlmb_get_evaluations(yopt_instance_t* opt)
-{
-  return opk_get_vmlmb_evaluations(VMLMB(opt->optimizer));
-}
-
-static long
-vmlmb_get_restarts(yopt_instance_t* opt)
-{
-  return opk_get_vmlmb_restarts(VMLMB(opt->optimizer));
-}
-
-static long
-vmlmb_get_projections(yopt_instance_t* opt)
-{
-  return opk_get_vmlmb_evaluations(VMLMB(opt->optimizer));
-}
-
-static size_t
-vmlmb_get_name(char* buf, size_t size, yopt_instance_t* opt)
-{
-  return opk_copy_string(buf, size,
-                         opk_get_vmlmb_method_name(VMLMB(opt->optimizer)));
-}
-
-static size_t
-vmlmb_get_description(char* buf, size_t size, yopt_instance_t* opt)
-{
-  return opk_get_vmlmb_description(buf, size, VMLMB(opt->optimizer));
-}
-
-static double
-vmlmb_get_step(yopt_instance_t* opt)
-{
-  return opk_get_vmlmb_step(VMLMB(opt->optimizer));
-}
-
-static double
-vmlmb_get_gnorm(yopt_instance_t* opt)
-{
-  return opk_get_vmlmb_gnorm(VMLMB(opt->optimizer));
-}
-
-static yopt_operations_t vmlmb_ops = {
-  vmlmb_start,
-  vmlmb_iterate,
-  vmlmb_get_task,
-  vmlmb_get_status,
-  vmlmb_get_flags,
-  vmlmb_get_iterations,
-  vmlmb_get_evaluations,
-  vmlmb_get_restarts,
-  vmlmb_get_projections,
-  vmlmb_get_name,
-  vmlmb_get_description,
-  vmlmb_get_step,
-  vmlmb_get_gnorm
-};
 
 /*---------------------------------------------------------------------------*/
 /* PRIVATE FUNCTIONS */
@@ -449,7 +305,8 @@ error_handler(const char* message)
   y_error(message);
 }
 
-static int same_dims(const long adims[], const long bdims[])
+static int
+same_dims(const long adims[], const long bdims[])
 {
   long i, ndims = adims[0];
   for (i = 0; i <= ndims; ++i) {
@@ -460,7 +317,8 @@ static int same_dims(const long adims[], const long bdims[])
   return OPK_TRUE;
 }
 
-static void copy_dims(long dst[], const long src[])
+static void
+copy_dims(long dst[], const long src[])
 {
   long i, ndims = src[0];
   for (i = 0; i <= ndims; ++i) {
@@ -468,7 +326,8 @@ static void copy_dims(long dst[], const long src[])
   }
 }
 
-static long get_dims(int iarg, long dims[])
+static long
+get_dims(int iarg, long dims[])
 {
   long dim;
   int rank, type;
@@ -514,117 +373,89 @@ static long get_dims(int iarg, long dims[])
   return -1L;
 }
 
-static opk_vector_t*
-create_wrapper(opk_vspace_t* vspace, int single)
+static void*
+get_array(int iarg, const yopt_instance_t* opt)
 {
-  if (single) {
-    float dummy = 0.0f;
-    return opk_wrap_simple_float_vector(vspace, &dummy, NULL, NULL);
+  int type;
+  long ntot, dims[Y_DIMSIZE];
+  void* arr = ygeta_any(iarg, &ntot, dims, &type);
+  if (type != (opt->single ? Y_FLOAT : Y_DOUBLE)) {
+    y_error((opt->single ? "expecting an array of floats"
+             : "expecting an array of doubles"));
+  }
+  if (! same_dims(opt->dims, dims)) {
+    y_error("bad dimensions");
+  }
+  return arr;
+}
+
+static void
+get_bound(int iarg, yopt_instance_t* opt, value_t* val,
+          opk_bound_type_t* type_ptr, void** addr_ptr)
+{
+  int type = yarg_typeid(iarg);
+  if (type <= Y_DOUBLE) {
+    if (yarg_rank(iarg) == 0) {
+      /* Got a scalar. */
+      val->data.d = ygets_d(iarg);
+      val->type = VALUE_DOUBLE;
+      *type_ptr = OPK_BOUND_SCALAR_DOUBLE;
+      *addr_ptr = &val->data.d;
+    } else {
+      /* Got an array. */
+      long ntot, dims[Y_DIMSIZE];
+      void* arr = ygeta_any(iarg, &ntot, dims, &type);
+      if (! same_dims(opt->dims, dims)) {
+        y_error("bad bound dimensions");
+      }
+      if (ntot != opt->size) {
+        y_error("bad number of elements for the bound");
+      }
+      if (type != (opt->single ? Y_FLOAT : Y_DOUBLE)) {
+        arr = ygeta_coerce(iarg, arr, ntot, dims, type,
+                           (opt->single ? Y_FLOAT : Y_DOUBLE));
+      }
+      val->data.p = yget_use(iarg);
+      val->type = VALUE_HANDLE;
+      *type_ptr = (opt->single ? OPK_BOUND_STATIC_FLOAT
+                   : OPK_BOUND_STATIC_DOUBLE);
+      *addr_ptr = arr;
+    }
+  } else if (type == Y_VOID) {
+    val->type = VALUE_NONE;
+    *type_ptr = OPK_BOUND_NONE;
+    *addr_ptr = NULL;
   } else {
-    double dummy = 0.0;
-    return opk_wrap_simple_double_vector(vspace, &dummy, NULL, NULL);
+    y_error("bad bound data type");
   }
 }
 
 static void
-rewrap(int iarg, yopt_instance_t* opt, opk_vector_t* vect)
-{
-  long dims[Y_DIMSIZE];
-  if (opt->single) {
-    float* data = ygeta_f(iarg, NULL, dims);
-    if (! same_dims(opt->dims, dims)) {
-      y_error("bad dimensions");
-    }
-    if (opk_rewrap_simple_float_vector(vect, data, NULL, NULL) != OPK_SUCCESS) {
-      y_error("failed to wrap vector");
-    }
-  } else {
-    double* data = ygeta_d(iarg, NULL, dims);
-    if (! same_dims(opt->dims, dims)) {
-      y_error("bad dimensions");
-    }
-    if (opk_rewrap_simple_double_vector(vect, data, NULL, NULL) != OPK_SUCCESS) {
-      y_error("failed to wrap vector");
-    }
-  }
-}
-
-typedef struct _bound {
-  union {
-    opk_vector_t* vector; /**< The bound as a vector. */
-    double        scalar; /**< The bound as a scalar. */
-  } value;                /**< Value of the bound. */
-  opk_bound_type_t type;  /**< Type of the bound. */
-} bound_t;
-
-static int
-get_bound(int iarg, yopt_instance_t* opt, bound_t* bnd)
-{
-  int rank = yarg_rank(iarg);
-  memset(bnd, 0, sizeof(*bnd));
-  if (rank == 0) {
-    /* Got a scalar. */
-    bnd->value.scalar = ygets_d(iarg);
-    bnd->type = OPK_BOUND_SCALAR_DOUBLE;
-  } else if (rank > 0) {
-    /* Got an array.  FIXME: for now we do a copy. */
-    long ntot, dims[Y_DIMSIZE];
-    void* src;
-    opk_vector_t* vector;
-    if (opt->single) {
-      src = ygeta_f(iarg, &ntot, dims);
-    } else {
-      src = ygeta_d(iarg, &ntot, dims);
-    }
-    if (! same_dims(opt->dims, dims)) {
-      y_error("bad bound dimensions");
-    }
-    if (ntot != opt->vspace->size) {
-      y_error("bad number of elements for the bound");
-    }
-    vector = opk_vcreate(opt->vspace);
-    if (vector == NULL) {
-      y_error("failed to create a \"vector\" for the bound");
-    }
-    if (opt->single) {
-      float* dst = opk_get_simple_float_vector_data(vector);
-      memcpy(dst, src, ntot*sizeof(float));
-    } else {
-      double* dst = opk_get_simple_double_vector_data(vector);
-      memcpy(dst, src, ntot*sizeof(double));
-    }
-    bnd->value.vector = vector;
-    bnd->type = OPK_BOUND_VECTOR;
-  } else if (yarg_nil(iarg)) {
-     bnd->type = OPK_BOUND_NONE;
-  } else {
-    return -1;
-  }
-  return 0;
-}
-
-static void assign_int(long index, int value)
+assign_int(long index, int value)
 {
   ypush_int(value);
   yput_global(index, 0);
   yarg_drop(1);
 }
 
-static void assign_long(long index, long value)
+static void
+assign_long(long index, long value)
 {
   ypush_long(value);
   yput_global(index, 0);
   yarg_drop(1);
 }
 
-static void assign_double(long index, double value)
+static void
+assign_double(long index, double value)
 {
   ypush_double(value);
   yput_global(index, 0);
   yarg_drop(1);
 }
 
-static void set_global_int(const char* name, int value)
+static void
+set_global_int(const char* name, int value)
 {
   assign_int(yget_global(name, 0), value);
 }
@@ -687,7 +518,6 @@ void Y_opk_init(int argc)
   GET_GLOBAL(maxiter);
   GET_GLOBAL(mem);
   GET_GLOBAL(name);
-  GET_GLOBAL(projections);
   GET_GLOBAL(reason);
   GET_GLOBAL(restarts);
   GET_GLOBAL(rtol);
@@ -717,8 +547,6 @@ void Y_opk_init(int argc)
   SET_GLOBAL_INT(OPK_NLCG_POWELL);
   SET_GLOBAL_INT(OPK_NLCG_SHANNO_PHUA);
   SET_GLOBAL_INT(OPK_NLCG_DEFAULT);
-
-  SET_GLOBAL_INT(OPK_EMULATE_BLMVM);
 #undef SET_GLOBAL_INT
 
   ypush_nil();
@@ -741,54 +569,137 @@ void Y_opk_get_constant(int argc)
 
 void Y_opk_nlcg(int argc)
 {
+  opk_nlcg_options_t options;
   yopt_instance_t* opt;
-  long n = -1;
+  long size = -1;
   long dims[Y_DIMSIZE];
   int iarg, single = FALSE;
-  unsigned int flags = OPK_NLCG_DEFAULT;
 
+  /* Parse arguments. */
+  opk_get_nlcg_default_options(&options);
   for (iarg = argc - 1; iarg >= 0; --iarg) {
     long index = yarg_key(iarg);
     if (index < 0L) {
       /* Non-keyword argument. */
-      if (n != -1) {
+      if (size != -1) {
         y_error("too many arguments");
       }
-      n = get_dims(iarg, dims);
+      size = get_dims(iarg, dims);
     } else {
       /* Keyword argument. */
       --iarg;
       if (index == single_index) {
         single = yarg_true(iarg);
       } else if (index == flags_index) {
-        flags = get_optional_uint(iarg, flags);
+        options.flags = get_optional_uint(iarg, options.flags);
       } else {
         y_error("unknown keyword");
       }
     }
   }
-  if (n == -1) {
+  if (size == -1) {
     y_error("not enough arguments");
   }
+  if (opk_check_nlcg_options(&options) != OPK_SUCCESS) {
+    y_error("invalid option(s)");
+  }
+
+  /* Create instance. */
   opt = (yopt_instance_t*)ypush_obj(&yopt_type, sizeof(yopt_instance_t));
   copy_dims(opt->dims, dims);
-  opt->ops = &nlcg_ops;
+  opt->algorithm = OPK_ALGORITHM_NLCG;
+  opt->size = size;
   opt->single = single;
-  if (single) {
-    opt->vspace = opk_new_simple_float_vector_space(n);
-  } else {
-    opt->vspace = opk_new_simple_double_vector_space(n);
+  opt->optimizer = opk_new_optimizer(opt->algorithm, &options,
+                                     (single ? OPK_FLOAT : OPK_DOUBLE), size,
+                                     OPK_BOUND_NONE, NULL,
+                                     OPK_BOUND_NONE, NULL, NULL);
+  if (opt->optimizer == NULL) {
+    y_error(opk_get_reason(opk_guess_status(errno)));
   }
-  if (opt->vspace == NULL) {
-    y_error("failed to create vector space");
+}
+
+static void
+new_vmlmb(int argc, int blmvm)
+{
+  opk_vmlmb_options_t options;
+  yopt_instance_t* opt;
+  long size = -1;
+  long dims[Y_DIMSIZE];
+  int iarg, single = FALSE;
+  int lower_iarg = -1;
+  int upper_iarg = -1;
+  opk_bound_type_t lower_type = OPK_BOUND_NONE;
+  opk_bound_type_t upper_type = OPK_BOUND_NONE;
+  void* lower_addr = NULL;
+  void* upper_addr = NULL;
+
+  /* Parse arguments. */
+  opk_get_vmlmb_default_options(&options);
+  options.blmvm = (blmvm != 0);
+  for (iarg = argc - 1; iarg >= 0; --iarg) {
+    long index = yarg_key(iarg);
+    if (index < 0L) {
+      /* Non-keyword argument. */
+      if (size != -1) {
+        y_error("too many arguments");
+      }
+      size = get_dims(iarg, dims);
+    } else {
+      /* Keyword argument. */
+      --iarg;
+      if (index == mem_index) {
+        options.mem = get_optional_long(iarg, options.mem);
+        if (options.mem <= 0) {
+          y_error("invalid value for MEM keyword");
+        }
+      } else if (index == single_index) {
+        single = yarg_true(iarg);
+      } else if (index == lower_index) {
+        lower_iarg = iarg;
+      } else if (index == upper_index) {
+        upper_iarg = iarg;
+      } else {
+        y_error("unknown keyword");
+      }
+    }
   }
-  opt->x = create_wrapper(opt->vspace, single);
-  opt->gx = create_wrapper(opt->vspace, single);
-  if (opt->x == NULL || opt->gx == NULL) {
-    y_error("failed to create working vectors");
+  if (size == -1) {
+    y_error("not enough arguments");
   }
-  opt->optimizer = (opk_object_t*)opk_new_nlcg_optimizer(opt->vspace,
-                                                         flags, NULL);
+  if (opk_check_vmlmb_options(&options) != OPK_SUCCESS) {
+    y_error("invalid option(s)");
+  }
+
+  /* Create instance. */
+  opt = (yopt_instance_t*)ypush_obj(&yopt_type, sizeof(yopt_instance_t));
+  copy_dims(opt->dims, dims);
+  opt->algorithm = OPK_ALGORITHM_VMLMB;
+  opt->size = size;
+  opt->single = single;
+
+  /* Increment argulents indexes because of new instance pushed on top of the
+   * stack. */
+  if (lower_iarg >= 0) {
+    ++lower_iarg;
+  }
+  if (upper_iarg >= 0) {
+    ++upper_iarg;
+  }
+
+  /* Get the bounds. */
+  if (lower_iarg >= 0) {
+    get_bound(lower_iarg, opt, &opt->lower, &lower_type, &lower_addr);
+  }
+  if (upper_iarg >= 0) {
+    get_bound(upper_iarg, opt, &opt->upper, &upper_type, &upper_addr);
+  }
+
+  /* Create optimizer. */
+  opt->optimizer = opk_new_optimizer(opt->algorithm, &options,
+                                     (single ? OPK_FLOAT : OPK_DOUBLE), size,
+                                     lower_type, lower_addr,
+                                     upper_type, upper_addr, NULL);
   if (opt->optimizer == NULL) {
     y_error(opk_get_reason(opk_guess_status(errno)));
   }
@@ -796,161 +707,56 @@ void Y_opk_nlcg(int argc)
 
 void Y_opk_vmlmb(int argc)
 {
-  bound_t lower_bound, upper_bound;
-  yopt_instance_t* opt;
-  long n = -1, mem = 5;
-  long dims[Y_DIMSIZE];
-  int iarg, single = FALSE;
-  int lower = -1, upper = -1;
-  unsigned int flags = 0;
-
-  for (iarg = argc - 1; iarg >= 0; --iarg) {
-    long index = yarg_key(iarg);
-    if (index < 0L) {
-      /* Non-keyword argument. */
-      if (n != -1) {
-        y_error("too many arguments");
-      }
-      n = get_dims(iarg, dims);
-    } else {
-      /* Keyword argument. */
-      --iarg;
-      if (index == mem_index) {
-        mem = get_optional_long(iarg, mem);
-        if (mem <= 0) y_error("invalid value for MEM keyword");
-      } else if (index == flags_index) {
-        flags = get_optional_uint(iarg, flags);
-      } else if (index == single_index) {
-        single = yarg_true(iarg);
-      } else if (index == lower_index) {
-        lower = iarg;
-      } else if (index == upper_index) {
-        upper = iarg;
-      } else {
-        y_error("unknown keyword");
-      }
-    }
-  }
-  if (n == -1) {
-    y_error("not enough arguments");
-  }
-  opt = (yopt_instance_t*)ypush_obj(&yopt_type, sizeof(yopt_instance_t));
-  copy_dims(opt->dims, dims);
-  opt->ops = &vmlmb_ops;
-  opt->single = single;
-  if (single) {
-    opt->vspace = opk_new_simple_float_vector_space(n);
-  } else {
-    opt->vspace = opk_new_simple_double_vector_space(n);
-  }
-  if (opt->vspace == NULL) {
-    y_error("failed to create vector space");
-  }
-  opt->x = create_wrapper(opt->vspace, single);
-  opt->gx = create_wrapper(opt->vspace, single);
-  if (opt->x == NULL || opt->gx == NULL) {
-    y_error("failed to create working vectors");
-  }
-  if (get_bound(lower + 1, opt, &lower_bound) != 0) {
-    y_error("invalid lower bound");
-  }
-  if (get_bound(upper + 1, opt, &upper_bound) != 0) {
-    if (lower_bound.type == OPK_BOUND_VECTOR) {
-      OPK_DROP(lower_bound.value.vector);
-    }
-    y_error("invalid upper bound");
-  }
-  if (lower_bound.type != OPK_BOUND_NONE ||
-      upper_bound.type != OPK_BOUND_NONE) {
-#define BOUND_VALUE(bnd) (bnd.type == OPK_BOUND_VECTOR             \
-                          ? (void*)bnd.value.vector                \
-                          : (bnd.type == OPK_BOUND_SCALAR_DOUBLE ? \
-                             (void*)&bnd.value.scalar              \
-                             : NULL))
-    opt->box = opk_new_boxset(opt->vspace,
-                              lower_bound.type, BOUND_VALUE(lower_bound),
-                              upper_bound.type, BOUND_VALUE(upper_bound));
-#undef BOUND_VALUE
-    if (lower_bound.type == OPK_BOUND_VECTOR) {
-      OPK_DROP(lower_bound.value.vector);
-    }
-    if (upper_bound.type == OPK_BOUND_VECTOR) {
-      OPK_DROP(upper_bound.value.vector);
-    }
-    if (opt->box == NULL) {
-      y_error("failed to create box set");
-    }
-  }
-  opt->optimizer = (opk_object_t*)opk_new_vmlmb_optimizer(opt->vspace,
-                                                          mem, flags,
-                                                          opt->box, NULL);
-  if (opt->optimizer == NULL) {
-    y_error(opk_get_reason(opk_guess_status(errno)));
-  }
+  new_vmlmb(argc, 0);
 }
 
-void Y_opk_task(int argc)
+void Y_opk_blmvm(int argc)
 {
-  yopt_instance_t* opt;
-
-  if (argc != 1) {
-    y_error("expecting exactly 1 argument");
-  }
-  opt = yget_obj(0, &yopt_type);
-  opt->ops->get_task(opt);
+  new_vmlmb(argc, 1);
 }
+
+#define get_opt_instance(iarg)  ((yopt_instance_t*)yget_obj(iarg, &yopt_type))
 
 void Y_opk_start(int argc)
 {
   yopt_instance_t* opt;
+  void* x;
   opk_task_t task;
 
-  if (argc != 2) {
-    y_error("expecting exactly 2 arguments");
-  }
-  opt = yget_obj(1, &yopt_type);
-  rewrap(0, opt, opt->x);
-  task = START(opt);
+  if (argc != 2) y_error("expecting exactly 2 arguments");
+  opt = get_opt_instance(1);
+  x = get_array(0, opt);
+  task = opk_start(opt->optimizer, x);
   ypush_int(task);
 }
 
 void Y_opk_iterate(int argc)
 {
   yopt_instance_t* opt;
-  double fx;
+  double f;
+  void* x;
+  void* g;
   opk_task_t task;
 
-  if (argc != 4) {
-    y_error("expecting 4 arguments");
-  }
-  opt = yget_obj(3, &yopt_type);
-  rewrap(2, opt, opt->x);
-  fx = ygets_d(1);
-  rewrap(0, opt, opt->gx);
-  task = ITERATE(opt, fx);
+  if (argc != 4) y_error("expecting exactly 4 arguments");
+  opt = get_opt_instance(3);
+  x = get_array(2, opt);
+  f = ygets_d(1);
+  g = get_array(0, opt);
+  task = opk_iterate(opt->optimizer, x, f, g);
   ypush_int(task);
 }
 
 void Y_opk_get_status(int argc)
 {
-  yopt_instance_t* opt;
-  opk_status_t status;
-
   if (argc != 1) y_error("expecting exactly one argument");
-  opt = yget_obj(0, &yopt_type);
-  status = GET_STATUS(opt);
-  ypush_int(status);
+  ypush_int(opk_get_status(get_opt_instance(0)->optimizer));
 }
 
 void Y_opk_get_task(int argc)
 {
-  yopt_instance_t* opt;
-  opk_task_t task;
-
   if (argc != 1) y_error("expecting exactly one argument");
-  opt = yget_obj(0, &yopt_type);
-  task = GET_TASK(opt);
-  ypush_int(task);
+  ypush_int(opk_get_task(get_opt_instance(0)->optimizer));
 }
 
 void Y_opk_get_reason(int argc)
