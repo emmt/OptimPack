@@ -55,8 +55,8 @@ double fx;                  // the computed objective function
 float x[n];                 // the variables
 for (int i = 0; i < n; ++i) x[i] = 0; // initialize variables
 float gx[n];                // the gradient of the objective function
-opk_optimizer_t* opt = opk_new_optimizer(OPK_ALGORITHM_VMLMB,
-                                         type, n, mem, flags,
+opk_optimizer_t* opt = opk_new_optimizer(OPK_ALGORITHM_VMLMB, NULL,
+                                         type, n,
                                          OPK_BOUND_NONE, NULL,
                                          OPK_BOUND_NONE, NULL,
                                          NULL);
@@ -120,8 +120,8 @@ double fx;                  // the computed objective function
 float x[n];                 // the variables
 for (int i = 0; i < n; ++i) x[i] = 0; // initialize variables
 float gx[n];                // the gradient of the objective function
-opk_optimizer_t* opt = opk_new_optimizer(OPK_ALGORITHM_VMLMB,
-                                         type, n, mem, flags,
+opk_optimizer_t* opt = opk_new_optimizer(OPK_ALGORITHM_VMLMB, NULL,
+                                         type, n,
                                          OPK_BOUND_SCALAR_DOUBLE, &lower,
                                          OPK_BOUND_STATIC_FLOAT, upper,
                                          NULL);
@@ -158,7 +158,8 @@ opk_destroy_optimizer(opt); // finalize the optimizer
 * If there are bounds, you must use `OPK_ALGORITHM_VMLMB` (not
   `OPK_ALGORITHM_NLCG`).
 
-* The initial variables
+* The initial variables need not be feasible, the initial call to `opk_start()`
+  will enforce the constraints if any.
 
 * If the data type of the bounds does not match that of the variable, proper
   conversions are performed but you loose the advantages of having the bounds
