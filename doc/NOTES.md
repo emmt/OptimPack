@@ -2,27 +2,41 @@
 
 ## Publishing a new release
 
-To prepare a new release, follow these steps:
+To prepare a new public release, follow these steps:
 
-1. Bump version number in [README.md](./README.md) and
-   [configure.ac](./configure.ac) and commit the changes.
+1. If the API has changed, update the interface version number in macro
+   `libopk_la_LDFLAGS` in [src/Makefile.am](../src/Makefile.am) see
+   [libtool documentation](http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html)
+   for explanations.  The interface version number is `c:r:a` (for *current*,
+   *revision* and *age*), revisions between `c` and `c-a` are supposed to be
+   supported by the library.  If the library source code has changed at all
+   since the last update, then increment revision (`c:r:a` becomes `c:r+1:a`).
+   If any interfaces have been added, removed, or changed since the last
+   update, increment current, and set revision to 0.  If any interfaces have
+   been added since the last public release, then increment age.  If any
+   interfaces have been removed or changed since the last public release, then
+   set age to 0.  **Never** try to set the interface numbers so that they
+   correspond to the release number of the package.
 
-2. Update the [CHANGES.md](./CHANGES.md) file and commit the changes.
+2. Bump version number in [README.md](../README.md) and
+   [configure.ac](../configure.ac) and commit the changes.
 
-3. Rebuild [configure](./configure) script and make the archive:
-   ```
+3. Update the [CHANGES.md](./CHANGES.md) file and commit the changes.
+
+4. Rebuild [configure](./configure) script and make the archive:
+   ```{.sh}
    cd build
    make
    make dist-gzip
    mv optimpack-${VERSION}.tar.gz ../releases/.
    ```
 
-4. Push the changes on GitHub:
-   ```
+5. Push the changes on GitHub:
+   ```{.sh}
    git push
    ```
 
-5. Open [OptimPack](https://github.com/emmt/OptimPack) page at GitHub and click
+6. Open [OptimPack](https://github.com/emmt/OptimPack) page at GitHub and click
    on the [releases](https://github.com/emmt/OptimPack/releases) tab and then
    on the [Draft a new release](https://github.com/emmt/OptimPack/releases/new)
    button.
@@ -34,8 +48,8 @@ To prepare a new release, follow these steps:
    - Attach the release archive.
    - Click on the green **Publish release** button.
 
-6. In the local git repository, pull the tag with:
-   ```
+7. In the local git repository, pull the tag with:
+   ```{.sh}
    git pull --all
    ```
 
