@@ -63,10 +63,9 @@ struct _operations {
   opk_task_t   (*get_task)(const opk_optimizer_t* opt);
   opk_status_t (*get_status)(const opk_optimizer_t* opt);
   void         (*set_status)(opk_optimizer_t* opt, opk_status_t status);
-  opk_index_t  (*get_iterations)(const opk_optimizer_t* opt);
   opk_index_t  (*get_evaluations)(const opk_optimizer_t* opt);
+  opk_index_t  (*get_iterations)(const opk_optimizer_t* opt);
   opk_index_t  (*get_restarts)(const opk_optimizer_t* opt);
-  opk_index_t  (*get_projections)(const opk_optimizer_t* opt);
   size_t       (*get_name)(char* buf, size_t size,
                            const opk_optimizer_t* opt);
   size_t       (*get_description)(char* buf, size_t size,
@@ -111,15 +110,15 @@ nlcg_set_status(opk_optimizer_t* opt, opk_status_t status)
 }
 
 static opk_index_t
-nlcg_get_iterations(const opk_optimizer_t* opt)
-{
-  return opk_get_nlcg_iterations(NLCG(opt->optimizer));
-}
-
-static opk_index_t
 nlcg_get_evaluations(const opk_optimizer_t* opt)
 {
   return opk_get_nlcg_evaluations(NLCG(opt->optimizer));
+}
+
+static opk_index_t
+nlcg_get_iterations(const opk_optimizer_t* opt)
+{
+  return opk_get_nlcg_iterations(NLCG(opt->optimizer));
 }
 
 static opk_index_t
@@ -128,16 +127,10 @@ nlcg_get_restarts(const opk_optimizer_t* opt)
   return opk_get_nlcg_restarts(NLCG(opt->optimizer));
 }
 
-static opk_index_t
-nlcg_get_projections(const opk_optimizer_t* opt)
-{
-  return 0L;
-}
-
 static size_t
 nlcg_get_name(char* buf, size_t size, const opk_optimizer_t* opt)
 {
-  return opk_copy_string(buf, size, "NLCG");
+  return opk_get_nlcg_name(buf, size, NLCG(opt->optimizer));
 }
 
 static size_t
@@ -164,10 +157,9 @@ static operations_t nlcg_ops = {
   nlcg_get_task,
   nlcg_get_status,
   nlcg_set_status,
-  nlcg_get_iterations,
   nlcg_get_evaluations,
+  nlcg_get_iterations,
   nlcg_get_restarts,
-  nlcg_get_projections,
   nlcg_get_name,
   nlcg_get_description,
   nlcg_get_step,
@@ -210,27 +202,21 @@ vmlmb_set_status(opk_optimizer_t* opt, opk_status_t status)
 }
 
 static opk_index_t
-vmlmb_get_iterations(const opk_optimizer_t* opt)
-{
-  return opk_get_vmlmb_iterations(VMLMB(opt->optimizer));
-}
-
-static opk_index_t
 vmlmb_get_evaluations(const opk_optimizer_t* opt)
 {
   return opk_get_vmlmb_evaluations(VMLMB(opt->optimizer));
 }
 
 static opk_index_t
-vmlmb_get_restarts(const opk_optimizer_t* opt)
+vmlmb_get_iterations(const opk_optimizer_t* opt)
 {
-  return opk_get_vmlmb_restarts(VMLMB(opt->optimizer));
+  return opk_get_vmlmb_iterations(VMLMB(opt->optimizer));
 }
 
 static opk_index_t
-vmlmb_get_projections(const opk_optimizer_t* opt)
+vmlmb_get_restarts(const opk_optimizer_t* opt)
 {
-  return opk_get_vmlmb_evaluations(VMLMB(opt->optimizer));
+  return opk_get_vmlmb_restarts(VMLMB(opt->optimizer));
 }
 
 static size_t
@@ -264,10 +250,9 @@ static operations_t vmlmb_ops = {
   vmlmb_get_task,
   vmlmb_get_status,
   vmlmb_set_status,
-  vmlmb_get_iterations,
   vmlmb_get_evaluations,
+  vmlmb_get_iterations,
   vmlmb_get_restarts,
-  vmlmb_get_projections,
   vmlmb_get_name,
   vmlmb_get_description,
   vmlmb_get_step,
@@ -508,6 +493,12 @@ opk_get_status(const opk_optimizer_t* opt)
 }
 
 opk_index_t
+opk_get_evaluations(const opk_optimizer_t* opt)
+{
+  return (opt == NULL ? 0 : opt->ops->get_evaluations(opt));
+}
+
+opk_index_t
 opk_get_iterations(const opk_optimizer_t* opt)
 {
   return (opt == NULL ? 0 : opt->ops->get_iterations(opt));
@@ -517,18 +508,6 @@ opk_index_t
 opk_get_restarts(const opk_optimizer_t* opt)
 {
   return (opt == NULL ? 0 : opt->ops->get_restarts(opt));
-}
-
-opk_index_t
-opk_get_evaluations(const opk_optimizer_t* opt)
-{
-  return (opt == NULL ? 0 : opt->ops->get_evaluations(opt));
-}
-
-opk_index_t
-opk_get_projections(const opk_optimizer_t* opt)
-{
-  return (opt == NULL ? 0 : opt->ops->get_projections(opt));
 }
 
 size_t
