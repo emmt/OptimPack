@@ -1428,13 +1428,13 @@ extern double
 opk_get_nlcg_gnorm(const opk_nlcg_t* opt);
 
 extern opk_index_t
+opk_get_nlcg_evaluations(const opk_nlcg_t* opt);
+
+extern opk_index_t
 opk_get_nlcg_iterations(const opk_nlcg_t* opt);
 
 extern opk_index_t
 opk_get_nlcg_restarts(const opk_nlcg_t* opt);
-
-extern opk_index_t
-opk_get_nlcg_evaluations(const opk_nlcg_t* opt);
 
 extern opk_task_t
 opk_get_nlcg_task(const opk_nlcg_t* opt);
@@ -1442,12 +1442,16 @@ opk_get_nlcg_task(const opk_nlcg_t* opt);
 extern opk_status_t
 opk_get_nlcg_status(const opk_nlcg_t* opt);
 
+extern size_t
+opk_get_nlcg_name(char* buf, size_t size, const opk_nlcg_t* opt);
+
 /**
  * Get description of nonlinear conjugate gradient method.
  *
- * @param opt - The optimizer.
  * @param buf - A string buffer to copy the description (can be `NULL`).
  * @param size - The number of available bytes in `buf`.
+ * @param opt - The optimizer.
+ *
  * @return The minimum number of bytes required to store the description
  *         (including the terminating '\0' character).
  */
@@ -1837,9 +1841,10 @@ opk_get_vmlmb_status(const opk_vmlmb_t* opt);
 /**
  * Get description of algorithm implemented by VMLMB.
  *
- * @param opt - The optimizer.
  * @param buf - A string buffer to copy the description (can be `NULL`).
  * @param size - The number of available bytes in `buf`.
+ * @param opt - The optimizer.
+ *
  * @return The minimum number of bytes required to store the description
  *         (including the terminating '\0' character).
  */
@@ -1847,10 +1852,10 @@ extern size_t
 opk_get_vmlmb_description(char* buf, size_t size, const opk_vmlmb_t* opt);
 
 extern opk_index_t
-opk_get_vmlmb_iterations(const opk_vmlmb_t* opt);
+opk_get_vmlmb_evaluations(const opk_vmlmb_t* opt);
 
 extern opk_index_t
-opk_get_vmlmb_evaluations(const opk_vmlmb_t* opt);
+opk_get_vmlmb_iterations(const opk_vmlmb_t* opt);
 
 extern opk_index_t
 opk_get_vmlmb_restarts(const opk_vmlmb_t* opt);
@@ -2099,13 +2104,13 @@ extern opk_status_t
 opk_get_status(const opk_optimizer_t* opt);
 
 extern opk_index_t
+opk_get_evaluations(const opk_optimizer_t* opt);
+
+extern opk_index_t
 opk_get_iterations(const opk_optimizer_t* opt);
 
 extern opk_index_t
 opk_get_restarts(const opk_optimizer_t* opt);
-
-extern opk_index_t
-opk_get_evaluations(const opk_optimizer_t* opt);
 
 extern size_t
 opk_get_name(char* buf, size_t size, const opk_optimizer_t* opt);
