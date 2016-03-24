@@ -585,6 +585,13 @@ opk_get_nlcg_evaluations(const opk_nlcg_t* opt)
   return opt->evaluations;
 }
 
+extern size_t
+opk_get_nlcg_name(char* buf, size_t size, const opk_nlcg_t* opt)
+{
+  return opk_copy_string(buf, size, "NLCG");
+}
+
+
 size_t
 opk_get_nlcg_description(char* buf, size_t size, const opk_nlcg_t* opt)
 {
