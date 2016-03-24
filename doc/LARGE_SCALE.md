@@ -48,8 +48,6 @@ a limited memory variable metric method (`OPK_ALGORITHM_VMLMB`):
 ~~~~~{.cpp}
 const int n = 100000;       // size of the problem
 const int type = OPK_FLOAT; // type of variables
-int mem = 0;                // amount of memory to use, a small default
-                            // number is taken if mem <= 0
 unigned flags = 0;          // options
 double fx;                  // the computed objective function
 float x[n];                 // the variables
