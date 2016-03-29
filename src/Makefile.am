@@ -6,7 +6,7 @@ AM_CFLAGS = -Wall
 CLEANFILES = *~
 
 # Headers to install:
-include_HEADERS = optimpack.h optimpack-linalg.h bobyqa.h cobyla.h newuoa.h
+include_HEADERS = optimpack.h optimpack-linalg.h optimpack-private.h bobyqa.h cobyla.h newuoa.h
 
 # Additional files to include in the distribution.
 EXTRA_DIST = simple_vector.c
