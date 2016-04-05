@@ -387,6 +387,7 @@ opk_start_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x)
 #define Y(k)                           opt->y[k]
 #define ALPHA(k)                       opt->alpha[k]
 #define RHO(k)                         opt->rho[k]
+#define SLOT(j)                        slot(opt, j)
 #define UPDATE(dst, alpha, x)          AXPBY(dst, 1, dst, alpha, x)
 #define AXPBY(dst, alpha, x, beta, y)  opk_vaxpby(dst, alpha, x, beta, y)
 #define COPY(dst, src)                 opk_vcopy(dst, src)
@@ -405,7 +406,7 @@ update(opk_vmlmb_t* opt,
   double sty, yty;
   opk_index_t k;
 
-  k = slot(opt, 0);
+  k = SLOT(0);
   AXPBY(S(k), 1, x, -1, opt->x0);
   AXPBY(Y(k), 1, g, -1, opt->g0);
   if (opt->method != OPK_VMLMB) {
@@ -431,37 +432,39 @@ update(opk_vmlmb_t* opt,
   }
 }
 
-/* Apply the L-BFGS Strang's two-loop recursion to compute a search
-   direction. */
+/* Apply the L-BFGS Strang's two-loop recursion to compute a search direction.
+   Returned value indicates whether the operation was successful otherwise the
+   direction is just the gradient (steepest ascent). */
 static opk_status_t
 apply(opk_vmlmb_t* opt, const opk_vector_t* g)
 {
   double sty, yty;
   opk_index_t j, k;
+  opk_status_t result;
 
-  if (opt->mp < 1) {
-    /* Will use the steepest descent direction. */
-    return OPK_NOT_POSITIVE_DEFINITE;
-  }
   COPY(opt->d, g);
+  result = OPK_NOT_POSITIVE_DEFINITE;
   if (opt->method != OPK_VMLMB) {
     /* Apply the original L-BFGS Strang's two-loop recursion. */
     for (j = 1; j <= opt->mp; ++j) {
-      k = slot(opt, j);
+      k = SLOT(j);
       if (RHO(k) > 0) {
         ALPHA(k) = RHO(k)*DOT(opt->d, S(k));
         UPDATE(opt->d, -ALPHA(k), Y(k));
+        result = OPK_SUCCESS;
       }
     }
-    if (opt->gamma != 1) {
-      /* Apply initial inverse Hessian approximation. */
-      SCALE(opt->d, opt->gamma);
-    }
-    for (j = opt->mp; j >= 1; --j) {
-      k = slot(opt, j);
-      if (RHO(k) > 0) {
-        double beta = RHO(k)*DOT(opt->d, Y(k));
-        UPDATE(opt->d, ALPHA(k) - beta, S(k));
+    if (result == OPK_SUCCESS) {
+      if (opt->gamma != 1) {
+        /* Apply initial inverse Hessian approximation. */
+        SCALE(opt->d, opt->gamma);
+      }
+      for (j = opt->mp; j >= 1; --j) {
+        k = SLOT(j);
+        if (RHO(k) > 0) {
+          double beta = RHO(k)*DOT(opt->d, Y(k));
+          UPDATE(opt->d, ALPHA(k) - beta, S(k));
+        }
       }
     }
   } else {
@@ -469,7 +472,7 @@ apply(opk_vmlmb_t* opt, const opk_vector_t* g)
        free variables. */
     opt->gamma = 0;
     for (j = 1; j <= opt->mp; ++j) {
-      k = slot(opt, j);
+      k = SLOT(j);
       sty = WDOT(Y(k), S(k));
       if (sty <= 0) {
         RHO(k) = 0;
@@ -477,34 +480,30 @@ apply(opk_vmlmb_t* opt, const opk_vector_t* g)
         RHO(k) = 1/sty;
         ALPHA(k) = RHO(k)*WDOT(opt->d, S(k));
         UPDATE(opt->d, -ALPHA(k), Y(k));
+        result = OPK_SUCCESS;
         if (opt->gamma == 0) {
           yty = WDOT(Y(k), Y(k));
-          if (yty > 0) {
-            opt->gamma = sty/yty;
-          }
+          opt->gamma = sty/yty;
         }
       }
     }
-    if (opt->gamma != 1) {
-      if (opt->gamma <= 0) {
-        /* Force using the steepest descent direction. */
-        return OPK_NOT_POSITIVE_DEFINITE;
+    if (result == OPK_SUCCESS) {
+      if (opt->gamma != 1) {
+        SCALE(opt->d, opt->gamma);
       }
-      SCALE(opt->d, opt->gamma);
-    }
-    for (j = opt->mp; j >= 1; --j) {
-      k = slot(opt, j);
-      if (RHO(k) > 0) {
-        double beta = RHO(k)*WDOT(opt->d, Y(k));
-        UPDATE(opt->d, ALPHA(k) - beta, S(k));
+      for (j = opt->mp; j >= 1; --j) {
+        k = SLOT(j);
+        if (RHO(k) > 0) {
+          double beta = RHO(k)*WDOT(opt->d, Y(k));
+          UPDATE(opt->d, ALPHA(k) - beta, S(k));
+        }
       }
+      /* Enforce search direction to belong to the subset of the free
+         variables. */
+      opk_vproduct(opt->d, opt->w, opt->d);
     }
-    /* Enforce search direction to belong to the subset of the free
-       variables. */
-    opk_vproduct(opt->d, opt->w, opt->d);
   }
-
-  return OPK_SUCCESS;
+  return result;
 }
 
 opk_task_t
@@ -607,7 +606,8 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
       /* Update L-BFGS approximation of the Hessian. */
       update(opt, x, (opt->method == OPK_BLMVM ? opt->gp : g));
     }
-    if (apply(opt, g) == OPK_SUCCESS) {
+    status = apply(opt, g);
+    if (status == OPK_SUCCESS) {
       /* The L-BFGS approximation produces a search direction D.  To warrant
          convergence, we have to check whether -D is a sufficient descent
          direction (that is to say that D is a sufficient ascent direction).
@@ -697,7 +697,7 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
 
     /* Save current point. */
     if (opt->save_memory) {
-      k = slot(opt, 0);
+      k = SLOT(0);
       opt->x0 = S(k); /* weak reference */
       opt->g0 = Y(k); /* weak reference */
       if (opt->mp == opt->m) {
@@ -841,9 +841,9 @@ opk_get_vmlmb_s(const opk_vmlmb_t* opt, opk_index_t j)
 }
 
 opk_vector_t*
-opk_get_vmlmb_y(const opk_vmlmb_t* opt, opk_index_t k)
+opk_get_vmlmb_y(const opk_vmlmb_t* opt, opk_index_t j)
 {
-  return (0 <= k && k <= opt->mp ? opt->y[slot(opt, k)] : NULL);
+  return (0 <= j && opt != NULL && j <= opt->mp ? opt->y[slot(opt, j)] : NULL);
 }
 
 void
