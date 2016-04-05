@@ -313,7 +313,7 @@ OPK_BEGIN_C_DECLS
   _OPK_STATUS(21, OPK_ROUNDING_ERRORS_PREVENT_PROGRESS,                 \
               "Rounding errors prevent progress")                       \
   _OPK_STATUS(22, OPK_NOT_POSITIVE_DEFINITE,                            \
-              "Operator is not psoitive definite")                      \
+              "Operator is not positive definite")                      \
   _OPK_STATUS(23, OPK_BAD_PRECONDITIONER,                               \
               "Preconditioner is not positive definite")                \
   _OPK_STATUS(24, OPK_INFEASIBLE_BOUNDS, "Box set is infeasible")       \
