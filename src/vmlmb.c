@@ -510,7 +510,7 @@ opk_task_t
 opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
                   double f, opk_vector_t* g)
 {
-  double dtg, gtest;
+  double dtg, gtest, stpmin, stpmax;
   opk_index_t k;
   opk_status_t status;
   opk_lnsrch_task_t lnsrch_task;
@@ -674,6 +674,8 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
       }
     }
 
+    stpmin = opt->stp*opt->stpmin;
+    stpmax = opt->stp*opt->stpmax;
     if (bounded) {
       /* Shortcut the step length. */
       double bsmin1, bsmin2, bsmax;
@@ -691,6 +693,9 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
       }
       if (opt->stp > bsmax) {
         opt->stp = bsmax;
+      }
+      if (stpmax > bsmax) {
+        stpmax = bsmax;
       }
       opt->bsmin = bsmin2;
     }
@@ -711,8 +716,7 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
     /* Start the line search and break to take the first step along the line
        search. */
     if (opk_lnsrch_start(opt->lnsrch, f, dtg, opt->stp,
-                         opt->stp*opt->stpmin,
-                         opt->stp*opt->stpmax) != OPK_LNSRCH_SEARCH) {
+                         stpmin, stpmax) != OPK_LNSRCH_SEARCH) {
       return failure(opt, opk_lnsrch_get_status(opt->lnsrch));
     }
     break;
