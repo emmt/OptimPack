@@ -38,8 +38,6 @@
 
 #include "optimpack-private.h"
 
-typedef struct _opk_vmlmc opk_vmlmc_t;
-
 extern opk_vmlmc_t*
 opk_new_vmlmc_optimizer(opk_vspace_t* vspace,
                         opk_index_t m,
