@@ -29,88 +29,200 @@
 extern "C" {
 #endif
 
-/* Prototype of the objective function assumed by the COBYLA routine.  The
-   returned value is the function value at X, N is the number of variables, M
-   is the number of constraints, X are the current values of the variables and
-   CON is to store the M constraints.  DATA is anything needed by the function
-   (unused by COBYLA itself). */
+/**
+ * Prototype of the function assumed by the COBYLA algorithm.
+ *
+ * Prototype of the objective function assumed by the COBYLA routine.  The
+ * returned value is the function value at `x`, `n` is the number of variables,
+ * `m` is the number of constraints, `x` are the current values of the
+ * variables and `con` is to store the `m` constraints.  `data` is anything
+ * needed by the function (unused by COBYLA itself).
+ */
 typedef double
 cobyla_calcfc(opk_index_t n, opk_index_t m, const double x[],
               double con[], void* data);
 
-/*
- * This subroutine minimizes an objective function F(X) subject to M inequality
- * constraints on X, where X is a vector of variables that has N components.
- * The algorithm employs linear approximations to the objective and constraint
- * functions, the approximations being formed by linear interpolation at N+1
- * points in the space of the variables.  We regard these interpolation points
- * as vertices of a simplex.  The parameter RHO controls the size of the
- * simplex and it is reduced automatically from RHOBEG to RHOEND.  For each RHO
- * the subroutine tries to achieve a good vector of variables for the current
- * size, and then RHO is reduced until the value RHOEND is reached.  Therefore
- * RHOBEG and RHOEND should be set to reasonable initial changes to and the
- * required accuracy in the variables respectively, but this accuracy should be
- * viewed as a subject for experimentation because it is not guaranteed.  The
- * subroutine has an advantage over many of its competitors, however, which is
- * that it treats each constraint individually when calculating a change to the
- * variables, instead of lumping the constraints together into a single penalty
- * function.  The name of the subroutine is derived from the phrase Constrained
- * Optimization BY Linear Approximations.
+/**
+ * Minimize a function of many variables subject to inequality constraints.
  *
- * The user must set the values of N, M, RHOBEG and RHOEND, and must provide an
- * initial vector of variables in X.  Further, the value of IPRINT should be
- * set to 0, 1, 2 or 3, which controls the amount of printing during the
- * calculation.  Specifically, there is no output if IPRINT=0 and there is
- * output only at the end of the calculation if IPRINT=1.  Otherwise each new
- * value of RHO and SIGMA is printed.  Further, the vector of variables and
- * some function information are given either when RHO is reduced or when each
- * new value of F(X) is computed in the cases IPRINT=2 or IPRINT=3
- * respectively.  Here SIGMA is a penalty parameter, it being assumed that a
- * change to X is an improvement if it reduces the merit function:
+ * The `cobyla` algorithm minimizes an objective function `f(x)` subject to `m`
+ * inequality constraints on `x`, where `x` is a vector of variables that has
+ * `n` components.  The algorithm employs linear approximations to the
+ * objective and constraint functions, the approximations being formed by
+ * linear interpolation at `n+1` points in the space of the variables.  We
+ * regard these interpolation points as vertices of a simplex.  The parameter
+ * `rho` controls the size of the simplex and it is reduced automatically from
+ * `rhobeg` to `rhoend`.  For each `rho` the subroutine tries to achieve a good
+ * vector of variables for the current size, and then `rho` is reduced until
+ * the value `rhoend` is reached.  Therefore `rhobeg` and `rhoend` should be
+ * set to reasonable initial changes to and the required accuracy in the
+ * variables respectively, but this accuracy should be viewed as a subject for
+ * experimentation because it is not guaranteed.  The subroutine has an
+ * advantage over many of its competitors, however, which is that it treats
+ * each constraint individually when calculating a change to the variables,
+ * instead of lumping the constraints together into a single penalty function.
+ * The name of the subroutine is derived from the phrase "Constrained
+ * Optimization BY Linear Approximations".
  *
- *            F(X)+SIGMA*MAX(0.0,-C1(X),-C2(X),...,-CM(X)),
+ * The user must set the values of `n`, `m`, `rhobeg` and `rhoend`, and must
+ * provide an initial vector of variables in `x`.  Further, the value of
+ * `iprint` should be set to 0, 1, 2 or 3, which controls the amount of
+ * printing during the calculation.  Specifically, there is no output if
+ * `iprint=0` and there is output only at the end of the calculation if
+ * `iprint=1`.  Otherwise each new value of `rho` and `sigma` is printed.
+ * Further, the vector of variables and some function information are given
+ * either when `rho` is reduced or when each new value of `f(x)` is computed in
+ * the cases `iprint=2` or `iprint=3` respectively.  Here `sigma` is a penalty
+ * parameter, it being assumed that a change to `x` is an improvement if it
+ * reduces the merit function:
  *
- * where C1,C2,...,CM denote the constraint functions that should become
- * nonnegative eventually, at least to the precision of RHOEND.  In the
- * printed output the displayed term that is multiplied by SIGMA is
- * called MAXCV, which stands for 'MAXimum Constraint Violation'.  The
- * argument MAXFUN is an integer variable that must be set by the user to a
- * limit on the number of calls of CALCFC, the purpose of this routine being
- * given below.  The value of MAXFUN will be altered to the number of calls
- * of CALCFC that are made.  The arguments W and IACT provide real and
- * integer arrays that are used as working space.  Their lengths must be at
- * least N*(3*N+2*M+11)+4*M+6 and M+1 respectively.
+ *     f(x) + sigma*max(0.0, -C1(x), -C2(x), ..., -CM(x)),
+ *
+ * where `C1`, `C2`, ..., `CM` denote the constraint functions that should
+ * become nonnegative eventually, at least to the precision of `rhoend`.  In
+ * the printed output the displayed term that is multiplied by `sigma` is
+ * called `maxcv`, which stands for "MAXimum Constraint Violation".  The
+ * argument `maxfun` is the address of an integer variable that must be set by
+ * the user to a limit on the number of calls of `fc`, the purpose of this
+ * routine being given below.  The value of `maxfun` will be altered to the
+ * number of calls of `fc` that are made.  The arguments `work` and `iact`
+ * provide real and integer arrays that are used as working space.  Their
+ * lengths must be at least `n*(3*n+2*m+11)+4*m+6` and `m+1` respectively.
  *
  * In order to define the objective and constraint functions, we require a
- * subroutine that has the name and arguments
+ * function `fc` that has the following prototype:
  *
- *            SUBROUTINE CALCFC (N,M,X,F,CON)
- *            DIMENSION X(*),CON(*)  .
+ *     REAL fc(INTEGER n, INTEGER m, const REAL x[], REAL con[], void* data);
  *
- * The values of N and M are fixed and have been defined already, while X is
- * now the current vector of variables.  The subroutine should return the
- * objective and constraint functions at X in F and CON(1),CON(2), ...,CON(M).
- * Note that we are trying to adjust X so that F(X) is as small as possible
- * subject to the constraint functions being nonnegative.
+ * The values of `n` and `m` are fixed and have been defined already, while `x`
+ * is now the current vector of variables.  The function should return the
+ * value of the objective function at `x` and store constraint functions at `x`
+ * in `con[0]`, `con[1]`, ..., `con[m-1]`.  Argument `data` will be set with
+ * whatever value has been provided when `cobyla` was called.  Note that we are
+ * trying to adjust `x` so that `f(x)` is as small as possible subject to the
+ * constraint functions being nonnegative.
+ *
+ * @param n      - The number of variables.
+ *
+ * @param m      - The number of constraints.
+ *
+ * @param fc     - The objective function.
+ *
+ * @param data   - Anything needed by the objective function.
+ *
+ * @param x      - On entry, the initial variables; on exit, the final
+ *                 variables.
+ *
+ * @param rhobeg - The initial trust region radius.
+ *
+ * @param rhoend - The final trust region radius.
+ *
+ * @param maxfun - On entry, the maximum number of calls to `fc`; on exit, the
+ *                 actual number of calls to `fc`.
+ *
+ * @param iprint - The level of verbosity.
+ *
+ * @param maxfun - The maximum number of calls to `fc`.
+ *
+ * @param work   - Workspace array with at least `n*(3*n+2*m+11)+4*m+6`
+ *                 elements.  On successful exit, the value of the objective
+ *                 function and of the worst constraint at the final `x` are
+ *                 stored in `work[0]` and `work[1]` respectively.
+ *
+ * @param iact   - Workspace array with at least `m+1` elements.  On successful
+ *                 exit, the actual number of calls to `fc` is stored in
+ *                 `iact[0]`.
+ *
+ * @return `COBYLA_SUCCESS` is returned when the algorithm is successful; any
+ *         other value indicates an error (use `cobyla_reason` to have an
+ *         explanation).
  */
 extern int
 cobyla(opk_index_t n, opk_index_t m,
-       cobyla_calcfc* calcfc, void* calcfc_data,
+       cobyla_calcfc* fc, void* data,
        double x[], double rhobeg, double rhoend,
-       opk_index_t iprint, opk_index_t* maxfun,
-       double w[], opk_index_t iact[]);
+       opk_index_t iprint, opk_index_t maxfun,
+       double work[], opk_index_t iact[]);
+
+/**
+ * Minimize or maximize a function of many variables subject to inequality
+ * constraints with optional scaling.
+ *
+ * This function is a variant of `cobyla` which attempts to minimize or
+ * maximize an objective function of many variables subject to inequality
+ * constraints.  The scaling of the variables is important for the success of
+ * the algorithm and the `scale` argument (if not `NULL`) should specify the
+ * relative size of each variable.  If specified, `scale` is an array of `n`
+ * strictly nonnegative values, such that `scale[i]*rho` (with `rho` the trust
+ * region radius) is the size of the trust region for the `i`-th variable.
+ * Thus `scale[i]*rhobeg` is the typical step size for the `i`-th variable at
+ * the beginning of the algorithm and `scale[i]*rhoend` is the typical
+ * precision on the `i`-th variable at the end.  If `scale` is not specified, a
+ * unit scaling for all the variables is assumed.
+ *
+ * @param n      - The number of variables.
+ *
+ * @param m      - The number of constraints.
+ *
+ * @param maximize - Non-zero to attempt to maximize the objective function;
+ *                 zero to attempt to minimize it.
+ *
+ * @param fc     - The objective function.
+ *
+ * @param data   - Anything needed by the objective function.
+ *
+ * @param x      - On entry, the initial variables; on exit, the final
+ *                 variables.
+ *
+ * @param scale  - An array of `n` scaling factors, all strictly positive.  Can
+ *                 be `NULL` to perform no scaling of the variables.
+ *
+ * @param rhobeg - The initial trust region radius.
+ *
+ * @param rhoend - The final trust region radius.
+ *
+ * @param maxfun - The maximum number of calls to `fc`.
+ *
+ * @param iprint - The level of verbosity.
+ *
+ * @param maxfun - On entry, the maximum number of calls to `fc`; on exit, the
+ *                 actual number of calls to `fc`.
+ *
+ * @param work   - Workspace array with at least `n*(3*n+2*m+11)+4*m+6`
+ *                 elements.  On successful exit, the value of the objective
+ *                 function and of the worst constraint at the final `x` are
+ *                 stored in `work[0]` and `work[1]` respectively.
+ *
+ * @param iact   - Workspace array with at least `m+1` elements.  On successful
+ *                 exit, the actual number of calls to `fc` is stored in
+ *                 `iact[0]`.
+ *
+ * @return `COBYLA_SUCCESS` is returned when the algorithm is successful; any
+ *         other value indicates an error (use `cobyla_reason` to have an
+ *         explanation).
+ */
+extern int
+cobyla_optimize(opk_index_t n, opk_index_t m,
+                opk_bool_t maximize, cobyla_calcfc* fc, void* data,
+                double x[], const double scl[], double rhobeg, double rhoend,
+                opk_index_t iprint, opk_index_t maxfun,
+                double work[], opk_index_t iact[]);
 
 /* Possible values returned by `cobyla`, `cobyla_get_status` and
    `cobyla_iterate`: */
-#define COBYLA_INITIAL_ITERATE         (2) /* only used internally */
-#define COBYLA_ITERATE                 (1) /* user requested to compute
-                                              F(X) and C(X) */
-#define COBYLA_SUCCESS                 (0) /* algorithm converged */
-#define COBYLA_ROUNDING_ERRORS        (-1) /* rounding errors prevent
-                                              progress */
-#define COBYLA_TOO_MANY_EVALUATIONS   (-2) /* too many evaluations */
-#define COBYLA_BAD_ADDRESS            (-3) /* illegal address */
-#define COBYLA_CORRUPTED              (-4) /* corrupted workspace */
+#define COBYLA_INITIAL_ITERATE       (2) /* only used internally */
+#define COBYLA_ITERATE               (1) /* user requested to compute
+                                            F(X) and C(X) */
+#define COBYLA_SUCCESS               (0) /* algorithm converged */
+#define COBYLA_BAD_NVARS            (-1) /* bad number of variables */
+#define COBYLA_BAD_NCONS            (-2) /* bad number of constraints */
+#define COBYLA_BAD_RHO_RANGE        (-3) /* invalid trust region parameters */
+#define COBYLA_BAD_SCALING          (-4) /* bad scaling factor(s) */
+#define COBYLA_ROUNDING_ERRORS      (-5) /* rounding errors prevent
+                                            progress */
+#define COBYLA_TOO_MANY_EVALUATIONS (-6) /* too many evaluations */
+#define COBYLA_BAD_ADDRESS          (-7) /* illegal address */
+#define COBYLA_CORRUPTED            (-8) /* corrupted workspace */
 
 /* Opaque structure used by the reverse communication variant of COBYLA. */
 typedef struct _cobyla_context cobyla_context_t;

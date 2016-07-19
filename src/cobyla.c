@@ -72,6 +72,9 @@
 # define ATAN(x)   atan(x)
 #endif
 
+#define TRUE    1
+#define FALSE   0
+
 
 /* Helper macro for simple FORTRAN-like loops. */
 #define LOOP(var,num)    for (var = 1; var <= num; ++var)
@@ -102,14 +105,6 @@
 /*---------------------------------------------------------------------------*/
 /* DECLARATIONS OF PRIVATE FUNCTIONS */
 
-static int
-cobylb(const INTEGER n, const INTEGER m,
-       cobyla_calcfc* calcfc, void* calcfc_data, REAL x[],
-       const REAL rhobeg, const REAL rhoend, const INTEGER iprint,
-       INTEGER* maxfun, REAL con[], REAL sim[], REAL simi[],
-       REAL datmat[], REAL a[], REAL vsig[], REAL veta[],
-       REAL sigbar[], REAL dx[], REAL w[], INTEGER iact[]);
-
 static void
 trstlp(const INTEGER n, const INTEGER m, const REAL a[], const REAL b[],
        const REAL rho, REAL dx[], INTEGER* ifull, INTEGER iact[], REAL z[],
@@ -119,27 +114,28 @@ static void
 print_calcfc(FILE* output, INTEGER n, INTEGER nfvals,
              REAL f, REAL maxcv, const REAL x[]);
 
+static REAL*
+scale(REAL* dst, INTEGER n, const REAL* scl, const REAL* src)
+{
+  INTEGER i;
+
+  for (i = 0; i < n; ++i) {
+    dst[i] = scl[i]*src[i];
+  }
+  return dst;
+}
+
+/*---------------------------------------------------------------------------*/
+/* SIMPLE DRIVER */
 
 int
-cobyla(INTEGER n, INTEGER m, cobyla_calcfc* calcfc, void* calcfc_data,
+cobyla(INTEGER n, INTEGER m, cobyla_calcfc* calcfc, void* data,
        REAL x[], REAL rhobeg, REAL rhoend, INTEGER iprint,
-       INTEGER* maxfun, REAL w[], INTEGER iact[])
+       INTEGER maxfun, REAL work[], INTEGER iact[])
 {
-  /* Partition the working space array W to provide the storage that is needed
-    for the main calculation. */
-  INTEGER mpp = m + 2;
-  REAL* con = w;
-  REAL* sim = con + mpp;
-  REAL* simi = sim + n*n + n;
-  REAL* datmat = simi + n*n;
-  REAL* a = datmat + n*mpp + mpp;
-  REAL* vsig = a + m*n + n;
-  REAL* veta = vsig + n;
-  REAL* sigbar = veta + n;
-  REAL* dx = sigbar + n;
-  REAL* work = dx + n;
-  return cobylb(n, m, calcfc, calcfc_data, x, rhobeg, rhoend, iprint, maxfun,
-                con, sim, simi, datmat, a, vsig, veta, sigbar, dx, work, iact);
+  return cobyla_optimize(n, m, FALSE, calcfc, data,
+                         x, NULL, rhobeg, rhoend,
+                         iprint, maxfun, work, iact);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -166,7 +162,8 @@ FORTRAN_NAME(cobyla,COBYLA)(INTEGER* n, INTEGER* m, REAL x[], REAL* rhobeg,
                             REAL w[], INTEGER iact[])
 {
   (void)cobyla(*n, *m, calcfc_wrapper, NULL, x, *rhobeg, *rhoend,
-               *iprint, maxfun, w, iact);
+               *iprint, *maxfun, w, iact);
+  *maxfun = iact[0];
   return 0;
 }
 
@@ -208,8 +205,7 @@ cobyla_create(INTEGER n, INTEGER m, REAL rhobeg, REAL rhoend,
               INTEGER iprint, INTEGER maxfun)
 {
   cobyla_context_t* ctx;
-  long size, offset1, offset2;
-  INTEGER mpp;
+  size_t size, offset1, offset2;
 
   /* Check arguments. */
   if (n < 1 || m < 0 || rhobeg < rhoend || rhoend <= 0 || maxfun < 1) {
@@ -239,14 +235,13 @@ cobyla_create(INTEGER n, INTEGER m, REAL rhobeg, REAL rhoend,
 
   /* Partition the working space array W to provide the storage that is needed
     for the main calculation. */
-  mpp = m + 2;
   ctx->iact   = ADDRESS(INTEGER, ctx, offset1);
   ctx->con    = ADDRESS(REAL, ctx, offset2);
-  ctx->sim    = ctx->con + mpp;
-  ctx->simi   = ctx->sim + n*n + n;
+  ctx->sim    = ctx->con + (m + 2);
+  ctx->simi   = ctx->sim + n*(n + 1);
   ctx->datmat = ctx->simi + n*n;
-  ctx->a      = ctx->datmat + n*mpp + mpp;
-  ctx->vsig   = ctx->a + m*n + n;
+  ctx->a      = ctx->datmat + (m + 2)*(n + 1);
+  ctx->vsig   = ctx->a + (m + 1)*n;
   ctx->veta   = ctx->vsig + n;
   ctx->sigbar = ctx->veta + n;
   ctx->dx     = ctx->sigbar + n;
@@ -340,19 +335,20 @@ cobyla_get_last_f(const cobyla_context_t* ctx)
 #ifdef _COBYLA_REVCOM
 #  define RESTORE(var)  var = ctx->var
 #  define SAVE(var)     ctx->var = var
+#  define PRINT(o,n,nf,f,r,x) print_calcfc(o,n,nf,f,r,x)
+#else
+#  define PRINT(o,n,nf,f,r,x) print_calcfc(o,n,nf,(maximize?-(f):(f)),r,x)
 #endif
 
 #ifdef _COBYLA_REVCOM
 int
 cobyla_iterate(cobyla_context_t* ctx, REAL f, REAL x[], REAL c[])
 #else
-static int
-cobylb(const INTEGER n, const INTEGER m,
-       cobyla_calcfc* calcfc, void* calcfc_data, REAL x[],
-       const REAL rhobeg, const REAL rhoend, const INTEGER iprint,
-       INTEGER* _maxfun, REAL con[], REAL sim[], REAL simi[],
-       REAL datmat[], REAL a[], REAL vsig[], REAL veta[],
-       REAL sigbar[], REAL dx[], REAL w[], INTEGER iact[])
+int
+cobyla_optimize(INTEGER n, INTEGER m,
+                LOGICAL maximize, cobyla_calcfc* calcfc, void* data,
+                REAL x[], const REAL scl[], REAL rhobeg, REAL rhoend,
+                INTEGER iprint, INTEGER maxfun, REAL work[], INTEGER iact[])
 #endif
 {
   /* Constants. */
@@ -369,12 +365,13 @@ cobylb(const INTEGER n, const INTEGER m,
   REAL parmu, parsig, prerec, prerem, rho;
   REAL barmu, cvmaxm, cvmaxp, dxsign, edgmax, error, pareta, phi, phimin,
     ratio, resmax, resnew, sum, temp, tempa, trured, vmnew, vmold;
-  INTEGER ibrnch, iflag, ifull, jdrop, nfvals, maxfun;
+  REAL *con, *sim, *simi, *datmat, *a, *vsig, *veta, *sigbar, *dx, *w;
+  REAL* xs; /* rescaled variables or variables to print */
+  INTEGER ibrnch, iflag, ifull, jdrop, nfvals;
   INTEGER i, j, k, l, mp, mpp, np, nbest;
 #ifdef _COBYLA_REVCOM
-  INTEGER n, m,  iprint;
+  INTEGER n, m,  iprint, maxfun;
   REAL rhobeg, rhoend;
-  REAL *con, *sim, *simi, *datmat, *a, *vsig, *veta, *sigbar, *dx, *w;
   INTEGER *iact;
 #else
   REAL f;
@@ -382,6 +379,7 @@ cobylb(const INTEGER n, const INTEGER m,
   int status;
 
 #ifdef _COBYLA_REVCOM
+
   /* Minimal checking and restore initial set of variables. */
   if (ctx == NULL) {
     errno = EFAULT;
@@ -416,6 +414,57 @@ cobylb(const INTEGER n, const INTEGER m,
     ctx->status = COBYLA_CORRUPTED;
     return ctx->status;
   }
+
+#else
+
+  /* Check arguments. */
+  if (n < 1) {
+    return COBYLA_BAD_NVARS;
+  }
+  if (m < 0) {
+    return COBYLA_BAD_NCONS;
+  }
+  if (rhoend <= zero || rhoend > rhobeg) {
+    return COBYLA_BAD_RHO_RANGE;
+  }
+
+  /* Decide whether scaling is needed. */
+  if (scl != NULL) {
+    LOGICAL scaling = FALSE;
+    for (i = 0; i < n; ++i) {
+      REAL s = scl[i];
+      if (s != one) {
+        if (s - s != zero || s <= zero) {
+          return COBYLA_BAD_SCALING;
+        }
+        scaling = TRUE;
+      }
+    }
+    if (! scaling) {
+      scl = NULL;
+    }
+  }
+
+  /* Partition the working space array W to provide the storage that is needed
+     for the main calculation. */
+  con    = work;
+  sim    = con + (m + 2);
+  simi   = sim + n*(n + 1);
+  datmat = simi + n*n;
+  a      = datmat + (m + 2)*(n + 1);
+  vsig   = a + (m + 1)*n;
+  veta   = vsig + n;
+  sigbar = veta + n;
+  dx     = sigbar + n;
+  w      = dx + n;
+
+  /* If scaling, divide the initial variables by the scaling factors. */
+  if (scl != NULL) {
+    for (i = 0; i < n; ++i) {
+      x[i] /= scl[i];
+    }
+  }
+
 #endif
 
   /* Set the initial values of some parameters.  The last column of SIM holds
@@ -434,7 +483,6 @@ cobylb(const INTEGER n, const INTEGER m,
     prerem = zero; /* avoids warnings */
     parsig = zero; /* avoids warnings */
 #else
-    maxfun = *_maxfun;
     nfvals = 0;
 #endif
     iflag  = 0;    /* avoids warnings */
@@ -495,8 +543,13 @@ cobylb(const INTEGER n, const INTEGER m,
   }
   /* We arrive here when caller has computed a new function value. */
  new_eval:
+  xs = x;
 #else
-  f = calcfc(n, m, x, con, calcfc_data);
+  xs = (scl == NULL ? x : scale(w, n, scl, x));
+  f = calcfc(n, m, xs, con, data);
+  if (maximize) {
+    f = -f;
+  }
 #endif
   ++nfvals;
 
@@ -518,7 +571,7 @@ cobylb(const INTEGER n, const INTEGER m,
   }
 #endif
   if (nfvals == iprint - 1 || iprint == 3) {
-    print_calcfc(stdout, n, nfvals, f, resmax, &X(1));
+    PRINT(stdout, n, nfvals, f, resmax, xs);
   }
   CON(mp) = f;
   CON(mpp) = resmax;
@@ -907,7 +960,7 @@ cobylb(const INTEGER n, const INTEGER m,
       fprintf(stdout, "\n   Reduction in RHO to%13.6E  and PARMU =%13.6E\n",
               (double)rho, (double)parmu);
       if (iprint == 2) {
-        print_calcfc(stdout, n, nfvals, DATMAT(mp,np), DATMAT(mpp,np),
+        PRINT(stdout, n, nfvals, DATMAT(mp,np), DATMAT(mpp,np),
                      &SIM(1,np));
       }
     }
@@ -919,19 +972,26 @@ cobylb(const INTEGER n, const INTEGER m,
     fprintf(stdout, "\n   Normal return from subroutine COBYLA\n");
   }
   status = COBYLA_SUCCESS;
-  if (ifull == 1) goto L_620;
- L_600:
-  LOOP(i,n) {
-    X(i) = SIM(i,np);
+  if (ifull != 1) {
+  L_600:
+    LOOP(i,n) {
+      X(i) = SIM(i,np);
+    }
+    f = DATMAT(mp,np);
+    resmax = DATMAT(mpp,np);
   }
-  f = DATMAT(mp,np);
-  resmax = DATMAT(mpp,np);
- L_620:
+#ifndef _COBYLA_REVCOM
+  /* Scale the final variables, if scaling. */
+  if (scl != NULL) {
+    scale(x, n, scl, x);
+  }
+#endif
   if (iprint >= 1) {
-    print_calcfc(stdout, n, nfvals, f, resmax, &X(1));
+    PRINT(stdout, n, nfvals, f, resmax, x);
   }
 
 #ifdef _COBYLA_REVCOM
+
   /* Save local variables and return status. */
  save:
   SAVE(nfvals);
@@ -946,11 +1006,18 @@ cobylb(const INTEGER n, const INTEGER m,
   SAVE(ifull);
   SAVE(jdrop);
   SAVE(status);
-#else
-  /* Save number of function evaluations and return status. */
-  *_maxfun = nfvals;
-#endif
   return status;
+
+#else
+
+  /* Save value of objective function, of worst constraint and of number of
+     function evaluations and return status. */
+  work[0] = (maximize ? -f : f);
+  work[1] = resmax;
+  iact[0] = nfvals;
+  return status;
+
+#endif
 }
 
 /* Undefine macros mimicking FORTRAN indexing. */
@@ -966,11 +1033,9 @@ cobylb(const INTEGER n, const INTEGER m,
 #undef VSIG
 #undef W
 #undef X
-
-#ifdef _COBYLA_REVCOM
-#  undef RESTORE
-#  undef SAVE
-#endif
+#undef RESTORE
+#undef SAVE
+#undef PRINT
 
 #ifndef _COBYLA_PART2
 #define _COBYLA_PART2 1
@@ -1688,7 +1753,7 @@ main(void)
 #elif defined(TESTING_FWRAP)
       cobyla_(&n, &m, x, &rhobeg, &rhoend, &iprint, &maxfun, w, iact);
 #else
-      cobyla(n, m, calcfc, NULL, x, rhobeg, rhoend, iprint, &maxfun, w, iact);
+      cobyla(n, m, calcfc, NULL, x, rhobeg, rhoend, iprint, maxfun, w, iact);
 #endif
       if (nprob == 10) {
         tempa = x[0] + x[2] + x[4] + x[6];
