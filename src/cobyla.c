@@ -433,11 +433,11 @@ cobylb(const INTEGER n, const INTEGER m,
     prerec = zero; /* avoids warnings */
     prerem = zero; /* avoids warnings */
     parsig = zero; /* avoids warnings */
-    iflag  = 0;    /* avoids warnings */
 #else
     maxfun = *_maxfun;
     nfvals = 0;
 #endif
+    iflag  = 0;    /* avoids warnings */
     rho = rhobeg;
     parmu = zero;
     jdrop = np;
