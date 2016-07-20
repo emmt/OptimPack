@@ -73,6 +73,9 @@
 # define ATAN(x)   atan(x)
 #endif
 
+#define TRUE    1
+#define FALSE   0
+
 /* Helper macro for simple FORTRAN-like loops. */
 #define LOOP(var,num)    for (var = 1; var <= num; ++var)
 
@@ -107,7 +110,8 @@ static void
 print_error(const char* reason);
 
 static void
-print_x(FILE* output, INTEGER n, const REAL x[], const REAL dx[]);
+print_x(FILE* output, INTEGER n, const REAL scl[],
+        const REAL x[], const REAL dx[]);
 
 
 /*---------------------------------------------------------------------------*/
@@ -209,16 +213,6 @@ objfun_test(const INTEGER n, const REAL* x, void* data)
 /*---------------------------------------------------------------------------*/
 /* NEWUOA DRIVER ROUTINES */
 
-static int
-newuob(const INTEGER n, const INTEGER npt,
-       newuoa_objfun* objfun, void* data,
-       REAL* x, const REAL rhobeg, const REAL rhoend,
-       const INTEGER iprint, const INTEGER maxfun,
-       REAL* xbase, REAL* xopt, REAL* xnew,
-       REAL* xpt, REAL* fval, REAL* gq, REAL* hq,
-       REAL* pq, REAL* bmat, REAL* zmat, const INTEGER ndim,
-       REAL* d, REAL* vlag, REAL* w);
-
 static void
 bigden(const INTEGER n, const INTEGER npt, REAL* xopt,
        REAL* xpt, REAL* bmat, REAL* zmat, const INTEGER idz,
@@ -244,50 +238,28 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
        const REAL delta, REAL* step, REAL* d, REAL* g,
        REAL* hd, REAL* hs, REAL* crvmin);
 
-int
-newuoa(const INTEGER n, const INTEGER npt,
-       newuoa_objfun* objfun, void* data,
-       REAL* x, const REAL rhobeg, const REAL rhoend,
-       const INTEGER iprint, const INTEGER maxfun,
-       REAL* w)
+static REAL*
+scale(REAL* dst, INTEGER n, const REAL* scl, const REAL* src)
 {
-  INTEGER id, np, iw, igq, ihq, ixb, ifv, ipq, ivl, ixn, ixo, ixp, ndim,
-    nptm, ibmat, izmat;
+  INTEGER i;
 
-  /* Partition the working space array, so that different parts of it can be
-     treated separately by the subroutine that performs the main
-     calculation. */
-  if (npt < n + 2 || npt > (n + 2)*(n + 1)/2) {
-    if (iprint > 0) {
-      print_error("NPT is not in the required interval");
-    }
-    return NEWUOA_BAD_NPT;
+  for (i = 0; i < n; ++i) {
+    dst[i] = scl[i]*src[i];
   }
-  ndim = npt + n;
-  np = n + 1;
-  nptm = npt - np;
-  ixb = 0; /* C-indices start at 0 */
-  ixo = ixb + n;
-  ixn = ixo + n;
-  ixp = ixn + n;
-  ifv = ixp + n*npt;
-  igq = ifv + npt;
-  ihq = igq + n;
-  ipq = ihq + n*np/2;
-  ibmat = ipq + npt;
-  izmat = ibmat + ndim*n;
-  id = izmat + npt*nptm;
-  ivl = id + n;
-  iw = ivl + ndim;
+  return dst;
+}
 
-  /* The above settings provide a partition of W for subroutine NEWUOB.  The
-     partition requires the first NPT*(NPT+N)+5*N*(N+3)/2 elements of W plus
-     the space that is needed by the last array of NEWUOB. */
-  return newuob(n, npt, objfun, data, x, rhobeg, rhoend, iprint, maxfun,
-                &w[ixb], &w[ixo], &w[ixn], &w[ixp], &w[ifv], &w[igq],
-                &w[ihq], &w[ipq], &w[ibmat], &w[izmat], ndim, &w[id],
-                &w[ivl], &w[iw]);
-} /* newuoa */
+/*---------------------------------------------------------------------------*/
+/* SIMPLE DRIVER */
+
+int
+newuoa(INTEGER n, INTEGER npt,  newuoa_objfun* objfun, void* data,
+       REAL* x, REAL rhobeg, REAL rhoend,
+       INTEGER iprint, INTEGER maxfun, REAL* work)
+{
+  return newuoa_optimize(n, npt, FALSE, objfun, data, x, NULL,
+                         rhobeg, rhoend, iprint, maxfun, work);
+}
 
 /*---------------------------------------------------------------------------*/
 /* FORTRAN SUPPORT */
@@ -413,7 +385,7 @@ newuoa_create(const INTEGER n, const INTEGER npt,
     }
     return NULL;
   }
-  if (rhobeg <= rhoend || rhoend <= 0) {
+  if (rhoend <= 0 || rhoend > rhobeg) {
     if (iprint > 0) {
       print_error("invalid RHOBEG and/or RHOEND");
     }
@@ -527,8 +499,14 @@ const char* newuoa_reason(int status)
     return "caller is requested to evaluate the objective function";
   case NEWUOA_SUCCESS:
     return "algorithm converged";
+  case NEWUOA_BAD_NVARS:
+    return "bad number of variables";
   case NEWUOA_BAD_NPT:
     return "NPT is not in the required interval";
+  case NEWUOA_BAD_RHO_RANGE:
+    return "bad trust region radius parameters";
+  case NEWUOA_BAD_SCALING:
+    return "bad scaling of variables";
   case NEWUOA_ROUNDING_ERRORS:
     return "too much cancellation in a denominator";
   case NEWUOA_TOO_MANY_EVALUATIONS:
@@ -540,12 +518,12 @@ const char* newuoa_reason(int status)
   case NEWUOA_CORRUPTED:
     return "corrupted or misused workspace";
   default:
-    return "unknown status";
+    return "unknown NEWUOA status";
   }
 }
 
-/* Include this file with the macro _NEWUOA_REVCOM defined to
-   generate the code `newuoa_iterate` in place of `newuob`. */
+/* Include this file with the macro _NEWUOA_REVCOM defined to generate the code
+   `newuoa_iterate` in place of `newuoa_optimize`. */
 #define _NEWUOA_REVCOM 1
 #include __FILE__
 #undef _NEWUOA_REVCOM
@@ -553,60 +531,58 @@ const char* newuoa_reason(int status)
 #endif /* _NEWUOA_PART1 */
 
 /*---------------------------------------------------------------------------*/
-/* NEWUOA SUBROUTINES */
+/* NEWUOA MAIN SUBROUTINES */
+
+/* The arguments N, NPT, X, RHOBEG, RHOEND, IPRINT and MAXFUN are identical to
+   the corresponding arguments in SUBROUTINE NEWUOA.
+
+   XBASE will hold a shift of origin that should reduce the contributions from
+   rounding errors to values of the model and Lagrange functions.
+
+   XOPT will be set to the displacement from XBASE of the vector of variables
+   that provides the least calculated F so far.
+
+   XNEW will be set to the displacement from XBASE of the vector of variables
+   for the current calculation of F.
+
+   XPT will contain the interpolation point coordinates relative to XBASE.
+
+   FVAL will hold the values of F at the interpolation points.
+
+   GQ will hold the gradient of the quadratic model at XBASE.
+
+   HQ will hold the explicit second derivatives of the quadratic model.
+
+   PQ will contain the parameters of the implicit second derivatives of the
+   quadratic model.
+
+   BMAT will hold the last N columns of H.
+
+   ZMAT will hold the factorization of the leading NPT by NPT submatrix of H,
+   this factorization being ZMAT times Diag(DZ) times ZMAT^T, where the
+   elements of DZ are plus or minus one, as specified by IDZ.
+
+   NDIM is the first dimension of BMAT and has the value NPT+N.
+
+   D is reserved for trial steps from XOPT.
+
+   VLAG will contain the values of the Lagrange functions at a new point X.
+   They are part of a product that requires VLAG to be of length NDIM.
+
+   The array W will be used for working space. Its length must be at least
+   10*NDIM = 10*(NPT+N). */
 
 #ifdef _NEWUOA_REVCOM
-int newuoa_iterate(newuoa_context_t* ctx, REAL f, REAL* x)
+int
+newuoa_iterate(newuoa_context_t* ctx, REAL f, REAL* x)
 #else
-static int newuob(const INTEGER n, const INTEGER npt,
-       newuoa_objfun* objfun, void* data,
-       REAL* x, const REAL rhobeg, const REAL rhoend,
-       const INTEGER iprint, const INTEGER maxfun,
-       REAL* xbase, REAL* xopt, REAL* xnew,
-       REAL* xpt, REAL* fval, REAL* gq, REAL* hq,
-       REAL* pq, REAL* bmat, REAL* zmat, const INTEGER ndim,
-       REAL* d, REAL* vlag, REAL* w)
+int
+newuoa_optimize(INTEGER n, INTEGER npt,
+                LOGICAL maximize, newuoa_objfun* objfun, void* data,
+                REAL* x, const REAL* scl, REAL rhobeg, REAL rhoend,
+                const INTEGER iprint, const INTEGER maxfun, REAL* work)
 #endif /* _NEWUOA_REVCOM */
 {
-  /* The arguments N, NPT, X, RHOBEG, RHOEND, IPRINT and MAXFUN are identical
-     to the corresponding arguments in SUBROUTINE NEWUOA.
-
-     XBASE will hold a shift of origin that should reduce the contributions
-     from rounding errors to values of the model and Lagrange functions.
-
-     XOPT will be set to the displacement from XBASE of the vector of variables
-     that provides the least calculated F so far.
-
-     XNEW will be set to the displacement from XBASE of the vector of variables
-     for the current calculation of F.
-
-     XPT will contain the interpolation point coordinates relative to XBASE.
-
-     FVAL will hold the values of F at the interpolation points.
-
-     GQ will hold the gradient of the quadratic model at XBASE.
-
-     HQ will hold the explicit second derivatives of the quadratic model.
-
-     PQ will contain the parameters of the implicit second derivatives of the
-     quadratic model.
-
-     BMAT will hold the last N columns of H.
-
-     ZMAT will hold the factorization of the leading NPT by NPT submatrix of H,
-     this factorization being ZMAT times Diag(DZ) times ZMAT^T, where the
-     elements of DZ are plus or minus one, as specified by IDZ.
-
-     NDIM is the first dimension of BMAT and has the value NPT+N.
-
-     D is reserved for trial steps from XOPT.
-
-     VLAG will contain the values of the Lagrange functions at a new point X.
-     They are part of a product that requires VLAG to be of length NDIM.
-
-     The array W will be used for working space. Its length must be at least
-     10*NDIM = 10*(NPT+N). */
-
   /* Constants. */
   const REAL one = 1.0;
   const REAL zero = 0.0;
@@ -619,19 +595,17 @@ static int newuob(const INTEGER n, const INTEGER npt,
     xipt, xjpt, xoptsq;
 #ifdef _NEWUOA_REVCOM
   REAL rhobeg, rhoend;
+  INTEGER n, npt, iprint, maxfun;
 #else
+  REAL *xbase, *xopt, *xnew, *xpt, *fval, *gq, *hq, *pq, *bmat, *zmat,
+    *d, *vlag, *w, *xtmp;
   REAL f;
 #endif
   const char* reason;
-#ifdef _NEWUOA_REVCOM
-  REAL *xbase, *xopt, *xnew, *xpt, *fval, *gq, *hq, *pq, *bmat, *zmat,
-    *d, *vlag, *w;
-#endif
+  REAL *_x, *_xbase, *_xopt, *_xnew, *_xpt, *_fval, *_gq, *_hq, *_pq, *_bmat,
+    *_zmat, *_d, *_vlag, *_w, *xs;
   INTEGER idz, ih, ipt, itest, jpt, knew, kopt,
-    ksave, nf, nfm, nfmm, nfsav, nh, np, nptm;
-#ifdef _NEWUOA_REVCOM
-  INTEGER n, npt, ndim, iprint, maxfun;
-#endif
+    ksave, nf, nfm, nfmm, nfsav, ndim, nh, np, nptm;
   int status;
 
   /* Temporary variables (these variables do not have to be saved in the
@@ -640,7 +614,8 @@ static int newuob(const INTEGER n, const INTEGER npt,
   INTEGER i, j, k, ktemp;
 
 #ifdef _NEWUOA_REVCOM
-  /* Minimal checking (FIXME: print?). */
+
+  /* Check arguments. */
   if (ctx == NULL) {
     return NEWUOA_BAD_ADDRESS;
   }
@@ -696,8 +671,65 @@ static int newuob(const INTEGER n, const INTEGER npt,
   RESTORE(nfmm);
   RESTORE(nfsav);
   RESTORE(status);
-  ndim = npt + n;
+
 #else
+
+  /* Check arguments. */
+  if (n < 2) {
+    if (iprint > 0) {
+      print_error("N must be at least 2");
+    }
+    return NEWUOA_BAD_NVARS;
+  }
+  if (npt < n + 2 || npt > (n + 2)*(n + 1)/2) {
+    if (iprint > 0) {
+      print_error("NPT is not in the required interval");
+    }
+    return NEWUOA_BAD_NPT;
+  }
+  if (rhoend <= zero || rhoend > rhobeg) {
+    return NEWUOA_BAD_RHO_RANGE;
+  }
+
+#endif
+
+  /* Initialization. */
+  ndim = npt + n;
+  np = n + 1;
+  nh = n*np/2;
+  nptm = npt - np;
+  reason = NULL;
+
+#ifndef _NEWUOA_REVCOM
+
+  /* Decide whether scaling is needed. */
+  if (scl != NULL) {
+    LOGICAL scaling = FALSE;
+    for (i = 0; i < n; ++i) {
+      REAL s = scl[i];
+      if (s != one) {
+        if (s - s != zero || s <= zero) {
+          return NEWUOA_BAD_SCALING;
+        }
+        scaling = TRUE;
+      }
+    }
+    if (! scaling) {
+      scl = NULL;
+    }
+  }
+
+  /* If scaling, divide the initial variables by the scaling factors and locate
+     the storage for the variables prior to call the objective function. */
+  if (scl != NULL) {
+    for (i = 0; i < n; ++i) {
+      x[i] /= scl[i];
+    }
+    xtmp = work + ((npt + 13)*(npt + n) + 3*n*(n + 3)/2);
+  } else {
+    xtmp = NULL;
+  }
+
   /* Set uninitialized variables. */
   idz = 0;
   ipt = 0;
@@ -719,49 +751,61 @@ static int newuob(const INTEGER n, const INTEGER npt,
   ratio = zero;
   rho = zero;
   xoptsq = zero;
-#endif
 
-  /* Initialization. */
-  np = n + 1;
-  nh = n*np/2;
-  nptm = npt - np;
-  reason = NULL;
+  /* Partition the working space array, so that different parts of it can be
+     treated separately by the subroutine that performs the main
+     calculation. */
+  xbase = work;
+  xopt = xbase + n;
+  xnew = xopt + n;
+  xpt = xnew + n;
+  fval = xpt + n*npt;
+  gq = fval + npt;
+  hq = gq + n;
+  pq = hq + n*np/2;
+  bmat = pq + npt;
+  zmat = bmat + ndim*n;
+  d = zmat + npt*nptm;
+  vlag = d + n;
+  w = vlag + ndim;
+
+#endif
 
   /* Parameter adjustments and macros to comply with FORTRAN indexing. */
 #ifdef _NEWUOA_REVCOM
-  x     -= 1;
-  xbase  = ctx->xbase -  1;
-  xopt   = ctx->xopt  -  1;
-  xnew   = ctx->xnew  -  1;
-  xpt    = ctx->xpt   - (1 + npt);
-  fval   = ctx->fval  -  1;
-  gq     = ctx->gq    -  1;
-  hq     = ctx->hq    -  1;
-  pq     = ctx->pq    -  1;
-  bmat   = ctx->bmat  - (1 + ndim);
-  zmat   = ctx->zmat  - (1 + npt);
-  d      = ctx->d     -  1;
-  vlag   = ctx->vlag  -  1;
-  w      = ctx->w     -  1;
+#  define BASE(arr,off)  ctx->arr - (off)
 #else
-  x     -= 1;
-  xbase -= 1;
-  xopt  -= 1;
-  xnew  -= 1;
-  xpt   -= 1 + npt;
-  fval  -= 1;
-  gq    -= 1;
-  hq    -= 1;
-  pq    -= 1;
-  bmat  -= 1 + ndim;
-  zmat  -= 1 + npt;
-  d     -= 1;
-  vlag  -= 1;
-  w     -= 1;
+#  define BASE(arr,off)       arr - (off)
 #endif
-#define XPT(a1,a2) xpt[(a2)*npt + a1]
-#define BMAT(a1,a2) bmat[(a2)*ndim + a1]
-#define ZMAT(a1,a2) zmat[(a2)*npt + a1]
+  _x      = x - 1;
+  _xbase  = BASE(xbase, 1);
+  _xopt   = BASE(xopt,  1);
+  _xnew   = BASE(xnew,  1);
+  _xpt    = BASE(xpt,   1 + npt);
+  _fval   = BASE(fval,  1);
+  _gq     = BASE(gq,    1);
+  _hq     = BASE(hq,    1);
+  _pq     = BASE(pq,    1);
+  _bmat   = BASE(bmat,  1 + ndim);
+  _zmat   = BASE(zmat,  1 + npt);
+  _d      = BASE(d,     1);
+  _vlag   = BASE(vlag,  1);
+  _w      = BASE(w,     1);
+#undef BASE
+#define X(a1)       _x[a1]
+#define XBASE(a1)   _xbase[a1]
+#define XOPT(a1)    _xopt[a1]
+#define XNEW(a1)    _xnew[a1]
+#define XPT(a1,a2)  _xpt[(a2)*npt + a1]
+#define FVAL(a1)    _fval[a1]
+#define GQ(a1)      _gq[a1]
+#define HQ(a1)      _hq[a1]
+#define PQ(a1)      _pq[a1]
+#define BMAT(a1,a2) _bmat[(a2)*ndim + a1]
+#define ZMAT(a1,a2) _zmat[(a2)*npt + a1]
+#define D(a1)       _d[a1]
+#define VLAG(a1)    _vlag[a1]
+#define W(a1)       _w[a1]
 
 #ifdef _NEWUOA_REVCOM
   /* Increment the number of function evaluation and, if this is not the first
@@ -780,7 +824,7 @@ static int newuob(const INTEGER n, const INTEGER npt,
 
   /* Set the initial elements of XPT, BMAT, HQ, PQ and ZMAT to zero. */
   LOOP(j,n) {
-    xbase[j] = x[j];
+    XBASE(j) = X(j);
     LOOP(k,npt) {
       XPT(k,j) = zero;
     }
@@ -789,10 +833,10 @@ static int newuob(const INTEGER n, const INTEGER npt,
     }
   }
   LOOP(ih,nh) {
-    hq[ih] = zero;
+    HQ(ih) = zero;
   }
   LOOP(k,npt) {
-    pq[k] = zero;
+    PQ(k) = zero;
     LOOP(j,nptm) {
       ZMAT(k,j) = zero;
     }
@@ -825,11 +869,11 @@ static int newuob(const INTEGER n, const INTEGER npt,
       ipt = itemp;
     }
     xipt = rhobeg;
-    if (fval[ipt + np] < fval[ipt + 1]) {
+    if (FVAL(ipt + np) < FVAL(ipt + 1)) {
       xipt = -xipt;
     }
     xjpt = rhobeg;
-    if (fval[jpt + np] < fval[jpt + 1]) {
+    if (FVAL(jpt + np) < FVAL(jpt + 1)) {
       xjpt = -xjpt;
     }
     XPT(nf,ipt) = xipt;
@@ -840,11 +884,11 @@ static int newuob(const INTEGER n, const INTEGER npt,
      this calculation. The least function value so far and its index are
      required. */
   LOOP(j,n) {
-    x[j] = XPT(nf,j) + xbase[j];
+    X(j) = XPT(nf,j) + XBASE(j);
   }
   goto L310;
  L70:
-  fval[nf] = f;
+  FVAL(nf) = f;
   if (nf == 1) {
     fbeg = f;
     fopt = f;
@@ -858,7 +902,7 @@ static int newuob(const INTEGER n, const INTEGER npt,
      cases when NF is at most 2*N+1. */
   if (nfm <= 2*n) {
     if (nfm >= 1 && nfm <= n) {
-      gq[nfm] = (f - fbeg)/rhobeg;
+      GQ(nfm) = (f - fbeg)/rhobeg;
       if (npt < nf + n) {
         BMAT(1,nfm) = -one/rhobeg;
         BMAT(nf,nfm) = one/rhobeg;
@@ -872,8 +916,8 @@ static int newuob(const INTEGER n, const INTEGER npt,
       ZMAT(nf,nfmm) = reciq;
       ih = nfmm*(nfmm + 1)/2;
       temp = (fbeg - f)/rhobeg;
-      hq[ih] = (gq[nfmm] - temp)/rhobeg;
-      gq[nfmm] = half*(gq[nfmm] + temp);
+      HQ(ih) = (GQ(nfmm) - temp)/rhobeg;
+      GQ(nfmm) = half*(GQ(nfmm) + temp);
     }
   } else {
     /* Set the off-diagonal second derivatives of the Lagrange functions and
@@ -889,7 +933,7 @@ static int newuob(const INTEGER n, const INTEGER npt,
     ZMAT(nf,nfmm) = recip;
     ZMAT(ipt + 1, nfmm) = -recip;
     ZMAT(jpt + 1, nfmm) = -recip;
-    hq[ih] = (fbeg - fval[ipt + 1] - fval[jpt + 1] + f)/(xipt*xjpt);
+    HQ(ih) = (fbeg - FVAL(ipt + 1) - FVAL(jpt + 1) + f)/(xipt*xjpt);
   }
   if (nf < npt) {
     goto L50;
@@ -904,8 +948,8 @@ static int newuob(const INTEGER n, const INTEGER npt,
   itest = 0;
   xoptsq = zero;
   LOOP(i,n) {
-    xopt[i] = XPT(kopt,i);
-    xoptsq += xopt[i]*xopt[i];
+    XOPT(i) = XPT(kopt,i);
+    xoptsq += XOPT(i)*XOPT(i);
   }
  L90:
   nfsav = nf;
@@ -914,12 +958,12 @@ static int newuob(const INTEGER n, const INTEGER npt,
      the purpose of the next F will be to improve the model. */
  L100:
   knew = 0;
-  trsapp(n, npt, &xopt[1], &XPT(1,1), &gq[1], &hq[1], &pq[1],
-         delta, &d[1], &w[1], &w[np], &w[np + n],
-         &w[np + 2*n], &crvmin);
+  trsapp(n, npt, &XOPT(1), &XPT(1,1), &GQ(1), &HQ(1), &PQ(1),
+         delta, &D(1), &W(1), &W(np), &W(np + n),
+         &W(np + 2*n), &crvmin);
   dsq = zero;
   LOOP(i,n) {
-    dsq += d[i]*d[i];
+    dsq += D(i)*D(i);
   }
   dnorm = SQRT(dsq);
   dnorm = MIN(dnorm,delta);
@@ -951,19 +995,19 @@ static int newuob(const INTEGER n, const INTEGER npt,
     LOOP(k,npt) {
       sum = zero;
       LOOP(i,n) {
-        sum += XPT(k,i)*xopt[i];
+        sum += XPT(k,i)*XOPT(i);
       }
-      temp = pq[k]*sum;
+      temp = PQ(k)*sum;
       sum -= half*xoptsq;
-      w[npt + k] = sum;
+      W(npt + k) = sum;
       LOOP(i,n) {
-        gq[i] += temp*XPT(k,i);
-        XPT(k,i) = XPT(k,i) - half*xopt[i];
-        vlag[i] = BMAT(k,i);
-        w[i] = sum*XPT(k,i) + tempq*xopt[i];
+        GQ(i) += temp*XPT(k,i);
+        XPT(k,i) = XPT(k,i) - half*XOPT(i);
+        VLAG(i) = BMAT(k,i);
+        W(i) = sum*XPT(k,i) + tempq*XOPT(i);
         ip = npt + i;
         LOOP(j,i) {
-          BMAT(ip,j) = BMAT(ip,j) + vlag[i]*w[j] + w[i]*vlag[j];
+          BMAT(ip,j) = BMAT(ip,j) + VLAG(i)*W(j) + W(i)*VLAG(j);
         }
       }
     }
@@ -973,14 +1017,14 @@ static int newuob(const INTEGER n, const INTEGER npt,
       sumz = zero;
       LOOP(i,npt) {
         sumz += ZMAT(i,k);
-        w[i] = w[npt + i]*ZMAT(i,k);
+        W(i) = W(npt + i)*ZMAT(i,k);
       }
       LOOP(j,n) {
-        sum = tempq*sumz*xopt[j];
+        sum = tempq*sumz*XOPT(j);
         LOOP(i,npt) {
-          sum += w[i]*XPT(i,j);
+          sum += W(i)*XPT(i,j);
         }
-        vlag[j] = sum;
+        VLAG(j) = sum;
         if (k < idz) {
           sum = -sum;
         }
@@ -990,12 +1034,12 @@ static int newuob(const INTEGER n, const INTEGER npt,
       }
       LOOP(i,n) {
         ip = i + npt;
-        temp = vlag[i];
+        temp = VLAG(i);
         if (k < idz) {
           temp = -temp;
         }
         LOOP(j,i) {
-          BMAT(ip,j) = BMAT(ip,j) + temp*vlag[j];
+          BMAT(ip,j) = BMAT(ip,j) + temp*VLAG(j);
         }
       }
     }
@@ -1004,24 +1048,24 @@ static int newuob(const INTEGER n, const INTEGER npt,
        changes to the parameters of the quadratic model. */
     ih = 0;
     LOOP(j,n) {
-      w[j] = zero;
+      W(j) = zero;
       LOOP(k,npt) {
-        w[j] += pq[k]*XPT(k,j);
-        XPT(k,j) = XPT(k,j) - half*xopt[j];
+        W(j) += PQ(k)*XPT(k,j);
+        XPT(k,j) = XPT(k,j) - half*XOPT(j);
       }
       LOOP(i,j) {
         ++ih;
         if (i < j) {
-          gq[j] += hq[ih]*xopt[i];
+          GQ(j) += HQ(ih)*XOPT(i);
         }
-        gq[i] += hq[ih]*xopt[j];
-        hq[ih] = hq[ih] + w[i]*xopt[j] + xopt[i]*w[j];
+        GQ(i) += HQ(ih)*XOPT(j);
+        HQ(ih) = HQ(ih) + W(i)*XOPT(j) + XOPT(i)*W(j);
         BMAT(npt + i, j) = BMAT(npt + j, i);
       }
     }
     LOOP(j,n) {
-      xbase[j] += xopt[j];
-      xopt[j] = zero;
+      XBASE(j) += XOPT(j);
+      XOPT(j) = zero;
     }
     xoptsq = zero;
   }
@@ -1030,9 +1074,9 @@ static int newuob(const INTEGER n, const INTEGER npt,
      made later, if the choice of D by BIGLAG causes substantial cancellation
      in DENOM. */
   if (knew > 0) {
-    biglag(n, npt, &xopt[1], &XPT(1,1), &BMAT(1,1),
-           &ZMAT(1,1), &idz, ndim, knew, dstep, &d[1],
-           &alpha, &vlag[1], &vlag[npt + 1], &w[1], &w[np], &w[np + n]);
+    biglag(n, npt, &XOPT(1), &XPT(1,1), &BMAT(1,1),
+           &ZMAT(1,1), &idz, ndim, knew, dstep, &D(1),
+           &alpha, &VLAG(1), &VLAG(npt + 1), &W(1), &W(np), &W(np + n));
   }
 
   /* Calculate VLAG and BETA for the current choice of D. The first NPT
@@ -1042,18 +1086,18 @@ static int newuob(const INTEGER n, const INTEGER npt,
     REAL sumb = zero;
     REAL sum = zero;
     LOOP(j,n) {
-      suma += XPT(k,j)*d[j];
-      sumb += XPT(k,j)*xopt[j];
-      sum += BMAT(k,j)*d[j];
+      suma += XPT(k,j)*D(j);
+      sumb += XPT(k,j)*XOPT(j);
+      sum += BMAT(k,j)*D(j);
     }
-    w[k] = suma*(half*suma + sumb);
-    vlag[k] = sum;
+    W(k) = suma*(half*suma + sumb);
+    VLAG(k) = sum;
   }
   beta = zero;
   LOOP(k,nptm) {
     REAL sum = zero;
     LOOP(i,npt) {
-      sum += ZMAT(i,k)*w[i];
+      sum += ZMAT(i,k)*W(i);
     }
     if (k < idz) {
       beta += sum*sum;
@@ -1062,7 +1106,7 @@ static int newuob(const INTEGER n, const INTEGER npt,
       beta -= sum*sum;
     }
     LOOP(i,npt) {
-      vlag[i] += sum*ZMAT(i,k);
+      VLAG(i) += sum*ZMAT(i,k);
     }
   }
   bsum = zero;
@@ -1071,37 +1115,37 @@ static int newuob(const INTEGER n, const INTEGER npt,
     REAL sum = zero;
     INTEGER jp;
     LOOP(i,npt) {
-      sum += w[i]*BMAT(i,j);
+      sum += W(i)*BMAT(i,j);
     }
-    bsum += sum*d[j];
+    bsum += sum*D(j);
     jp = npt + j;
     LOOP(k,n) {
-      sum += BMAT(jp,k)*d[k];
+      sum += BMAT(jp,k)*D(k);
     }
-    vlag[jp] = sum;
-    bsum += sum*d[j];
-    dx += d[j]*xopt[j];
+    VLAG(jp) = sum;
+    bsum += sum*D(j);
+    dx += D(j)*XOPT(j);
   }
   beta = dx*dx + dsq*(xoptsq + dx + dx + half*dsq) + beta - bsum;
-  vlag[kopt] += one;
+  VLAG(kopt) += one;
 
   /* If KNEW is positive and if the cancellation in DENOM is unacceptable, then
      BIGDEN calculates an alternative model step, XNEW being used for working
      space. */
   if (knew > 0) {
-    temp = one + alpha*beta/(vlag[knew]*vlag[knew]);
+    temp = one + alpha*beta/(VLAG(knew)*VLAG(knew));
     if (ABS(temp) <= 0.8) {
-      bigden(n, npt, &xopt[1], &XPT(1,1), &BMAT(1,1),
-             &ZMAT(1,1), idz, ndim, kopt, knew, &d[1], &w[1],
-             &vlag[1], &beta, &xnew[1], &w[ndim + 1], &w[ndim*6 + 1]);
+      bigden(n, npt, &XOPT(1), &XPT(1,1), &BMAT(1,1),
+             &ZMAT(1,1), idz, ndim, kopt, knew, &D(1), &W(1),
+             &VLAG(1), &beta, &XNEW(1), &W(ndim + 1), &W(ndim*6 + 1));
     }
   }
 
   /* Calculate the next value of the objective function. */
  L290:
   LOOP(i,n) {
-    xnew[i] = xopt[i] + d[i];
-    x[i] = xbase[i] + xnew[i];
+    XNEW(i) = XOPT(i) + D(i);
+    X(i) = XBASE(i) + XNEW(i);
   }
   ++nf;
  L310:
@@ -1124,16 +1168,23 @@ static int newuob(const INTEGER n, const INTEGER npt,
   }
   /* We arrive here when caller has computed a new function value. */
  new_eval:
+  xs = x;
 #else
-  f = objfun(n, &x[1], data);
+  xs = (scl == NULL ? x : scale(xtmp, n, scl, x));
+  f = objfun(n, xs, data);
 #endif
   if (iprint == 3) {
     fprintf(OUTPUT, "\n"
             "    Function number%6ld    F =%18.10E"
             "    The corresponding X is:\n",
             (long)nf, (double)f);
-    print_x(OUTPUT, n, &x[1], NULL);
+    print_x(OUTPUT, n, NULL, xs, NULL);
   }
+#ifndef _NEWUOA_REVCOM
+  if (maximize) {
+    f = -f;
+  }
+#endif
   if (nf <= npt) {
     goto L70;
   }
@@ -1147,18 +1198,18 @@ static int newuob(const INTEGER n, const INTEGER npt,
   vquad = zero;
   ih = 0;
   LOOP(j,n) {
-    vquad += d[j]*gq[j];
+    vquad += D(j)*GQ(j);
     LOOP(i,j) {
       ++ih;
-      temp = d[i]*xnew[j] + d[j]*xopt[i];
+      temp = D(i)*XNEW(j) + D(j)*XOPT(i);
       if (i == j) {
         temp = half*temp;
       }
-      vquad += temp*hq[ih];
+      vquad += temp*HQ(ih);
     }
   }
   LOOP(k,npt) {
-    vquad += pq[k]*w[k];
+    vquad += PQ(k)*W(k);
   }
   diff = f - fopt - vquad;
   diffc = diffb;
@@ -1176,8 +1227,8 @@ static int newuob(const INTEGER n, const INTEGER npt,
     fopt = f;
     xoptsq = zero;
     LOOP(i,n) {
-      xopt[i] = xnew[i];
-      xoptsq += xopt[i]*xopt[i];
+      XOPT(i) = XNEW(i);
+      xoptsq += XOPT(i)*XOPT(i);
     }
   }
   ksave = knew;
@@ -1225,10 +1276,10 @@ static int newuob(const INTEGER n, const INTEGER npt,
       }
       hdiag += temp*(ZMAT(k,j)*ZMAT(k,j));
     }
-    temp = ABS(beta*hdiag + vlag[k]*vlag[k]);
+    temp = ABS(beta*hdiag + VLAG(k)*VLAG(k));
     distsq = zero;
     LOOP(j,n) {
-      tempa = XPT(k,j) - xopt[j];
+      tempa = XPT(k,j) - XOPT(j);
       distsq += tempa*tempa;
     }
     if (distsq > rhosq) {
@@ -1248,18 +1299,18 @@ static int newuob(const INTEGER n, const INTEGER npt,
      moved. Begin the updating of the quadratic model, starting with the
      explicit second derivative term. */
  L410:
-  update(n, npt, &BMAT(1,1), &ZMAT(1,1), &idz, ndim, &vlag[1],
-         beta, knew, &w[1]);
-  fval[knew] = f;
+  update(n, npt, &BMAT(1,1), &ZMAT(1,1), &idz, ndim, &VLAG(1),
+         beta, knew, &W(1));
+  FVAL(knew) = f;
   ih = 0;
   LOOP(i,n) {
-    temp = pq[knew]*XPT(knew,i);
+    temp = PQ(knew)*XPT(knew,i);
     LOOP(j,i) {
       ++ih;
-      hq[ih] += temp*XPT(knew,j);
+      HQ(ih) += temp*XPT(knew,j);
     }
   }
-  pq[knew] = zero;
+  PQ(knew) = zero;
 
   /* Update the other second derivative parameters, and then the gradient
      vector of the model. Also include the new interpolation point. */
@@ -1269,14 +1320,14 @@ static int newuob(const INTEGER n, const INTEGER npt,
       temp = -temp;
     }
     LOOP(k,npt) {
-      pq[k] += temp*ZMAT(k,j);
+      PQ(k) += temp*ZMAT(k,j);
     }
   }
   gqsq = zero;
   LOOP(i,n) {
-    gq[i] += diff*BMAT(knew,i);
-    gqsq += gq[i]*gq[i];
-    XPT(knew,i) = xnew[i];
+    GQ(i) += diff*BMAT(knew,i);
+    gqsq += GQ(i)*GQ(i);
+    XPT(knew,i) = XNEW(i);
   }
 
   /* If a trust region step makes a small change to the objective function,
@@ -1288,16 +1339,16 @@ static int newuob(const INTEGER n, const INTEGER npt,
     } else {
       REAL gisq;
       LOOP(k,npt) {
-        vlag[k] = fval[k] - fval[kopt];
+        VLAG(k) = FVAL(k) - FVAL(kopt);
       }
       gisq = zero;
       LOOP(i,n) {
         REAL sum = zero;
         LOOP(k,npt) {
-          sum += BMAT(k,i)*vlag[k];
+          sum += BMAT(k,i)*VLAG(k);
         }
         gisq += sum*sum;
-        w[i] = sum;
+        W(i) = sum;
       }
 
       /* Test whether to replace the new quadratic model by the least Frobenius
@@ -1308,24 +1359,24 @@ static int newuob(const INTEGER n, const INTEGER npt,
       }
       if (itest >= 3) {
         LOOP(i,n) {
-          gq[i] = w[i];
+          GQ(i) = W(i);
         }
         LOOP(ih,nh) {
-          hq[ih] = zero;
+          HQ(ih) = zero;
         }
         LOOP(j,nptm) {
-          w[j] = zero;
+          W(j) = zero;
           LOOP(k,npt) {
-            w[j] += vlag[k]*ZMAT(k,j);
+            W(j) += VLAG(k)*ZMAT(k,j);
           }
           if (j < idz) {
-            w[j] = -w[j];
+            W(j) = -W(j);
           }
         }
         LOOP(k,npt) {
-          pq[k] = zero;
+          PQ(k) = zero;
           LOOP(j,nptm) {
-            pq[k] += ZMAT(k,j)*w[j];
+            PQ(k) += ZMAT(k,j)*W(j);
           }
         }
         itest = 0;
@@ -1351,7 +1402,7 @@ static int newuob(const INTEGER n, const INTEGER npt,
   LOOP(k,npt) {
     REAL sum = zero;
     LOOP(j,n) {
-      tempa = XPT(k,j) - xopt[j];
+      tempa = XPT(k,j) - XOPT(j);
       sum += tempa*tempa;
     }
     if (sum > distsq) {
@@ -1392,13 +1443,24 @@ static int newuob(const INTEGER n, const INTEGER npt,
       if (iprint >= 3) {
         fprintf(OUTPUT, "\n");
       }
+#ifdef _NEWUOA_REVCOM
       fprintf(OUTPUT, "\n"
               "    New RHO =%11.4E "
               "    Number of function values =%6ld\n"
               "    Least value of F =%23.15E     "
               "    The corresponding X is:\n",
               (double)rho, (long)nf, (double)fopt);
-      print_x(OUTPUT, n, &xbase[1], &xopt[1]);
+      print_x(OUTPUT, n, NULL, &XBASE(1), &XOPT(1));
+#else
+      fprintf(OUTPUT, "\n"
+              "    New RHO =%11.4E "
+              "    Number of function values =%6ld\n"
+              "    %s value of F =%23.15E     "
+              "    The corresponding X is:\n",
+              (double)rho, (long)nf,  (maximize ? "Most" : "Least"),
+              (double)(maximize ? -fopt : fopt));
+      print_x(OUTPUT, n, scl, &XBASE(1), &XOPT(1));
+#endif
     }
     goto L90;
   }
@@ -1412,25 +1474,48 @@ static int newuob(const INTEGER n, const INTEGER npt,
  done:
   if (fopt <= f) {
     LOOP(i,n) {
-      x[i] = xbase[i] + xopt[i];
+      X(i) = XBASE(i) + XOPT(i);
     }
     f = fopt;
   }
+
+#ifndef _NEWUOA_REVCOM
+  /* Scale the final variables, if scaling. */
+  if (scl != NULL) {
+    for (i = 0; i < n; ++i) {
+      x[i] *= scl[i];
+    }
+  }
+  if (maximize) {
+    f = -f;
+  }
+#endif
+
   if (iprint > 0) {
     if (status == NEWUOA_SUCCESS) {
+#ifdef _NEWUOA_REVCOM
       fprintf(OUTPUT, "\n"
               "    At the return from NEWUOA "
               "    Number of function values =%6ld\n"
               "    Least value of F =%23.15E     "
               "    The corresponding X is:\n",
               (long)nf, (double)f);
-      print_x(OUTPUT, n, &x[1], NULL);
+#else
+      fprintf(OUTPUT, "\n"
+              "    At the return from NEWUOA "
+              "    Number of function values =%6ld\n"
+              "    %s value of F =%23.15E     "
+              "    The corresponding X is:\n",
+              (long)nf, (maximize ? "Most" : "Least"), (double)f);
+#endif
+      print_x(OUTPUT, n, NULL, x, NULL);
     } else if (reason != NULL) {
       print_error(reason);
     }
   }
 
 #ifdef _NEWUOA_REVCOM
+
   /* Save local variables. */
  save:
   SAVE(alpha);
@@ -1469,15 +1554,30 @@ static int newuob(const INTEGER n, const INTEGER npt,
   SAVE(nfmm);
   SAVE(nfsav);
   SAVE(status);
-#endif  /* _NEWUOA_REVCOM */
 
-  /* Return current status. */
+#else
+
+  work[0] = f;
+
+#endif
+
   return status;
 }
 
-#undef ZMAT
-#undef BMAT
+#undef X
+#undef XBASE
+#undef XOPT
+#undef XNEW
 #undef XPT
+#undef FVAL
+#undef GQ
+#undef HQ
+#undef PQ
+#undef BMAT
+#undef ZMAT
+#undef D
+#undef VLAG
+#undef W
 
 #ifndef _NEWUOA_PART2
 #define _NEWUOA_PART2 1
@@ -2578,13 +2678,27 @@ print_error(const char* reason)
 }
 
 static void
-print_x(FILE* output, INTEGER n, const REAL x[], const REAL dx[])
+print_x(FILE* output, INTEGER n, const REAL scl[],
+        const REAL x[], const REAL dx[])
 {
   INTEGER i;
   for (i = 0; i < n; ++i) {
+    REAL xi;
+    if (dx != NULL) {
+      if (scl != NULL) {
+        xi = scl[i]*(x[i] + dx[i]);
+      } else {
+        xi = x[i] + dx[i];
+      }
+    } else {
+      if (scl != NULL) {
+        xi = scl[i]*x[i];
+      } else {
+        xi = x[i];
+      }
+    }
     fprintf(output, "%s%15.6E%s",
-            ((i%5 == 0) ? "  " : ""),
-            (double)(dx == NULL ? x[i] : (x[i] + dx[i])),
+            ((i%5 == 0) ? "  " : ""), (double)xi,
             ((i == n - 1 || i%5 == 4) ? "\n" : ""));
   }
 }

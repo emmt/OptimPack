@@ -76,8 +76,82 @@ extern int newuoa(const opk_index_t n, const opk_index_t npt,
                   newuoa_objfun* objfun, void* data,
                   double* x, const double rhobeg, const double rhoend,
                   const opk_index_t iprint, const opk_index_t maxfun,
-                  double* w);
+                  double* work);
 
+/**
+ * Optimize a function of many variables without derivatives.
+ *
+ * This function seeks the least (or the most) value of a function `f(x)` of
+ * many variables `x[0]`, `x[1]`, ..., `x[n-1], by a trust region method that
+ * forms quadratic models by interpolation.  There can be some freedom in the
+ * interpolation conditions, which is taken up by minimizing the Frobenius norm
+ * of the change to the second derivative of the quadratic model, beginning
+ * with a zero matrix.
+ *
+ * Arguments `rhobeg` and `rhoend` must be set to the initial and final values
+ * of a trust region radius, so both must be positive with `0 < rhoend <=
+ * rhobeg`.  Typically `rhobeg` should be about one tenth of the greatest
+ * expected change to a variable, and `rhoend` should indicate the accuracy
+ * that is required in the final values of the variables.  The proper scaling
+ * of the variables is important for the success of the algorithm and the
+ * optional `scale` argument should be specified if the typical precision is
+ * not the same for all variables.  If specified, `scale` is an array of same
+ * dimensions as `x` with strictly nonnegative values, such that `scale[i]*rho`
+ * (with `rho` the trust region radius) is the size of the trust region for the
+ * i-th variable.  If `scale` is not specified, a unit scaling for all the
+ * variables is assumed.
+ *
+ * @param n      - The number of variables which must be at least 2.
+ *
+ * @param npt    - The number of interpolation conditions.  Its value must be
+ *                 in the interval `[n + 2, (n + 1)*(n + 2)/2]`.  The
+ *                 recommended value is `2*n + 1`.
+ *
+ * @param maximize - If true, maximize the function; otherwise, minimize it.
+ *
+ * @param objfun - The objective function.  Called as `objfun(n,x,data)`, it
+ *                 returns the value of the objective function for the
+ *                 variables `x[0]`, `x[1]`, ..., `x[n-1]`.  Argument `data` is
+ *                 anything else needed by the objective function.
+ *
+ * @param data   - Anything needed by the objective function.  This address
+ *                 is passed to the objective fucntion each time it is called.
+ *
+ * @param x      - On entry, the initial variables; on return, the solution.
+ *
+ * @param scale  - Scaling factors for the variables.  May be `NULL` to use the
+ *                 same unit scaling factors for all variables.  Otherwise,
+ *                 must all be strictly positive.
+ *
+ * @param rhobeg - The initial radius of the trust region.
+ *
+ * @param rhoend - The final radius of the trust region.
+ *
+ * @param iprint - The amount of printing, its value should be set to 0, 1, 2
+ *                 or 3.  Specifically, there is no output if `iprint = 0` and
+ *                 there is output only at the return if `iprint = 1`.
+ *                 Otherwise, each new value of `rho` is printed, with the best
+ *                 vector of variables so far and the corresponding value of
+ *                 the objective function.  Further, each new value of `f(x)`
+ *                 with its variables are output if `iprint = 3`.
+ *
+ * @param maxfun - The maximum number of calls to the objective function.
+ *
+ * @param work   - A workspace array.  If `scl` is `NULL`, its length must be
+ *                 at least `(npt + 13)*(npt + n) + 3*n*(n + 3)/2` and
+ *                 at least `(npt + 13)*(npt + n) + 3*n*(n + 3)/2 + n`
+ *                 otherwise.  On exit, `work[0]` is set with `f(x)` the
+ *                 value of the objective function at the solution.
+ *
+ * @return On success, the returned value is `NEWUOA_SUCCESS`; a different
+ *         value is returned on error (see `newuoa_reason` for an explanatory
+ *         message).
+ */
+extern int
+newuoa_optimize(opk_index_t n, opk_index_t npt,
+                opk_bool_t maximize, newuoa_objfun* objfun, void* data,
+                double x[], const double scl[], double rhobeg, double rhoend,
+                opk_index_t iprint, opk_index_t maxfun, double* work);
 
 /* Possible values returned by NEWUOA. */
 #define NEWUOA_INITIAL_ITERATE       (2) /* only used internaly */
@@ -85,16 +159,19 @@ extern int newuoa(const opk_index_t n, const opk_index_t npt,
                                             the objective function and call
                                             newuoa_iterate */
 #define NEWUOA_SUCCESS               (0) /* algorithm converged */
-#define NEWUOA_BAD_NPT              (-1) /* NPT is not in the required
+#define NEWUOA_BAD_NVARS            (-1) /* bad number of variables */
+#define NEWUOA_BAD_NPT              (-2) /* NPT is not in the required
                                             interval */
-#define NEWUOA_ROUNDING_ERRORS      (-2) /* too much cancellation in a
+#define NEWUOA_BAD_RHO_RANGE        (-3) /* invalid RHOBEG/RHOEND */
+#define NEWUOA_BAD_SCALING          (-4) /* bad scaling factor(s) */
+#define NEWUOA_ROUNDING_ERRORS      (-5) /* too much cancellation in a
                                             denominator */
-#define NEWUOA_TOO_MANY_EVALUATIONS (-3) /* maximum number of function
+#define NEWUOA_TOO_MANY_EVALUATIONS (-6) /* maximum number of function
                                             evaluations exceeded */
-#define NEWUOA_STEP_FAILED          (-4) /* trust region step has failed to
+#define NEWUOA_STEP_FAILED          (-7) /* trust region step has failed to
                                             reduce quadratic approximation */
-#define NEWUOA_BAD_ADDRESS          (-5) /* illegal NULL address */
-#define NEWUOA_CORRUPTED            (-6) /* corrupted or misused workspace */
+#define NEWUOA_BAD_ADDRESS          (-8) /* illegal NULL address */
+#define NEWUOA_CORRUPTED            (-9) /* corrupted or misused workspace */
 
 /* Get a textual explanation of the status returned by NEWUOA. */
 extern const char* newuoa_reason(int status);
