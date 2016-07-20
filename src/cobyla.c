@@ -1563,10 +1563,18 @@ cobyla_reason(int status)
     return "user requested to compute F(X) and C(X)";
   case COBYLA_SUCCESS:
     return "algorithm was successful";
+  case COBYLA_BAD_NVARS:
+    return "bad number of variables";
+  case COBYLA_BAD_NCONS:
+    return "bad number of constraints";
+  case COBYLA_BAD_RHO_RANGE:
+    return "bad trust region radius parameters";
+  case COBYLA_BAD_SCALING:
+    return "bad scaling factor(s)";
   case COBYLA_ROUNDING_ERRORS:
     return "rounding errors are becoming damaging";
   case COBYLA_TOO_MANY_EVALUATIONS:
-    return "MAXFUN limit has been reached";
+    return "too many function evaluations";
   case COBYLA_BAD_ADDRESS:
     return "illegal NULL address";
   case COBYLA_CORRUPTED:
