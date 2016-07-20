@@ -135,7 +135,7 @@ void Y_newuoa_create(int argc)
   maxfun = ygets_l(0);
   if (npt < n + 2 || npt > (n + 2)*(n + 1)/2) {
     y_error("NPT is not in the required interval");
-  } else if (rhobeg <= rhoend || rhoend <= 0.0) {
+  } else if (rhoend <= 0.0 || rhoend > rhobeg) {
     y_error("invalid RHOBEG and/or RHOEND");
   } else if (maxfun < 1) {
     y_error("invalid MAXFUN");
@@ -207,7 +207,10 @@ void Y_newuoa_init(int argc)
 #define SET_GLOBAL(x) set_global_int(#x, x)
   SET_GLOBAL(NEWUOA_ITERATE);
   SET_GLOBAL(NEWUOA_SUCCESS);
+  SET_GLOBAL(NEWUOA_BAD_NVARS);
   SET_GLOBAL(NEWUOA_BAD_NPT);
+  SET_GLOBAL(NEWUOA_BAD_RHO_RANGE);
+  SET_GLOBAL(NEWUOA_BAD_SCALING);
   SET_GLOBAL(NEWUOA_ROUNDING_ERRORS);
   SET_GLOBAL(NEWUOA_TOO_MANY_EVALUATIONS);
   SET_GLOBAL(NEWUOA_STEP_FAILED);
