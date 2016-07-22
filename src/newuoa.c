@@ -113,7 +113,6 @@ static void
 print_x(FILE* output, INTEGER n, const REAL scl[],
         const REAL x[], const REAL dx[]);
 
-
 /*---------------------------------------------------------------------------*/
 /* TESTING */
 
@@ -167,7 +166,6 @@ newuoa_test(void)
 #endif
   }
 } /* newuoa_test */
-
 
 /* The Chebyquad test problem (Fletcher, 1965) for N = 2,4,6 and 8,
    with NPT = 2N+1. */
@@ -506,7 +504,7 @@ const char* newuoa_reason(int status)
   case NEWUOA_BAD_RHO_RANGE:
     return "bad trust region radius parameters";
   case NEWUOA_BAD_SCALING:
-    return "bad scaling of variables";
+    return "bad scaling factor(s)";
   case NEWUOA_ROUNDING_ERRORS:
     return "too much cancellation in a denominator";
   case NEWUOA_TOO_MANY_EVALUATIONS:
