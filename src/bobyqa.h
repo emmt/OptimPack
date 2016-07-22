@@ -82,23 +82,47 @@ typedef double bobyqa_objfun(const opk_index_t n, const double* x, void* data);
    (NPT+5)*(NPT+N)+3*N*(N+5)/2.  Upon successful return, the first element of W
    will be set to the function value at the solution. */
 extern int bobyqa(const opk_index_t n, const opk_index_t npt,
-                  bobyqa_objfun* objfun, void* data,
-                  double* x, const double* xl, const double* xu,
+                  bobyqa_objfun* objfun, void* data, double* x,
+                  const double* xl, const double* xu,
                   const double rhobeg, const double rhoend,
-                  const opk_index_t iprint, const opk_index_t maxfun, double* w);
+                  const opk_index_t iprint, const opk_index_t maxfun,
+                  double* w);
+
+/*
+   SCL is an array of N scaling factors or `NULL`.
+
+   The array W will be used for working space.  Its length must be at least
+   (NPT+5)*(NPT+N)+3*N*(N+5)/2 if SCL is `NULL` and at least
+   (NPT+5)*(NPT+N)+3*N*(N+5)/2 + 3*N otherwise.  Upon successful return, the
+   first element of W will be set to the function value at the solution.
+ */
+extern int bobyqa_optimize(const opk_index_t n, const opk_index_t npt,
+                           opk_bool_t maximize, bobyqa_objfun* objfun,
+                           void* data, double* x, const double* xl,
+                           const double* xu, const double* scl,
+                           const double rhobeg, const double rhoend,
+                           const opk_index_t iprint, const opk_index_t maxfun,
+                           double* w);
+
 
 /* Possible values returned by BOBYQA. */
-#define BOBYQA_SUCCESS                 (0) /* algorithm converged */
-#define BOBYQA_BAD_NPT                (-1) /* NPT is not in the required
-                                              interval */
-#define BOBYQA_TOO_CLOSE              (-2) /* insufficient space between the
-                                              bounds */
-#define BOBYQA_ROUNDING_ERRORS        (-3) /* too much cancellation in a
-                                              denominator */
-#define BOBYQA_TOO_MANY_EVALUATIONS   (-4) /* maximum number of function
-                                              evaluations exceeded */
-#define BOBYQA_STEP_FAILED            (-5) /* a trust region step has failed to
-                                              reduce Q */
+#define BOBYQA_SUCCESS               (0) /* algorithm converged */
+#define BOBYQA_BAD_NVARS            (-1) /* bad number of variables */
+#define BOBYQA_BAD_NPT              (-2) /* NPT is not in the required
+                                            interval */
+#define BOBYQA_BAD_RHO_RANGE        (-3) /* bad trust region radius
+                                            parameters */
+#define BOBYQA_BAD_SCALING          (-4) /* bad scaling factor(s) */
+#define BOBYQA_TOO_CLOSE            (-5) /* insufficient space between the
+                                            bounds */
+#define BOBYQA_ROUNDING_ERRORS      (-6) /* too much cancellation in a
+                                            denominator */
+#define BOBYQA_TOO_MANY_EVALUATIONS (-7) /* maximum number of function
+                                            evaluations exceeded */
+#define BOBYQA_STEP_FAILED          (-8) /* a trust region step has failed to
+                                            reduce Q */
+
+extern const char* bobyqa_reason(int status);
 
 /* Test problem for BOBYQA, the objective function being the sum of the
    reciprocals of all pairwise distances between the points P_I,
