@@ -155,6 +155,8 @@ opk_lnsrch_task_t
 opk_lnsrch_iterate(opk_lnsrch_t* ls, double* stp_ptr,
                    double f1, double g1)
 {
+  int bound;
+
   if (ls == NULL || stp_ptr == NULL) {
     return OPK_ILLEGAL_ADDRESS;
   }
@@ -164,17 +166,24 @@ opk_lnsrch_iterate(opk_lnsrch_t* ls, double* stp_ptr,
   if (*stp_ptr != ls->stp) {
     return failure(ls, OPK_STEP_CHANGED);
   }
+  if (ls->stp <= ls->stpmin) {
+    bound = -1;
+  } else if (ls->stp >= ls->stpmax) {
+    bound = 1;
+  } else {
+    bound = 0;
+  }
   ls->task = ls->ops->iterate(ls, stp_ptr, f1, g1);
-  if (*stp_ptr > ls->stpmax) {
-    if (ls->stp >= ls->stpmax) {
-      warning(ls, OPK_STEP_EQ_STPMAX);
-    }
-    *stp_ptr = ls->stpmax;
-  } else if (*stp_ptr < ls->stpmin) {
-    if (ls->stp <= ls->stpmin) {
+  if (*stp_ptr <= ls->stpmin) {
+    if (bound < 0) {
       warning(ls, OPK_STEP_EQ_STPMIN);
     }
     *stp_ptr = ls->stpmin;
+  } else if (*stp_ptr >= ls->stpmax) {
+    if (bound > 0) {
+      warning(ls, OPK_STEP_EQ_STPMAX);
+    }
+    *stp_ptr = ls->stpmax;
   }
   ls->stp = *stp_ptr;
   return ls->task;
@@ -459,7 +468,7 @@ struct _csrch_lnsrch {
      derivative at the best step. */
   double stx, fx, gx;
 
-  /* The variables STY, FY, GY contain the value of the step, function, and
+  /* The variables STY, FY, GY contain the values of the step, function, and
      derivative at STY. */
   double sty, fy, gy;
 
