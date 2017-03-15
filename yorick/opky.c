@@ -63,11 +63,16 @@ PLUG_API void y_error(const char *) __attribute__ ((noreturn));
 
 /* Indices of keywords. */
 static long atol_index = -1L;
+static long delta_index = -1L;
 static long description_index = -1L;
 static long dims_index = -1L;
+static long epsilon_index = -1L;
 static long evaluations_index = -1L;
 static long flags_index = -1L;
+static long fmin_index = -1L;
+static long gatol_index = -1L;
 static long gnorm_index = -1L;
+static long grtol_index = -1L;
 static long iterations_index = -1L;
 static long lower_index = -1L;
 static long maxiter_index = -1L;
@@ -80,6 +85,8 @@ static long single_index = -1L;
 static long size_index = -1L;
 static long status_index = -1L;
 static long step_index = -1L;
+static long stpmin_index = -1L;
+static long stpmax_index = -1L;
 static long task_index = -1L;
 static long upper_index = -1L;
 
@@ -508,11 +515,16 @@ void Y_opk_init(int argc)
 
 #define GET_GLOBAL(a) a##_index = yget_global(#a, 0)
   GET_GLOBAL(atol);
+  GET_GLOBAL(delta);
   GET_GLOBAL(description);
   GET_GLOBAL(dims);
+  GET_GLOBAL(epsilon);
   GET_GLOBAL(evaluations);
   GET_GLOBAL(flags);
+  GET_GLOBAL(fmin);
+  GET_GLOBAL(gatol);
   GET_GLOBAL(gnorm);
+  GET_GLOBAL(grtol);
   GET_GLOBAL(iterations);
   GET_GLOBAL(lower);
   GET_GLOBAL(maxiter);
@@ -525,6 +537,8 @@ void Y_opk_init(int argc)
   GET_GLOBAL(size);
   GET_GLOBAL(status);
   GET_GLOBAL(step);
+  GET_GLOBAL(stpmin);
+  GET_GLOBAL(stpmax);
   GET_GLOBAL(task);
   GET_GLOBAL(upper);
 #undef GET_GLOBAL
@@ -588,7 +602,21 @@ void Y_opk_nlcg(int argc)
     } else {
       /* Keyword argument. */
       --iarg;
-      if (index == single_index) {
+      if (index == delta_index) {
+        options.delta = get_optional_double(iarg, options.delta);
+      } else if (index == epsilon_index) {
+        options.epsilon = get_optional_double(iarg, options.epsilon);
+      } else if (index == gatol_index) {
+        options.gatol = get_optional_double(iarg, options.gatol);
+      } else if (index == grtol_index) {
+        options.grtol = get_optional_double(iarg, options.grtol);
+      } else if (index == stpmin_index) {
+        options.stpmin = get_optional_double(iarg, options.stpmin);
+      } else if (index == stpmax_index) {
+        options.stpmax = get_optional_double(iarg, options.stpmax);
+      } else if (index == fmin_index) {
+        options.fmin = get_optional_double(iarg, options.fmin);
+      } else if (index == single_index) {
         single = yarg_true(iarg);
       } else if (index == flags_index) {
         options.flags = get_optional_uint(iarg, options.flags);
@@ -653,6 +681,18 @@ new_vmlmb(int argc, int blmvm)
         if (options.mem <= 0) {
           y_error("invalid value for MEM keyword");
         }
+      } else if (index == delta_index) {
+        options.delta = get_optional_double(iarg, options.delta);
+      } else if (index == epsilon_index) {
+        options.epsilon = get_optional_double(iarg, options.epsilon);
+      } else if (index == gatol_index) {
+        options.gatol = get_optional_double(iarg, options.gatol);
+      } else if (index == grtol_index) {
+        options.grtol = get_optional_double(iarg, options.grtol);
+      } else if (index == stpmin_index) {
+        options.stpmin = get_optional_double(iarg, options.stpmin);
+      } else if (index == stpmax_index) {
+        options.stpmax = get_optional_double(iarg, options.stpmax);
       } else if (index == single_index) {
         single = yarg_true(iarg);
       } else if (index == lower_index) {

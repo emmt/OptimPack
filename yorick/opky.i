@@ -52,6 +52,24 @@ extern opk_nlcg;
      variables.  The default is to use double precision floating point
      variables.
 
+     Keyword DELTA can be used to specify the relative size for a small step
+     (5E-2 by default).
+
+     Keyword EPSILON can be used to specify the threshold to accept a descent
+     direction (0.0 by default).
+
+     Keyword GATOL can be used to specify the absolute threshold for the norm
+     or the gradient for convergence (0.0 by default).
+
+     Keyword GRTOL can be used to specify the relative threshold for the norm
+     or the gradient (relative to the norm of the initial gradient) for
+     convergence (1E-6 by default).
+
+     Keywords STPMIN and STMAX can be used to secify the relative minimum and
+     maximum step lengths (1E-20 and 1E+20 by default).
+
+     Keyword FMIN can be used to specify the minimal function value.
+
      The dot notation can be used to query some members of the optimizer
      instance:
          opt.flags       - name of the optimization method;
@@ -114,6 +132,22 @@ extern opk_vmlmb;
      Keyword SINGLE may be set true to use single precision floating point
      variables.  The default is to use double precision floating point
      variables.
+
+     Keyword DELTA can be used to specify the relative size for a small step
+     (5E-2 by default).
+
+     Keyword EPSILON can be used to specify the threshold to accept a descent
+     direction (0.0 by default).
+
+     Keyword GATOL can be used to specify the absolute threshold for the norm
+     or the gradient for convergence (0.0 by default).
+
+     Keyword GRTOL can be used to specify the relative threshold for the norm
+     or the gradient (relative to the norm of the initial gradient) for
+     convergence (1E-6 by default).
+
+     Keywords STPMIN and STMAX can be used to secify the relative minimum and
+     maximum step lengths (1E-20 and 1E+20 by default).
 
      The dot notation can be used to query some members of the optimizer
      instance:
@@ -205,7 +239,8 @@ extern opk_get_constant;
 
 func opk_minimize(fg, x0, &fx, &gx,
                   mem=, nlcg=, blmvm=, flags=, single=, lower=, upper=,
-                  maxiter=, maxeval=, verb=, output=)
+                  maxiter=, maxeval=, gatol=, grtol=, delta=, epsilon=,
+                  stpmin=, stpmax=, fmin=, verb=, output=)
 /* DOCUMENT x = opk_minimize(fg, x0);
          or x = opk_minimize(fg, x0, fx, gx);
 
@@ -217,16 +252,15 @@ func opk_minimize(fg, x0, &fx, &gx,
         fx = fg(x, gx);
 
      X0 are the initial variables, they are left unchanged.  Optional
-     arguments, FX and GX are caller's variables used to setore the fucntion
+     arguments, FX and GX are caller's variables used to store the fucntion
      value and the corresponding gradient at the final iterate X.
 
      Keyword NLCG can be set true to use a non-linear conjugate gradient (see
      opk_nlcg).  By default, a limited memory variable metric method is used
      (see opk_vmlmb).
 
-     Keyword BLMVM can be set true to use BLMVM instead of VMLMB (see
-     opk_blmvm).  By default, a limited memory variable metric method is used
-     (see opk_vmlmb).
+     Keyword BLMVM can be set true to use BLMVM instead of VMLMB when a limited
+     memory variable metric method is used (see opk_blmvm and opk_vmlmb).
 
      By default, the limited memory variable metric method memorizes 5
      previous steps to approximate the inverse Hessian of the objective
@@ -237,6 +271,24 @@ func opk_minimize(fg, x0, &fx, &gx,
      bound value for all variables), or an array (of same dimensions as X0 to
      specify a different bound value for each variables).  If any bound is
      specified, the optimizer must be VMLM-B (or BLMVM).
+
+     Keyword DELTA can be used to specify the relative size for a small step
+     (5E-2 by default).
+
+     Keyword EPSILON can be used to specify the threshold to accept a descent
+     direction (0.0 by default).
+
+     Keyword GATOL can be used to specify the absolute threshold for the norm
+     or the gradient for convergence (0.0 by default).
+
+     Keyword GRTOL can be used to specify the relative threshold for the norm
+     or the gradient (relative to the norm of the initial gradient) for
+     convergence (1E-6 by default).
+
+     Keywords STPMIN and STMAX can be used to secify the relative minimum and
+     maximum step lengths (1E-20 and 1E+20 by default).
+
+     Keyword FMIN can be used to specify the minimal function value.
 
      Keyword SINGLE may be set true to use single precision floating point
      variables.  The default is to use double precision floating point
@@ -293,10 +345,16 @@ func opk_minimize(fg, x0, &fx, &gx,
   gx = array(type, dimsof(x));
   dims = dimsof(x);
   if (nlcg) {
-    opt = opk_nlcg(dims, flags=flags, single=single);
+    opt = opk_nlcg(dims, flags=flags, single=single, fmin=fmin,
+                   delta=delta, epsilon=epsilon,
+                   gatol=gatol, grtol=grtol,
+                   stpmin=stpmin, stpmax=stpmax);
   } else {
     opt = (blmvm ? opk_blmvm : opk_vmlmb)(dims, mem=mem, single=single,
-                                          lower=lower, upper=upper);
+                                          lower=lower, upper=upper,
+                                          delta=delta, epsilon=epsilon,
+                                          gatol=gatol, grtol=grtol,
+                                          stpmin=stpmin, stpmax=stpmax);
   }
   task = opk_start(opt, x);
   for (;;) {
