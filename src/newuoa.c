@@ -2303,9 +2303,9 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
     d[i] = xopt[i];
   }
   goto L170;
+ L20:
 
   /* Prepare for the first line search. */
- L20:
   qred = zero;
   dd = zero;
   LOOP(i,n) {
@@ -2317,15 +2317,15 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
   }
   *crvmin = zero;
   if (dd == zero) {
-    goto L160;
+    return;
   }
   ds = zero;
   ss = zero;
   gg = dd;
   ggbeg = gg;
 
-  /* Calculate the step to the trust region boundary and the product HD. */
  L40:
+  /* Calculate the step to the trust region boundary and the product HD. */
   ++iterc;
   temp = delsq - ss;
   bstep = temp/(ds + SQRT(ds*ds + dd*temp));
@@ -2340,11 +2340,7 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
   alpha = bstep;
   if (dhd > zero) {
     temp = dhd/dd;
-    if (iterc == 1) {
-      *crvmin = temp;
-    } else {
-      *crvmin = MIN(*crvmin,temp);
-    }
+    *crvmin = (iterc == 1 ? temp : MIN(*crvmin,temp));
     temp = gg/dhd;
     alpha = MIN(alpha,temp);
   }
@@ -2363,14 +2359,8 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
 
   /* Begin another conjugate direction iteration if required. */
   if (alpha < bstep) {
-    if (qadd <= qred*0.01) {
-      goto L160;
-    }
-    if (gg <= ggbeg*1e-4) {
-      goto L160;
-    }
-    if (iterc == itermax) {
-      goto L160;
+    if (qadd <= qred*0.01 || gg <= ggbeg*1e-4 || iterc == itermax) {
+      return;
     }
     temp = gg/ggsav;
     dd = zero;
@@ -2383,7 +2373,7 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
       ss += step[i]*step[i];
     }
     if (ds <= zero) {
-      goto L160;
+      return;
     }
     if (ss < delsq) {
       goto L40;
@@ -2391,97 +2381,94 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
   }
   *crvmin = zero;
   itersw = iterc;
+  do {
+    /* Test whether an alternative iteration is required. */
+    if (gg <= ggbeg*1e-4) {
+      return;
+    }
+    sg = zero;
+    shs = zero;
+    LOOP(i,n) {
+      sg += step[i]*g[i];
+      shs += step[i]*hs[i];
+    }
+    sgk = sg + shs;
+    angtest = sgk/SQRT(gg*delsq);
+    if (angtest <= -0.99) {
+      return;
+    }
 
-  /* Test whether an alternative iteration is required. */
- L90:
-  if (gg <= ggbeg*1e-4) {
-    goto L160;
-  }
-  sg = zero;
-  shs = zero;
-  LOOP(i,n) {
-    sg += step[i]*g[i];
-    shs += step[i]*hs[i];
-  }
-  sgk = sg + shs;
-  angtest = sgk/SQRT(gg*delsq);
-  if (angtest <= -0.99) {
-    goto L160;
-  }
+    /* Begin the alternative iteration by calculating D and HD and some
+       scalar products. */
+    ++iterc;
+    temp = SQRT(delsq*gg - sgk*sgk);
+    tempa = delsq/temp;
+    tempb = sgk/temp;
+    LOOP(i,n) {
+      d[i] = tempa*(g[i] + hs[i]) - tempb*step[i];
+    }
+    goto L170;
+  L120:
+    dg = zero;
+    dhd = zero;
+    dhs = zero;
+    LOOP(i,n) {
+      dg += d[i]*g[i];
+      dhd += hd[i]*d[i];
+      dhs += hd[i]*step[i];
+    }
 
-  /* Begin the alternative iteration by calculating D and HD and some
-     scalar products. */
-  ++iterc;
-  temp = SQRT(delsq*gg - sgk*sgk);
-  tempa = delsq/temp;
-  tempb = sgk/temp;
-  LOOP(i,n) {
-    d[i] = tempa*(g[i] + hs[i]) - tempb*step[i];
-  }
-  goto L170;
- L120:
-  dg = zero;
-  dhd = zero;
-  dhs = zero;
-  LOOP(i,n) {
-    dg += d[i]*g[i];
-    dhd += hd[i]*d[i];
-    dhs += hd[i]*step[i];
-  }
+    /* Seek the value of the angle that minimizes Q. */
+    cf = half*(shs - dhd);
+    qbeg = sg + cf;
+    qsav = qbeg;
+    qmin = qbeg;
+    isave = 0;
+    iu = 49;
+    temp = twopi/(REAL)(iu + 1);
+    LOOP(i,iu) {
+      angle = (REAL)i*temp;
+      cth = COS(angle);
+      sth = SIN(angle);
+      qnew = (sg + cf*cth)*cth + (dg + dhs*cth)*sth;
+      if (qnew < qmin) {
+        qmin = qnew;
+        isave = i;
+        tempa = qsav;
+      } else if (i == isave + 1) {
+        tempb = qnew;
+      }
+      qsav = qnew;
+    }
+    if (isave == 0) {
+      tempa = qnew;
+    }
+    if (isave == iu) {
+      tempb = qbeg;
+    }
+    if (tempa != tempb) {
+      tempa -= qmin;
+      tempb -= qmin;
+      angle = half*(tempa - tempb)/(tempa + tempb);
+    } else {
+      angle = zero;
+   }
+    angle = temp*((REAL)isave + angle);
 
-  /* Seek the value of the angle that minimizes Q. */
-  cf = half*(shs - dhd);
-  qbeg = sg + cf;
-  qsav = qbeg;
-  qmin = qbeg;
-  isave = 0;
-  iu = 49;
-  temp = twopi/(REAL)(iu + 1);
-  LOOP(i,iu) {
-    angle = (REAL)i*temp;
+    /* Calculate the new STEP and HS. Then test for convergence. */
     cth = COS(angle);
     sth = SIN(angle);
-    qnew = (sg + cf*cth)*cth + (dg + dhs*cth)*sth;
-    if (qnew < qmin) {
-      qmin = qnew;
-      isave = i;
-      tempa = qsav;
-    } else if (i == isave + 1) {
-      tempb = qnew;
+    reduc = qbeg - (sg + cf*cth)*cth - (dg + dhs*cth)*sth;
+    gg = zero;
+    LOOP(i,n) {
+      step[i] = cth*step[i] + sth*d[i];
+      hs[i] = cth*hs[i] + sth*hd[i];
+      temp = g[i] + hs[i];
+      gg += temp*temp;
     }
-    qsav = qnew;
-  }
-  if ((REAL)isave == zero) {
-    tempa = qnew;
-  }
-  if (isave == iu) {
-    tempb = qbeg;
-  }
-  angle = zero;
-  if (tempa != tempb) {
-    tempa -= qmin;
-    tempb -= qmin;
-    angle = half*(tempa - tempb)/(tempa + tempb);
-  }
-  angle = temp*((REAL)isave + angle);
-
-  /* Calculate the new STEP and HS. Then test for convergence. */
-  cth = COS(angle);
-  sth = SIN(angle);
-  reduc = qbeg - (sg + cf*cth)*cth - (dg + dhs*cth)*sth;
-  gg = zero;
-  LOOP(i,n) {
-    step[i] = cth*step[i] + sth*d[i];
-    hs[i] = cth*hs[i] + sth*hd[i];
-    temp = g[i] + hs[i];
-    gg += temp*temp;
-  }
-  qred += reduc;
-  ratio = reduc/qred;
-  if (iterc < itermax && ratio > 0.01) {
-    goto L90;
-  }
- L160:
+    qred += reduc;
+    ratio = reduc/qred;
+  } while (iterc < itermax && ratio > 0.01);
   return;
 
   /* The following instructions act as a subroutine for setting the vector
@@ -2614,10 +2601,7 @@ update(const INTEGER n, const INTEGER npt, REAL* bmat,
   } else {
 
     /* Complete the updating of ZMAT in the alternative case. */
-    ja = 1;
-    if (beta >= zero) {
-      ja = jl;
-    }
+    ja = (beta >= zero ? jl : 1);
     jb = jl + 1 - ja;
     temp = ZMAT(knew, jb)/denom;
     tempa = temp*beta;
