@@ -3,10 +3,17 @@
 This describe the most important (user visible) changes in **OptimPack**.
 
 
+## Version 3.0.1 (20/04/2017)
+
+This version has been released to work with the new Julia interface of
+OptimPack.  Few things have changed:
+- Build separate libraries.
+- Code cleanup in NEWUOA.
+
+
 ## Version 3.0.0
 
-This is version 3.0.0 of OptimPack library released on the XXX of
-December 2015.
+This is version 3.0.0 of OptimPack library released on the 15th of March 2017.
 
 Download: [optimpack-3.0.0.tar.gz](https://github.com/emmt/OptimPack/releases/download/v3.0.0b/optimpack-3.0.0.tar.gz)
 
