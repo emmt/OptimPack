@@ -1580,6 +1580,43 @@ newuoa_optimize(INTEGER n, INTEGER npt,
 #ifndef _NEWUOA_PART2
 #define _NEWUOA_PART2 1
 
+/*
+ * N is the number of variables.
+ *
+ * NPT is the number of interpolation equations.
+ *
+ * XOPT is the best interpolation point so far.
+ *
+ * XPT contains the coordinates of the current interpolation points.
+ *
+ * BMAT provides the last N columns of H.
+ *
+ * ZMAT and IDZ give a factorization of the first NPT by NPT submatrix of H.
+ *
+ * NDIM is the first dimension of BMAT and has the value NPT+N.
+ *
+ * KOPT is the index of the optimal interpolation point.
+ *
+ * KNEW is the index of the interpolation point that is going to be moved.
+ *
+ * D will be set to the step from XOPT to the new point, and on entry it should
+ * be the D that was calculated by the last call of BIGLAG. The length of the
+ * initial D provides a trust region bound on the final D.
+ *
+ * W will be set to Wcheck for the final choice of D.
+ *
+ * VLAG will be set to Theta*Wcheck+e_b for the final choice of D.
+ *
+ * BETA will be set to the value that will occur in the updating formula when
+ * the KNEW-th interpolation point is moved to its new position.
+ *
+ * S, WVEC, PROD and the private arrays DEN, DENEX and PAR will be used for
+ * working space.
+ *
+ * D is calculated in a way that should provide a denominator with a large
+ * modulus in the updating formula when the KNEW-th interpolation point is
+ * shifted to the new position XOPT+D.
+ */
 static void
 bigden(const INTEGER n, const INTEGER npt, REAL* xopt,
        REAL* xpt, REAL* bmat, REAL* zmat, const INTEGER idz,
@@ -1587,42 +1624,6 @@ bigden(const INTEGER n, const INTEGER npt, REAL* xopt,
        REAL* w, REAL* vlag, REAL* beta, REAL* s,
        REAL* wvec, REAL* prod)
 {
-  /* N is the number of variables.
-
-     NPT is the number of interpolation equations.
-
-     XOPT is the best interpolation point so far.
-
-     XPT contains the coordinates of the current interpolation points.
-
-     BMAT provides the last N columns of H.
-
-     ZMAT and IDZ give a factorization of the first NPT by NPT submatrix of H.
-
-     NDIM is the first dimension of BMAT and has the value NPT+N.
-
-     KOPT is the index of the optimal interpolation point.
-
-     KNEW is the index of the interpolation point that is going to be moved.
-
-     D will be set to the step from XOPT to the new point, and on entry it
-     should be the D that was calculated by the last call of BIGLAG. The length
-     of the initial D provides a trust region bound on the final D.
-
-     W will be set to Wcheck for the final choice of D.
-
-     VLAG will be set to Theta*Wcheck+e_b for the final choice of D.
-
-     BETA will be set to the value that will occur in the updating formula when
-     the KNEW-th interpolation point is moved to its new position.
-
-     S, WVEC, PROD and the private arrays DEN, DENEX and PAR will be used for
-     working space.
-
-     D is calculated in a way that should provide a denominator with a large
-     modulus in the updating formula when the KNEW-th interpolation point is
-     shifted to the new position XOPT+D. */
-
   /* Constants. */
   const REAL zero = 0.0;
   const REAL one = 1.0;
@@ -1988,6 +1989,35 @@ bigden(const INTEGER n, const INTEGER npt, REAL* xopt,
 #undef BMAT
 #undef XPT
 
+/*
+ * N is the number of variables.
+ *
+ * NPT is the number of interpolation equations.
+ *
+ * XOPT is the best interpolation point so far.
+ *
+ * XPT contains the coordinates of the current interpolation points.
+ *
+ * BMAT provides the last N columns of H.
+ *
+ * ZMAT and IDZ give a factorization of the first NPT by NPT submatrix of H.
+ *
+ * NDIM is the first dimension of BMAT and has the value NPT+N.
+ *
+ * KNEW is the index of the interpolation point that is going to be moved.
+ *
+ * DELTA is the current trust region bound.
+ *
+ * D will be set to the step from XOPT to the new point.
+ *
+ * ALPHA will be set to the KNEW-th diagonal element of the H matrix.
+ *
+ * HCOL, GC, GD, S and W will be used for working space.
+ *
+ * The step D is calculated in a way that attempts to maximize the modulus of
+ * LFUNC(XOPT+D), subject to the bound ||D|| .LE. DELTA, where LFUNC is the
+ * KNEW-th Lagrange function.
+ */
 static void
 biglag(const INTEGER n, const INTEGER npt, REAL* xopt,
        REAL* xpt, REAL* bmat, REAL* zmat, INTEGER* idz,
@@ -1995,34 +2025,6 @@ biglag(const INTEGER n, const INTEGER npt, REAL* xopt,
        REAL* alpha, REAL* hcol, REAL* gc, REAL* gd,
        REAL* s, REAL* w)
 {
-  /* N is the number of variables.
-
-     NPT is the number of interpolation equations.
-
-     XOPT is the best interpolation point so far.
-
-     XPT contains the coordinates of the current interpolation points.
-
-     BMAT provides the last N columns of H.
-
-     ZMAT and IDZ give a factorization of the first NPT by NPT submatrix of H.
-
-     NDIM is the first dimension of BMAT and has the value NPT+N.
-
-     KNEW is the index of the interpolation point that is going to be moved.
-
-     DELTA is the current trust region bound.
-
-     D will be set to the step from XOPT to the new point.
-
-     ALPHA will be set to the KNEW-th diagonal element of the H matrix.
-
-     HCOL, GC, GD, S and W will be used for working space.
-
-     The step D is calculated in a way that attempts to maximize the modulus
-     of LFUNC(XOPT+D), subject to the bound ||D|| .LE. DELTA, where LFUNC is
-     the KNEW-th Lagrange function. */
-
   /* Constants. */
   const REAL half = 0.5;
   const REAL one = 1.0;
@@ -2276,41 +2278,44 @@ sethd(const INTEGER n, const INTEGER npt, const REAL* xpt,
 #undef XPT
 }
 
+/*
+ * N is the number of variables of a quadratic objective function, Q say.  The
+ * arguments NPT, XOPT, XPT, GQ, HQ and PQ have their usual meanings, in order
+ * to define the current quadratic model Q.
+ *
+ * DELTA is the trust region radius, and has to be positive.
+ *
+ * STEP will be set to the calculated trial step.  The arrays D, G, HD and HS
+ * will be used for working space.
+ *
+ * CRVMIN will be set to the least curvature of H along the conjugate
+ * directions that occur, except that it is set to zero if STEP goes all the
+ * way to the trust region boundary.
+ *
+ * The calculation of STEP begins with the truncated conjugate gradient
+ * method. If the boundary of the trust region is reached, then further changes
+ * to STEP may be made, each one being in the 2D space spanned by the current
+ * STEP and the corresponding gradient of Q. Thus STEP should provide a
+ * substantial reduction to Q within the trust region.
+ */
 static void
 trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
        REAL* xpt, REAL* gq, REAL* hq, REAL* pq,
        const REAL delta, REAL* step, REAL* d, REAL* g,
        REAL* hd, REAL* hs, REAL* crvmin)
 {
-  /* N is the number of variables of a quadratic objective function, Q say.
-     The arguments NPT, XOPT, XPT, GQ, HQ and PQ have their usual meanings, in
-     order to define the current quadratic model Q.
-
-     DELTA is the trust region radius, and has to be positive.
-
-     STEP will be set to the calculated trial step.  The arrays D, G, HD and HS
-     will be used for working space.
-
-     CRVMIN will be set to the least curvature of H along the conjugate
-     directions that occur, except that it is set to zero if STEP goes all the
-     way to the trust region boundary.
-
-     The calculation of STEP begins with the truncated conjugate gradient
-     method. If the boundary of the trust region is reached, then further
-     changes to STEP may be made, each one being in the 2D space spanned by the
-     current STEP and the corresponding gradient of Q. Thus STEP should provide
-     a substantial reduction to Q within the trust region. */
-
-  /* Constants. */
-  const REAL half = 0.5;
-  const REAL zero = 0.0;
-  const REAL twopi = 2.0*M_PI;
-
   /* Local variables. */
-  REAL alpha, angle, angtest, bstep, cf, cth, dd, delsq, dg, dhd, dhs, ds,
+  REAL alpha, angle, angtest, bstep, cf, cth, dd, dg, dhd, dhs, ds,
     gg, ggbeg, ggsav, qadd, qbeg, qmin, qnew, qred, qsav, ratio, reduc,
     sg, sgk, shs, ss, sth, temp, tempa, tempb;
   INTEGER i, isave, iterc, itermax, iu, j;
+  int stage; /* used to avoid goto statements of the original FORTRAN code */
+
+  /* Set some constants. */
+  const REAL half = 0.5;
+  const REAL zero = 0.0;
+  const REAL twopi = 2.0*M_PI;
+  REAL delsq = delta*delta;
 
   /* Parameter adjustments to comply with FORTRAN indexing. */
   xopt -= 1;
@@ -2325,25 +2330,8 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
   hs   -= 1;
 #define XPT(a1,a2) xpt[(a2)*npt + a1]
 
-  /* FIXME: Set uninitialized variables. */
-  tempa = zero;
-  tempb = zero;
-  shs = zero;
-  sg = zero;
-  qred = zero;
-  ggbeg = zero;
-  gg = zero;
-  dd = zero;
-  bstep = zero;
-
-  /* Initialization, which includes setting HD to H times XOPT. */
-  delsq = delta*delta;
-  iterc = 0;
-  itermax = n;
+  /* Set HD to H times XOPT and prepare for the first line search. */
   sethd(n, npt, xpt, hq, pq, xopt, hd);
-
-  /* Prepare for the first line search. */
-  qred = zero;
   dd = zero;
   LOOP(i,n) {
     step[i] = zero;
@@ -2360,63 +2348,69 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
   ss = zero;
   gg = dd;
   ggbeg = gg;
-
- L40:
-  /* Calculate the step to the trust region boundary and the product HD. */
-  ++iterc;
-  temp = delsq - ss;
-  bstep = temp/(ds + SQRT(ds*ds + dd*temp));
-  sethd(n, npt, xpt, hq, pq, d, hd);
-  dhd = zero;
-  LOOP(j,n) {
-    dhd += d[j]*hd[j];
-  }
-
-  /* Update CRVMIN and set the step-length ALPHA. */
-  alpha = bstep;
-  if (dhd > zero) {
-    temp = dhd/dd;
-    *crvmin = (iterc == 1 ? temp : MIN(*crvmin,temp));
-    temp = gg/dhd;
-    alpha = MIN(alpha,temp);
-  }
-  qadd = alpha*(gg - half*alpha*dhd);
-  qred += qadd;
-
-  /* Update STEP and HS. */
-  ggsav = gg;
-  gg = zero;
-  LOOP(i,n) {
-    step[i] += alpha*d[i];
-    hs[i] += alpha*hd[i];
-    temp = g[i] + hs[i];
-    gg += temp*temp;
-  }
-
-  /* Begin another conjugate direction iteration if required. */
-  if (alpha < bstep) {
-    if (qadd <= qred*0.01 || gg <= ggbeg*1e-4 || iterc == itermax) {
-      return;
+  qred = zero;
+  iterc = 0;
+  itermax = n;
+  stage = 1;
+  while (stage == 1) {
+    /* Calculate the step to the trust region boundary and the product HD. */
+    ++iterc;
+    temp = delsq - ss;
+    bstep = temp/(ds + SQRT(ds*ds + dd*temp));
+    sethd(n, npt, xpt, hq, pq, d, hd);
+    dhd = zero;
+    LOOP(j,n) {
+      dhd += d[j]*hd[j];
     }
-    temp = gg/ggsav;
-    dd = zero;
-    ds = zero;
-    ss = zero;
+
+    /* Update CRVMIN and set the step-length ALPHA. */
+    alpha = bstep;
+    if (dhd > zero) {
+      temp = dhd/dd;
+      *crvmin = (iterc == 1 ? temp : MIN(*crvmin,temp));
+      temp = gg/dhd;
+      alpha = MIN(alpha,temp);
+    }
+    qadd = alpha*(gg - half*alpha*dhd);
+    qred += qadd;
+
+    /* Update STEP and HS. */
+    ggsav = gg;
+    gg = zero;
     LOOP(i,n) {
-      d[i] = temp*d[i] - g[i] - hs[i];
-      dd += d[i]*d[i];
-      ds += d[i]*step[i];
-      ss += step[i]*step[i];
+      step[i] += alpha*d[i];
+      hs[i] += alpha*hd[i];
+      temp = g[i] + hs[i];
+      gg += temp*temp;
     }
-    if (ds <= zero) {
-      return;
-    }
-    if (ss < delsq) {
-      goto L40;
+
+    /* Begin another conjugate direction iteration if required. */
+    if (alpha >= bstep) {
+      stage = 2;
+    } else {
+      if (qadd <= qred*0.01 || gg <= ggbeg*1e-4 || iterc == itermax) {
+        return;
+      }
+      temp = gg/ggsav;
+      dd = zero;
+      ds = zero;
+      ss = zero;
+      LOOP(i,n) {
+        d[i] = temp*d[i] - g[i] - hs[i];
+        dd += d[i]*d[i];
+        ds += d[i]*step[i];
+        ss += step[i]*step[i];
+      }
+      if (ds <= zero) {
+        return;
+      }
+      if (ss >= delsq) {
+        stage = 2;
+      }
     }
   }
   *crvmin = zero;
-  do {
+  while (stage == 2) {
     /* Test whether an alternative iteration is required. */
     if (gg <= ggbeg*1e-4) {
       return;
@@ -2502,22 +2496,26 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
     }
     qred += reduc;
     ratio = reduc/qred;
-  } while (iterc < itermax && ratio > 0.01);
+    if (ratio <= 0.01 || iterc >= itermax) {
+      stage = 3;
+    }
+  }
 } /* trsapp */
 
 #undef XPT
 
+/*
+ * The arrays BMAT and ZMAT with IDZ are updated, in order to shift the
+ * interpolation point that has index KNEW. On entry, VLAG contains the
+ * components of the vector Theta*Wcheck+e_b of the updating formula (6.11),
+ * and BETA holds the value of the parameter that has this name.  The vector W
+ * is used for working space.
+ */
 static void
 update(const INTEGER n, const INTEGER npt, REAL* bmat,
         REAL* zmat, INTEGER* idz, const INTEGER ndim, REAL* vlag,
         const REAL beta, const INTEGER knew, REAL* w)
 {
-  /* The arrays BMAT and ZMAT with IDZ are updated, in order to shift the
-     interpolation point that has index KNEW. On entry, VLAG contains the
-     components of the vector Theta*Wcheck+e_b of the updating formula (6.11),
-     and BETA holds the value of the parameter that has this name.  The vector
-     W is used for working space. */
-
   /* Constants. */
   const REAL one = 1.0;
   const REAL zero = 0.0;
