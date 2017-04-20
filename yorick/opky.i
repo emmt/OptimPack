@@ -680,7 +680,7 @@ extern cobyla_iterate;
          M.J.D. Powell, "A direct search optimization method that models the
          objective and constraint functions by linear interpolation," in
          Advances in Optimization and Numerical Analysis Mathematics and Its
-         Applications, vol.  275 (eds.  Susana Gomez and Jean-Pierre Hennart),
+         Applications, vol. 275 (eds.  Susana Gomez and Jean-Pierre Hennart),
          Kluwer Academic Publishers, pp. 51-67 (1994).
 
    SEE ALSO: cobyla_restart, cobyla_reason.
@@ -911,8 +911,8 @@ extern newuoa_iterate;
      The NEWUOA algorithm is described in:
 
          M.J.D. Powell, "The NEWUOA software for unconstrained minimization
-         without derivatives", in Large-Scale Nonlinear Optimization, editors
-         G. Di Pillo and M. Roma, Springer (2006), pages 255-297.
+         without derivatives," in Large-Scale Nonlinear Optimization, editors
+         G. Di Pillo and M. Roma, Springer, pp. 255-297 (2006).
 
    SEE ALSO: newuoa_restart, newuoa_reason.
  */
