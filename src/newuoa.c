@@ -2234,6 +2234,48 @@ biglag(const INTEGER n, const INTEGER npt, REAL* xopt,
 #undef BMAT
 #undef XPT
 
+/*
+ * This subroutine set the vector HD to the vector D multiplied by the second
+ * derivative matrix of Q.  They are called from three different places, which
+ * are distinguished by the value of ITERC.
+ */
+static void
+sethd(const INTEGER n, const INTEGER npt, const REAL* xpt,
+      const REAL* hq, const REAL* pq, const REAL* d, REAL* hd)
+{
+  const REAL ZERO = 0;
+  REAL temp;
+  INTEGER i, j, k, ih;
+
+  /* Note: no parameter adjustments needed because this subroutine is only
+     called by trsapp which already made these adjustments. */
+#define XPT(a1,a2) xpt[(a2)*npt + a1]
+  LOOP(i,n) {
+    hd[i] = ZERO;
+  }
+  LOOP(k,npt) {
+    temp = ZERO;
+    LOOP(j,n) {
+      temp += XPT(k,j)*d[j];
+    }
+    temp *= pq[k];
+    LOOP(i,n) {
+      hd[i] += temp*XPT(k,i);
+    }
+  }
+  ih = 0;
+  LOOP(j,n) {
+    LOOP(i,j) {
+      ++ih;
+      if (i < j) {
+        hd[j] += hq[ih]*d[i];
+      }
+      hd[i] += hq[ih]*d[j];
+    }
+  }
+#undef XPT
+}
+
 static void
 trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
        REAL* xpt, REAL* gq, REAL* hq, REAL* pq,
@@ -2268,7 +2310,7 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
   REAL alpha, angle, angtest, bstep, cf, cth, dd, delsq, dg, dhd, dhs, ds,
     gg, ggbeg, ggsav, qadd, qbeg, qmin, qnew, qred, qsav, ratio, reduc,
     sg, sgk, shs, ss, sth, temp, tempa, tempb;
-  INTEGER i, ih, isave, iterc, itermax, itersw, iu, j, k;
+  INTEGER i, isave, iterc, itermax, iu, j;
 
   /* Parameter adjustments to comply with FORTRAN indexing. */
   xopt -= 1;
@@ -2298,12 +2340,7 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
   delsq = delta*delta;
   iterc = 0;
   itermax = n;
-  itersw = itermax;
-  LOOP(i,n) {
-    d[i] = xopt[i];
-  }
-  goto L170;
- L20:
+  sethd(n, npt, xpt, hq, pq, xopt, hd);
 
   /* Prepare for the first line search. */
   qred = zero;
@@ -2329,8 +2366,7 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
   ++iterc;
   temp = delsq - ss;
   bstep = temp/(ds + SQRT(ds*ds + dd*temp));
-  goto L170;
- L50:
+  sethd(n, npt, xpt, hq, pq, d, hd);
   dhd = zero;
   LOOP(j,n) {
     dhd += d[j]*hd[j];
@@ -2380,7 +2416,6 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
     }
   }
   *crvmin = zero;
-  itersw = iterc;
   do {
     /* Test whether an alternative iteration is required. */
     if (gg <= ggbeg*1e-4) {
@@ -2407,8 +2442,7 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
     LOOP(i,n) {
       d[i] = tempa*(g[i] + hs[i]) - tempb*step[i];
     }
-    goto L170;
-  L120:
+    sethd(n, npt, xpt, hq, pq, d, hd);
     dg = zero;
     dhd = zero;
     dhs = zero;
@@ -2452,7 +2486,7 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
       angle = half*(tempa - tempb)/(tempa + tempb);
     } else {
       angle = zero;
-   }
+    }
     angle = temp*((REAL)isave + angle);
 
     /* Calculate the new STEP and HS. Then test for convergence. */
@@ -2469,43 +2503,6 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
     qred += reduc;
     ratio = reduc/qred;
   } while (iterc < itermax && ratio > 0.01);
-  return;
-
-  /* The following instructions act as a subroutine for setting the vector
-     HD to the vector D multiplied by the second derivative matrix of Q.
-     They are called from three different places, which are distinguished
-     by the value of ITERC. */
- L170:
-  LOOP(i,n) {
-    hd[i] = zero;
-  }
-  LOOP(k,npt) {
-    temp = zero;
-    LOOP(j,n) {
-      temp += XPT(k,j)*d[j];
-    }
-    temp *= pq[k];
-    LOOP(i,n) {
-      hd[i] += temp*XPT(k,i);
-    }
-  }
-  ih = 0;
-  LOOP(j,n) {
-    LOOP(i,j) {
-      ++ih;
-      if (i < j) {
-        hd[j] += hq[ih]*d[i];
-      }
-      hd[i] += hq[ih]*d[j];
-    }
-  }
-  if (iterc == 0) {
-    goto L20;
-  }
-  if (iterc <= itersw) {
-    goto L50;
-  }
-  goto L120;
 } /* trsapp */
 
 #undef XPT
