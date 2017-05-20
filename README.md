@@ -1,10 +1,9 @@
-# OptimPack
-# (version 3.0.1)
+[![Build Status](https://travis-ci.org/emmt/OptimPack.svg?branch=master)](https://travis-ci.org/emmt/OptimPack)
 
-![Travis build status](http://travis-ci.org/emmt/OptimPack.png)
+# OptimPack (version 3.0.1)
 
-This is **OptimPack**, a library for solving optimization problems.  The
-library is mostly targeted at vary large problems (*e.g.* as the ones
+This is **OptimPack**, a C library for solving optimization problems.  The
+library is mostly targeted at very large problems (*e.g.* as the ones
 encountered in image restoration) but also provide routines for problems of
 smaller size.
 
@@ -22,16 +21,16 @@ Most of the documentation is in the header files, *e.g.*
 
 ## Large scale problems
 
-For large scale problems involving millions of variables (or more),
+For large scale problems involving millions of variables (or even more),
 **OptimPack** provides:
 
 - several non-linear conjugate gradient (NLCG) methods (see refs. [1-3]);
 
-- limited memory variable metric (LBFGS, see ref. [4]) possibly with bound
-  constraints and/or preconditioning (VMLMB, see ref. [5], or BLMVM, see
-  ref. [6]);
+- limited memory variable metric (LBFGS, see Ref. [4]) possibly with bound
+  constraints and/or preconditioning (VMLMB, see Ref. [5], or BLMVM, see
+  Ref. [6]);
 
-- inexact monotone and nonmonotone line searches (see ref. [7,8]);
+- inexact monotone and nonmonotone line searches (see Ref. [7,8]);
 
 - linear conjugate gradients [1].
 
@@ -49,14 +48,14 @@ and more information about using Optimpack to solve large scale problems.
 
 For problems of small to moderate size, **OptimPack** provides:
 
-- Moré & Sorensen method to compute a trust region step (see ref. [13]);
+- Moré & Sorensen method to compute a trust region step (see Ref. [13]);
 
-- Mike Powell's **COBYLA** (see ref. [10]), **NEWUOA** (see ref. [11]), and
-  **BOBYQA** (see ref. [12]) algorithms for minimizing a function of many
-  variables.  These methods are *derivatives free* (only the function
-  values are needed).  **NEWUOA** is for unconstrained optimization.
-  **COBYLA** accounts for general inequality constraints.  **BOBYQA** accounts
-  for bound constraints on the variables.
+- Mike Powell's **COBYLA** (see Ref. [10]), **NEWUOA** (see Ref. [11]), and
+  **BOBYQA** (see Ref. [12]) algorithms for minimizing a function of many
+  variables.  These methods are *derivatives free* (only the function values
+  are needed).  **NEWUOA** is for unconstrained optimization.  **COBYLA**
+  accounts for general inequality constraints.  **BOBYQA** accounts for bound
+  constraints on the variables.
 
 - Brent's method for the minimization of an univariate function (see
   Ref. [14]).
@@ -64,27 +63,32 @@ For problems of small to moderate size, **OptimPack** provides:
 
 ## OptimPack bindings
 
-OptimPack library is written in C but, in order to make embedding
-OptimPack into another language as easy as possible, the routines use
-reverse communication: all local variables needed by the optimizers
-get saved into workspaces created by the library and the optimizers
-never explicitely call the penalty function to optimize.
+OptimPack library is written in C but, in order to make embedding OptimPack
+into another language as easy as possible, most routines use **reverse
+communication**: all local variables needed by the optimizers get saved into
+workspaces created by the library and the optimizers never explicitely call the
+penalty function to optimize.
 
-The following language bindings allow OptimPack to be used in other
-programming languages:
+The following language bindings allow OptimPack to be used in other programming
+languages:
 
-* Directory
-  [yorick](https://github.com/emmt/OptimPack/tree/master/yorick)
+* Directory [yorick](https://github.com/emmt/OptimPack/tree/master/yorick)
   contains an implementation of OptimPack support in Yorick
   (https://github.com/emmt/OptimPack/tree/master/yorick).
 
-* The [OptimPack.jl](https://github.com/emmt/OptimPack.jl) project
-  implements of OptimPack support for [Julia](http://julialang.org/).
+* The [OptimPack.jl](https://github.com/emmt/OptimPack.jl) project implements
+  of OptimPack support for [Julia](http://julialang.org/).
 
-* The [TiPi](https://github.com/emmt/TiPi) project provides a
-  framework for solving inverse image reconstruction problems in
-  **Java**.  The optimization package of TiPi is a Java version of the
-  OptimPack library.
+* [OptimPackNextGen.jl](https://github.com/emmt/OptimPackNextGen.jl) is a new
+  project to provide the same features as OptimPack for
+  [Julia](http://julialang.org/) but with most code written in pure Julia.  For
+  now, pure Julia version of the methods devoted to large scale problems are
+  available.  To use Powell algorithms (devoted to moderate size problems) the
+  dynamic libraries of OptimPack are still needed.
+
+* The [TiPi](https://github.com/emmt/TiPi) project provides a framework for
+  solving inverse image reconstruction problems in **Java**.  The optimization
+  package of TiPi is a Java version of the OptimPack library.
 
 
 ## References
@@ -152,7 +156,7 @@ programming languages:
 The development of OptimPack was supported by the
 [MiTiV](http://mitiv-univ-lyon1.fr) project funded by the French
 [*Agence Nationale pour la Recherche*](http://www.agence-nationale-recherche.fr)
-(ref. ANR-09-EMER-008).
+(Ref. ANR-09-EMER-008).
 
 The more simple version of OptimPack is available
 [here](https://github.com/emmt/OptimPackLegacy).
