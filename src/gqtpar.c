@@ -422,8 +422,8 @@ OPK_ESTSV(opk_index_t n, const real_t r_[], opk_index_t ldr, real_t z_[])
     if (s < sm) {
       temp = wm - w;
       w = wm;
-      if (i < n) {
-        OPK_AXPY(n-i, ZERO, &r(i,i+1), ldr, &z(i+1), 1);
+      if (i < n && temp != ZERO) {
+        OPK_AXPY(n-i, temp, &r(i,i+1), ldr, &z(i+1), 1);
       }
     }
     z(i) = w;
