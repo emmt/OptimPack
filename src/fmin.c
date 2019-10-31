@@ -15,7 +15,7 @@
  *
  * This file is part of OptimPack (https://github.com/emmt/OptimPack).
  *
- * Copyright (C) 2009-2015 Éric Thiébaut
+ * Copyright (C) 2009-2019 Éric Thiébaut
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -71,7 +71,9 @@ static double _FMIN_SQRT_EPSILON_ = -1.0;
  *   GAMMA = BETA/ALPHA = (sqrt(5) + 1)/2
  */
 static const double FMIN_ALPHA = 3.81966011250105151795413165634362E-1;
+#if 0 /* unused stuff */
 static const double FMIN_BETA  = 6.18033988749894848204586834365638E-1;
+#endif
 static const double FMIN_GAMMA = 1.61803398874989484820458683436564E+0;
 
 typedef struct _opk_fmin_context opk_fmin_context_t;

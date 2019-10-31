@@ -2004,6 +2004,7 @@ rescue(const INTEGER n, const INTEGER npt, const context_t* ctx,
   denom = zero;
   xp = zero;
   xq = zero;
+  ihp = 0;
 
   /* Set some constants. */
   np = n + 1;

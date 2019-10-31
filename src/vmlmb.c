@@ -34,7 +34,7 @@
  *
  * This file is part of OptimPack (https://github.com/emmt/OptimPack).
  *
- * Copyright (C) 2002, 2015-2016 Éric Thiébaut
+ * Copyright (C) 2002, 2015-2019 Éric Thiébaut
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -106,7 +106,9 @@ static const double GATOL = 0.0;
 /* Other default parameters. */
 static const double DELTA   = 5e-2;
 static const double EPSILON = 0.0;
+#if 0 /* unused stuff */
 static const opk_bfgs_scaling_t SCALING = OPK_SCALING_OREN_SPEDICATO;
+#endif
 
 struct _opk_vmlmb {
   opk_object_t base;       /**< Base type (must be the first member). */
