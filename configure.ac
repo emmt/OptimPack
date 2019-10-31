@@ -12,6 +12,13 @@ AM_INIT_AUTOMAKE([foreign -Wall -Werror dist-bzip2])
 AM_PROG_CC_C_O
 AM_PROG_AR
 
+# Turn on all warnings for gcc.  (Options -Wall -Werror in AM_INIT_AUTOMAKE
+# have no effects.)
+if test "$GCC" = "yes"; then
+    #CFLAGS="$CFLAGS -Wall -Werror -Wsign-compare -Wconversion"
+    CFLAGS="$CFLAGS -Wall -Werror"
+fi
+
 # Use `libtool` for compiling libraries.
 LT_INIT
 
