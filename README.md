@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/emmt/OptimPack.svg?branch=master)](https://travis-ci.org/emmt/OptimPack)
 
-# OptimPack (version 3.0.1)
+# OptimPack (version 3.1.0)
 
 This is **OptimPack**, a C library for solving optimization problems.  The
 library is mostly targeted at very large problems (*e.g.* as the ones
