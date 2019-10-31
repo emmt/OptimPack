@@ -6,15 +6,32 @@ AM_CFLAGS = -Wall
 CLEANFILES = *~
 
 # Headers to install:
-include_HEADERS = optimpack.h optimpack-linalg.h optimpack-private.h bobyqa.h cobyla.h newuoa.h
+OPTIMPACK_INCS = optimpack.h optimpack-linalg.h optimpack-private.h
+include_HEADERS = $(OPTIMPACK_INCS) bobyqa.h cobyla.h newuoa.h
 
 # Additional files to include in the distribution.
 EXTRA_DIST = simple_vector.c
 
 # Target library.
 lib_LTLIBRARIES = libopk.la libcobyla.la libbobyqa.la libnewuoa.la
-libopk_la_SOURCES = algebra.c utils.c lcg.c gqtpar.c lnsrch.c linalg.c nlcg.c fmin.c vmlmb.c fltvector.c dblvector.c driver.c $(include_HEADERS) optimpack-private.h linalg-common.h linalg-single.h linalg-double.h bobyqa.c bobyqa.h cobyla.c cobyla.h newuoa.c newuoa.h
-libopk_la_LDFLAGS = -version-info 1:0:0
+libopk_la_SOURCES = \
+    algebra.c \
+    utils.c \
+    lcg.c \
+    gqtpar.c \
+    lnsrch.c \
+    linalg.c \
+    nlcg.c \
+    fmin.c \
+    vmlmb.c \
+    fltvector.c \
+    dblvector.c \
+    driver.c \
+    $(OPTIMPACK_INCS) \
+    linalg-common.h \
+    linalg-single.h \
+    linalg-double.h
+libopk_la_LDFLAGS = -version-info 2:0:0
 libcobyla_la_SOURCES = optimpack.h cobyla.c cobyla.h
 libcobyla_la_LDFLAGS = -version-info 1:0:0
 libbobyqa_la_SOURCES = optimpack.h bobyqa.c bobyqa.h
