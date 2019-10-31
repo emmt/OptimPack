@@ -5,18 +5,18 @@
 To prepare a new public release, follow these steps:
 
 1. If the API has changed, update the interface version number in macro
-   `libopk_la_LDFLAGS` in [src/Makefile.am](../src/Makefile.am) see
-   [libtool documentation](http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html)
+   `libopk_la_LDFLAGS` in [src/Makefile.am](../src/Makefile.am) see [libtool
+   documentation](http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html)
    for explanations.  The interface version number is `c:r:a` (for *current*,
    *revision* and *age*), revisions between `c` and `c-a` are supposed to be
    supported by the library.  If the library source code has changed at all
    since the last update, then increment revision (`c:r:a` becomes `c:r+1:a`).
    If any interfaces have been added, removed, or changed since the last
-   update, increment current, and set revision to 0.  If any interfaces have
-   been added since the last public release, then increment age.  If any
-   interfaces have been removed or changed since the last public release, then
-   set age to 0.  **Never** try to set the interface numbers so that they
-   correspond to the release number of the package.
+   update, increment current and set revision to 0 (`c:r:a` becomes `c+1:0:0`).
+   If any interfaces have been added since the last public release, then
+   increment age.  If any interfaces have been removed or changed since the
+   last public release, then set age to 0.  **Never** try to set the interface
+   numbers so that they correspond to the release number of the package.
 
 2. Bump version number in [README.md](../README.md) and
    [configure.ac](../configure.ac) and commit the changes.
@@ -53,6 +53,11 @@ To prepare a new public release, follow these steps:
    git pull --all
    ```
 
+
+## Prerequisites
+
+Developers under Debian/Ubuntu need the following packages: `build-essential`,
+`gcc` or `clang`, `autoconf`, `automake`, `autotools-dev` and `libtool`.
 
 ## Initial step size/scaling
 
