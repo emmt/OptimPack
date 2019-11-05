@@ -53,6 +53,21 @@ To prepare a new public release, follow these steps:
    git pull --all
    ```
 
+To have binaries automatically build by [Yggdrasil](https://github.com/JuliaPackaging/Yggdrasil):
+
+1. Fork the Yggdrasil project on GitHub:
+
+2. Clone the fork and make a branch and edit the file `Yggdrasil/O/OptimPack/build_tarballs.jl`:
+   ```{.sh}
+   git clone git@github.com:emmt/Yggdrasil.git
+   cd Yggdrasil
+   git co -b optimpack
+   vi O/OptimPack/build_tarballs.jl
+   ```
+   In this file, at least update version number and SHA256 code for the source tarball:
+   ```{.sh}
+   sha256sum optimpack-${VERSION}.tar.gz
+   ```
 
 ## Prerequisites
 

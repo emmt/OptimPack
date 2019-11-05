@@ -8,11 +8,7 @@ This is version 3.1.0 of OptimPack library released on October 31, 2019.
 
 Download: [optimpack-3.1.0.tar.gz](https://github.com/emmt/OptimPack/releases/download/v3.1.0/optimpack-3.1.0.tar.bz2)
 
-In this version, the main OptimPack library (*e.g.*, `libopk.so`) no longer
-includes Powell's methods which are available in separate libraries as before.
-The four libraries provided by OptimPack are **independent**: they can be
-linked together in a common executable of plugin without any conflicts, their
-functions use specific prefixes.  The following table summarizes their usage.
+In this version, the main OptimPack library (*e.g.*, `libopk.so`) no longer includes Powell's methods which are available in separate libraries as before. The four libraries provided by OptimPack are **independent**: they can be linked together in a common executable of plugin without any conflicts, their functions use specific prefixes.  The following table summarizes their usage.
 
 | Headers          | Link flags     | Prefix    | Description                          |
 |:-----------------|:---------------|:----------|:-------------------------------------|
@@ -21,9 +17,10 @@ functions use specific prefixes.  The following table summarizes their usage.
 | `<cobyla.h>`     | `-lcobyla -lm` | `cobyla_` | Powell's COBYLA method               |
 | `<newuoa.h>`     | `-lnewuoa -lm` | `newuoa_` | Powell's NEWUOA method               |
 
-This version also includes minor changes to fix warnings about unused constants
-or uninitialized variables.  The code can be compiled with flags `-Wall
--Werror`.
+This version also includes minor changes to fix warnings about unused constants or uninitialized variables.  The code can be compiled with flags `-Wall -Werror`.
+
+Attached to this release are precompiled libraries built for 13 different architectures thanks to the [BinaryBuilder](https://github.com/JuliaPackaging/BinaryBuilder.jl) project.
+
 
 ## Version 3.0.1 (20/04/2017)
 
