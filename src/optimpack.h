@@ -565,7 +565,7 @@ opk_new_simple_double_vector_space(opk_index_t size);
  *
  * double* dynamic_array = (double*)malloc(N*sizeof(double));
  * opk_vector_t* v2 = opk_wrap_simple_double_vector(vspace, dynamic_array,
- *                                                  dynamic_array, free);
+ *                                                  free, dynamic_array);
  * ~~~~~~~~~~
  *
  * which creates two vectors, `v1` and `v2`, which are respectively wrapped
@@ -580,8 +580,8 @@ opk_new_simple_double_vector_space(opk_index_t size);
  * object_t* obj = ...;
  * opk_vspace_t* vspace = opk_new_simple_double_vector_space(get_number(obj));
  * opk_vector_t* v = opk_wrap_simple_double_vector(vspace, get_data(obj),
- *                                                 (void*)obj,
- *                                                 delete_object);
+ *                                                 delete_object,
+ *                                                 (void*)obj);
  * ~~~~~~~~~~
  * where `get_number()` returns the number of elements stored in the data part
  * of the object, `get_data()` returns the address of these elements, and
@@ -995,6 +995,8 @@ opk_get_error_handler(void);
  *
  * @param handler - The new error handler or NULL to restore the default
  *                  handler.
+ *
+ * @return The former error handler.
  */
 extern opk_error_handler*
 opk_set_error_handler(opk_error_handler* handler);
