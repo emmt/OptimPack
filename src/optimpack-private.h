@@ -54,7 +54,7 @@
  */
 struct _opk_object {
   void (*finalize)(opk_object_t* self);
-  long references;
+  opk_index_t references;
 };
 
 /**
