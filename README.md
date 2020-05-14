@@ -35,7 +35,7 @@ For large scale problems involving millions of variables (or even more),
 - linear conjugate gradients [1].
 
 The large scale optimizers of the **OptimPack** library can work with the
-unknowns stored in almost any form (providing a minimal set of functions to
+unknowns stored in almost any form (provided a minimal set of functions to
 manipulate them are implemented).  This feature may be used to exploit hardware
 acceleration, multi-threading or to distribute the storage and computation
 across multiple machines.
@@ -66,8 +66,8 @@ For problems of small to moderate size, **OptimPack** provides:
 OptimPack library is written in C but, in order to make embedding OptimPack
 into another language as easy as possible, most routines use **reverse
 communication**: all local variables needed by the optimizers get saved into
-workspaces created by the library and the optimizers never explicitely call the
-penalty function to optimize.
+workspaces created by the library and the optimizers never directly call the
+function to optimize.
 
 The following language bindings allow OptimPack to be used in other programming
 languages:
@@ -158,8 +158,8 @@ The development of OptimPack was supported by the
 [*Agence Nationale pour la Recherche*](http://www.agence-nationale-recherche.fr)
 (Ref. ANR-09-EMER-008).
 
-The more simple version of OptimPack is available
-[here](https://github.com/emmt/OptimPackLegacy).
+A simpler version of OptimPack is provided by
+[OptimPackLegacy](https://github.com/emmt/OptimPackLegacy) project.
 
 
 ## License

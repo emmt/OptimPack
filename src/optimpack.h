@@ -1070,7 +1070,39 @@ typedef enum {
 /** Opaque line search type.  This sub-type inherits from `opk_object_t`. */
 typedef struct _opk_lnsrch opk_lnsrch_t;
 
-/** Create a Moré and Thuente cubic line search. */
+/**
+ * Create a Moré and Thuente cubic line search.
+ *
+ * Moré & Thuente cubic line search method is designed to find a step `stp`
+ * that satisfies the sufficient decrease condition (a.k.a. first Wolfe
+ * condition):
+ *
+ *     f(stp) ≤ f(0) + ftol⋅stp⋅f'(0)
+ *
+ * and the curvature condition (a.k.a. second strong Wolfe condition):
+ *
+ *     abs(f'(stp)) ≤ gtol⋅abs(f'(0))
+ *
+ * where `f(stp)` is the value of the objective function for a step `stp` along
+ * the search direction while `f'(stp)` is the derivative of this function.
+ *
+ * The algorithm is described in:
+ *
+ * - J.J. Moré and D.J. Thuente, "Line search algorithms with guaranteed
+ *   sufficient decrease" in ACM Transactions on Mathematical Software,
+ *   vol. 20, pp. 286–307 (1994).
+ *
+ * @param ftol specifies the nonnegative tolerance for the sufficient decrease
+ *             condition.
+ *
+ * @param gtol specifies the nonnegative tolerance for the curvature condition.
+ *
+ * @param xtol specifies a nonnegative relative tolerance for an acceptable
+ *             step.  The method exits with a warning if the relative size of
+ *             the bracketting interval is less than `xtol`.
+ *
+ * @return  A line search object.
+ */
 extern opk_lnsrch_t*
 opk_lnsrch_new_csrch(double ftol, double gtol, double xtol);
 
@@ -1136,7 +1168,6 @@ typedef enum {
 
 /**
  * Start a new line search.
- *
  *
  * @param ls     - The line search object.
  * @param f0     - The function value at the start of the line search (that
@@ -1321,17 +1352,17 @@ typedef struct _opk_nlcg opk_nlcg_t;
  * ~~~~~
  */
 typedef struct _opk_nlcg_options {
-  double delta;          /**< Relative size for a small step. */
-  double epsilon;        /**< Threshold to accept descent direction. */
-  double grtol;          /**< Relative threshold for the norm or the gradient
+  double          delta; /**< Relative size for a small step. */
+  double        epsilon; /**< Threshold to accept descent direction. */
+  double          grtol; /**< Relative threshold for the norm or the gradient
                               (relative to the norm of the initial gradient)
                               for convergence. */
-  double gatol;          /**< Absolute threshold for the norm or the gradient
+  double          gatol; /**< Absolute threshold for the norm or the gradient
                               for convergence. */
-  double stpmin;         /**< Relative minimum step length. */
-  double stpmax;         /**< Relative maximum step length. */
-  double fmin;           /**< Minimal function value if provided. */
-  unsigned int flags;    /**< A bitwise combination of the non-linear conjugate
+  double         stpmin; /**< Relative minimum step length. */
+  double         stpmax; /**< Relative maximum step length. */
+  double           fmin; /**< Minimal function value if provided. */
+  unsigned int    flags; /**< A bitwise combination of the non-linear conjugate
                               gradient update method and options. */
   opk_bool_t fmin_given; /**< Minimal function value is provided? */
 } opk_nlcg_options_t;
@@ -1761,17 +1792,17 @@ typedef enum {
 
 /** Structure used to store the settings of a VMLMB optimizer. */
 typedef struct _opk_vmlmb_options {
-  double delta;           /**< Relative size for a small step. */
-  double epsilon;         /**< Threshold to accept descent direction. */
-  double grtol;           /**< Relative threshold for the norm or the projected
+  double           delta; /**< Relative size for a small step. */
+  double         epsilon; /**< Threshold to accept descent direction. */
+  double           grtol; /**< Relative threshold for the norm or the projected
                                gradient (relative to the norm of the initial
                                projected gradient) for convergence. */
-  double gatol;           /**< Absolute threshold for the norm or the projected
+  double           gatol; /**< Absolute threshold for the norm or the projected
                                gradient for convergence. */
-  double stpmin;          /**< Relative minimum step length. */
-  double stpmax;          /**< Relative maximum step length. */
-  opk_index_t mem;        /**< Maximum number of memorized steps. */
-  opk_bool_t blmvm;       /**< Emulate Benson & Moré BLMVM method? */
+  double          stpmin; /**< Relative minimum step length. */
+  double          stpmax; /**< Relative maximum step length. */
+  opk_index_t        mem; /**< Maximum number of memorized steps. */
+  opk_bool_t       blmvm; /**< Emulate Benson & Moré BLMVM method? */
   opk_bool_t save_memory; /**< Save some memory? */
 } opk_vmlmb_options_t;
 

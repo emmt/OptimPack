@@ -34,17 +34,17 @@ This driver uses reverse communication to facilitate its use from any
 programming languages: only scalar values and arrays are exchanged (no function
 pointer or things like that).
 
-Depending on the settings, optimization can be performed by an instance of
-the nonlinear conjugate gradient methods or an instance of the limited
-memory quasi-Newton (a.k.a. variable metric) methods.  Simple bound
-constraints can be taken into account (providing the variable metric method
-is selected).
+Depending on the settings, optimization can be performed by an instance of the
+nonlinear conjugate gradient methods or an instance of the limited memory
+quasi-Newton (a.k.a. variable metric) methods.  Simple bound constraints can be
+taken into account (provided the variable metric method is selected).
 
 
 ### Unconstrained minimization example
 
 The following example shows how to solve an unconstrained problem by
 a limited memory variable metric method (`OPK_ALGORITHM_VMLMB`):
+
 ~~~~~{.cpp}
 const int n = 100000;       // size of the problem
 const int type = OPK_FLOAT; // type of variables
@@ -82,6 +82,7 @@ if (task != OPK_TASK_FINAL_X) {
 }
 opk_destroy_optimizer(opt); // finalize the optimizer
 ~~~~~
+
 It is sufficient to use `OPK_ALGORITHM_NLCG` as the first argument of
 `opk_new_optimizer()` to use nonlinear conjugate gradient instead (the value of
 `mem` is ignored in this case).
@@ -103,8 +104,9 @@ conventional array (with the same number of elements as the variables) and type
 released while the bound is in use, `OPK_BOUND_VOLATILE_FLOAT` or
 `OPK_BOUND_VOLATILE_DOUBLE` otherwise.
 
-The following example shows how to solve constrained problem bounded below by
+The following example shows how to solve a constrained problem bounded below by
 zero and above by different upper bounds:
+
 ~~~~~{.cpp}
 const int n = 100000;       // size of the problem
 const int type = OPK_FLOAT; // type of variables
@@ -159,8 +161,7 @@ opk_destroy_optimizer(opt); // finalize the optimizer
 * The initial variables need not be feasible, the initial call to `opk_start()`
   will enforce the constraints if any.
 
-* If the data type of the bounds does not match that of the variable, proper
+* If the data type of the bounds does not match that of the variables, proper
   conversions are performed but you loose the advantages of having the bounds
   in *static* memory (*i.e.* some memory have to be allocated to store the
   bounds).
-
