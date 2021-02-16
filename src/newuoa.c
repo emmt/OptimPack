@@ -218,11 +218,11 @@ bigden(const INTEGER n, const INTEGER npt, REAL* xopt,
        REAL* w, REAL* vlag, REAL* beta, REAL* s,
        REAL* wvec, REAL* prod);
 
-static void
+static REAL
 biglag(const INTEGER n, const INTEGER npt, REAL* xopt,
-       REAL* xpt, REAL* bmat, REAL* zmat, INTEGER* idz,
+       REAL* xpt, REAL* bmat, REAL* zmat, INTEGER idz,
        const INTEGER ndim, const INTEGER knew, const REAL delta, REAL* d,
-       REAL* alpha, REAL* hcol, REAL* gc, REAL* gd,
+       REAL* hcol, REAL* gc, REAL* gd,
        REAL* s, REAL* w);
 
 static void
@@ -1072,9 +1072,9 @@ newuoa_optimize(INTEGER n, INTEGER npt,
      made later, if the choice of D by BIGLAG causes substantial cancellation
      in DENOM. */
   if (knew > 0) {
-    biglag(n, npt, &XOPT(1), &XPT(1,1), &BMAT(1,1),
-           &ZMAT(1,1), &idz, ndim, knew, dstep, &D(1),
-           &alpha, &VLAG(1), &VLAG(npt + 1), &W(1), &W(np), &W(np + n));
+    alpha = biglag(n, npt, &XOPT(1), &XPT(1,1), &BMAT(1,1),
+                   &ZMAT(1,1), idz, ndim, knew, dstep, &D(1),
+                   &VLAG(1), &VLAG(npt + 1), &W(1), &W(np), &W(np + n));
   }
 
   /* Calculate VLAG and BETA for the current choice of D. The first NPT
@@ -2018,11 +2018,11 @@ bigden(const INTEGER n, const INTEGER npt, REAL* xopt,
  * LFUNC(XOPT+D), subject to the bound ||D|| .LE. DELTA, where LFUNC is the
  * KNEW-th Lagrange function.
  */
-static void
+static REAL
 biglag(const INTEGER n, const INTEGER npt, REAL* xopt,
-       REAL* xpt, REAL* bmat, REAL* zmat, INTEGER* idz,
+       REAL* xpt, REAL* bmat, REAL* zmat, INTEGER idz,
        const INTEGER ndim, const INTEGER knew, const REAL delta, REAL* d,
-       REAL* alpha, REAL* hcol, REAL* gc, REAL* gd,
+       REAL* hcol, REAL* gc, REAL* gd,
        REAL* s, REAL* w)
 {
   /* Constants. */
@@ -2066,14 +2066,14 @@ biglag(const INTEGER n, const INTEGER npt, REAL* xopt,
   }
   LOOP(j,nptm) {
     temp = ZMAT(knew, j);
-    if (j < *idz) {
+    if (j < idz) {
       temp = -temp;
     }
     LOOP(k,npt) {
       hcol[k] += temp*ZMAT(k,j);
     }
   }
-  *alpha = hcol[knew];
+  REAL alpha = hcol[knew];
 
   /* Set the unscaled initial direction D. Form the gradient of LFUNC at
      XOPT, and multiply D by the second derivative matrix of LFUNC. */
@@ -2224,7 +2224,7 @@ biglag(const INTEGER n, const INTEGER npt, REAL* xopt,
       break;
     }
   }
-  return;
+  return alpha;
 } /* biglag */
 
 #undef ZMAT
