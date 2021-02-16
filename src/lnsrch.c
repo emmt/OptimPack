@@ -886,7 +886,7 @@ static double max3(double val1, double val2, double val3)
  *        The value of the function at `stp` on entry.
  *
  * @param dp
- *        The the derivative of the function at `stp` on entry.
+ *        The derivative of the function at `stp` on entry.
  *
  * @param brackt_ptr
  *        A pointer to a boolean variable.  Initially this variable must be set

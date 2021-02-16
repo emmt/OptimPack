@@ -157,7 +157,7 @@ struct _opk_vmlmb {
   double gamma;            /**< Scale factor to approximate inverse Hessian. */
   opk_vector_t** s;        /**< Storage for variable differences. */
   opk_vector_t** y;        /**< Storage for gradient differences. */
-  double* alpha;            /**< Workspace to save <d,s>/<s,y> */
+  double* alpha;           /**< Workspace to save <d,s>/<s,y> */
   double* rho;             /**< Workspace to save 1/<s,y> */
   opk_index_t m;           /**< Maximum number of memorized steps. */
   opk_index_t mp;          /**< Actual number of memorized steps
