@@ -2034,7 +2034,7 @@ biglag(const INTEGER n, const INTEGER npt, REAL* xopt,
   /* Local variables. */
   REAL angle, cf1, cf2, cf3, cf4, cf5, cth, dd, delsq, denom, dhd, gg, scale,
     sp, ss, step, sth, sum, tau, taubeg, taumax, tauold, temp, tempa, tempb;
-  INTEGER i, isave, iterc, iu, j, k, nptm;
+  INTEGER i, isave, iu, j, k, nptm;
 
   /* Parameter adjustments adjustments */
   xopt -= 1;
@@ -2061,7 +2061,6 @@ biglag(const INTEGER n, const INTEGER npt, REAL* xopt,
 
   /* Set the first NPT components of HCOL to the leading elements of the
      KNEW-th column of H. */
-  iterc = 0;
   LOOP(k,npt) {
     hcol[k] = zero;
   }
@@ -2131,104 +2130,100 @@ biglag(const INTEGER n, const INTEGER npt, REAL* xopt,
   /* Begin the iteration by overwriting S with a vector that has the
      required length and direction, except that termination occurs if
      the given D and S are nearly parallel. */
- L80:
-  ++iterc;
-  dd = zero;
-  sp = zero;
-  ss = zero;
-  LOOP(i,n) {
-    dd += d[i]*d[i];
-    sp += d[i]*s[i];
-    ss += s[i]*s[i];
-  }
-  temp = dd*ss - sp*sp;
-  if (temp <= dd*1e-8*ss) {
-    goto L160;
-  }
-  denom = SQRT(temp);
-  LOOP(i,n) {
-    s[i] = (dd*s[i] - sp*d[i])/denom;
-    w[i] = zero;
-  }
-
-  /* Calculate the coefficients of the objective function on the circle,
-     beginning with the multiplication of S by the second derivative matrix. */
-  LOOP(k,npt) {
-    sum = zero;
-    LOOP(j,n) {
-      sum += XPT(k,j)*s[j];
-    }
-    sum = hcol[k]*sum;
+  for (INTEGER iterc = 1; iterc <= n; ++iterc) {
+    dd = zero;
+    sp = zero;
+    ss = zero;
     LOOP(i,n) {
-      w[i] += sum*XPT(k,i);
+      dd += d[i]*d[i];
+      sp += d[i]*s[i];
+      ss += s[i]*s[i];
     }
-  }
-  cf1 = zero;
-  cf2 = zero;
-  cf3 = zero;
-  cf4 = zero;
-  cf5 = zero;
-  LOOP(i,n) {
-    cf1 += s[i]*w[i];
-    cf2 += d[i]*gc[i];
-    cf3 += s[i]*gc[i];
-    cf4 += d[i]*gd[i];
-    cf5 += s[i]*gd[i];
-  }
-  cf1 = half*cf1;
-  cf4 = half*cf4 - cf1;
+    temp = dd*ss - sp*sp;
+    if (temp <= dd*1e-8*ss) {
+      break;
+    }
+    denom = SQRT(temp);
+    LOOP(i,n) {
+      s[i] = (dd*s[i] - sp*d[i])/denom;
+      w[i] = zero;
+    }
 
-  /* Seek the value of the angle that maximizes the modulus of TAU. */
-  taubeg = cf1 + cf2 + cf4;
-  taumax = taubeg;
-  tauold = taubeg;
-  isave = 0;
-  iu = 49;
-  temp = twopi/(REAL)(iu + 1);
-  LOOP(i,iu) {
-    angle = (REAL)i*temp;
+    /* Calculate the coefficients of the objective function on the circle,
+       beginning with the multiplication of S by the second derivative matrix. */
+    LOOP(k,npt) {
+      sum = zero;
+      LOOP(j,n) {
+        sum += XPT(k,j)*s[j];
+      }
+      sum = hcol[k]*sum;
+      LOOP(i,n) {
+        w[i] += sum*XPT(k,i);
+      }
+    }
+    cf1 = zero;
+    cf2 = zero;
+    cf3 = zero;
+    cf4 = zero;
+    cf5 = zero;
+    LOOP(i,n) {
+      cf1 += s[i]*w[i];
+      cf2 += d[i]*gc[i];
+      cf3 += s[i]*gc[i];
+      cf4 += d[i]*gd[i];
+      cf5 += s[i]*gd[i];
+    }
+    cf1 = half*cf1;
+    cf4 = half*cf4 - cf1;
+
+    /* Seek the value of the angle that maximizes the modulus of TAU. */
+    taubeg = cf1 + cf2 + cf4;
+    taumax = taubeg;
+    tauold = taubeg;
+    isave = 0;
+    iu = 49;
+    temp = twopi/(REAL)(iu + 1);
+    LOOP(i,iu) {
+      angle = (REAL)i*temp;
+      cth = COS(angle);
+      sth = SIN(angle);
+      tau = cf1 + (cf2 + cf4*cth)*cth + (cf3 + cf5*cth)*sth;
+      if (ABS(tau) > ABS(taumax)) {
+        taumax = tau;
+        isave = i;
+        tempa = tauold;
+      } else if (i == isave + 1) {
+        tempb = tau;
+      }
+      tauold = tau;
+    }
+    if (isave == 0) {
+      tempa = tau;
+    }
+    if (isave == iu) {
+      tempb = taubeg;
+    }
+    step = zero;
+    if (tempa != tempb) {
+      tempa -= taumax;
+      tempb -= taumax;
+      step = half*(tempa - tempb)/(tempa + tempb);
+    }
+    angle = temp*((REAL)isave + step);
+
+    /* Calculate the new D and GD. Then test for convergence. */
     cth = COS(angle);
     sth = SIN(angle);
     tau = cf1 + (cf2 + cf4*cth)*cth + (cf3 + cf5*cth)*sth;
-    if (ABS(tau) > ABS(taumax)) {
-      taumax = tau;
-      isave = i;
-      tempa = tauold;
-    } else if (i == isave + 1) {
-      tempb = tau;
+    LOOP(i,n) {
+      d[i] = cth*d[i] + sth*s[i];
+      gd[i] = cth*gd[i] + sth*w[i];
+      s[i] = gc[i] + gd[i];
     }
-    tauold = tau;
+    if (ABS(tau) <= ABS(taubeg)*1.1) {
+      break;
+    }
   }
-  if (isave == 0) {
-    tempa = tau;
-  }
-  if (isave == iu) {
-    tempb = taubeg;
-  }
-  step = zero;
-  if (tempa != tempb) {
-    tempa -= taumax;
-    tempb -= taumax;
-    step = half*(tempa - tempb)/(tempa + tempb);
-  }
-  angle = temp*((REAL)isave + step);
-
-  /* Calculate the new D and GD. Then test for convergence. */
-  cth = COS(angle);
-  sth = SIN(angle);
-  tau = cf1 + (cf2 + cf4*cth)*cth + (cf3 + cf5*cth)*sth;
-  LOOP(i,n) {
-    d[i] = cth*d[i] + sth*s[i];
-    gd[i] = cth*gd[i] + sth*w[i];
-    s[i] = gc[i] + gd[i];
-  }
-  if (ABS(tau) <= ABS(taubeg)*1.1) {
-    goto L160;
-  }
-  if (iterc < n) {
-    goto L80;
-  }
- L160:
   return;
 } /* biglag */
 
