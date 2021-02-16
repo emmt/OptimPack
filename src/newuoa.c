@@ -230,11 +230,11 @@ update(const INTEGER n, const INTEGER npt, REAL* bmat,
        REAL* zmat, INTEGER* idz, const INTEGER ndim, REAL* vlag,
        const REAL beta, const INTEGER knew, REAL* w);
 
-static void
+static REAL
 trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
        REAL* xpt, REAL* gq, REAL* hq, REAL* pq,
        const REAL delta, REAL* step, REAL* d, REAL* g,
-       REAL* hd, REAL* hs, REAL* crvmin);
+       REAL* hd, REAL* hs);
 
 static REAL*
 scale(REAL* dst, INTEGER n, const REAL* scl, const REAL* src)
@@ -956,9 +956,8 @@ newuoa_optimize(INTEGER n, INTEGER npt,
      the purpose of the next F will be to improve the model. */
  L100:
   knew = 0;
-  trsapp(n, npt, &XOPT(1), &XPT(1,1), &GQ(1), &HQ(1), &PQ(1),
-         delta, &D(1), &W(1), &W(np), &W(np + n),
-         &W(np + 2*n), &crvmin);
+  crvmin = trsapp(n, npt, &XOPT(1), &XPT(1,1), &GQ(1), &HQ(1), &PQ(1),
+                  delta, &D(1), &W(1), &W(np), &W(np + n), &W(np + 2*n));
   dsq = zero;
   LOOP(i,n) {
     dsq += D(i)*D(i);
@@ -2241,7 +2240,6 @@ sethd(const INTEGER n, const INTEGER npt, const REAL* xpt,
       const REAL* hq, const REAL* pq, const REAL* d, REAL* hd)
 {
   const REAL ZERO = 0;
-  REAL temp;
   INTEGER i, j, k, ih;
 
   /* Note: no parameter adjustments needed because this subroutine is only
@@ -2251,7 +2249,7 @@ sethd(const INTEGER n, const INTEGER npt, const REAL* xpt,
     hd[i] = ZERO;
   }
   LOOP(k,npt) {
-    temp = ZERO;
+    REAL temp = ZERO;
     LOOP(j,n) {
       temp += XPT(k,j)*d[j];
     }
@@ -2274,9 +2272,10 @@ sethd(const INTEGER n, const INTEGER npt, const REAL* xpt,
 }
 
 /*
- * N is the number of variables of a quadratic objective function, Q say.  The
- * arguments NPT, XOPT, XPT, GQ, HQ and PQ have their usual meanings, in order
- * to define the current quadratic model Q.
+ * N is the number of variables of a quadratic objective function, Q say.
+ *
+ * The arguments NPT, XOPT, XPT, GQ, HQ and PQ have their usual meanings, in
+ * order to define the current quadratic model Q.
  *
  * DELTA is the trust region radius, and has to be positive.
  *
@@ -2293,20 +2292,20 @@ sethd(const INTEGER n, const INTEGER npt, const REAL* xpt,
  * STEP and the corresponding gradient of Q. Thus STEP should provide a
  * substantial reduction to Q within the trust region.
  */
-static void
+static REAL
 trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
        REAL* xpt, REAL* gq, REAL* hq, REAL* pq,
        const REAL delta, REAL* step, REAL* d, REAL* g,
-       REAL* hd, REAL* hs, REAL* crvmin)
+       REAL* hd, REAL* hs)
 {
   /* Local variables. */
   REAL alpha, angle, angtest, bstep, cf, cth, dd, dg, dhd, dhs, ds,
     gg, ggbeg, ggsav, qadd, qbeg, qmin, qnew, qred, qsav, ratio, reduc,
     sg, sgk, shs, ss, sth, temp, tempa, tempb;
-  INTEGER i, isave, iterc, itermax, iu, j;
-  int stage; /* used to avoid goto statements of the original FORTRAN code */
+  INTEGER i, isave, iterc, itermax, j;
 
   /* Set some constants. */
+  const INTEGER iu = 49;
   const REAL half = 0.5;
   const REAL zero = 0.0;
   const REAL twopi = 2.0*M_PI;
@@ -2335,9 +2334,9 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
     d[i] = -g[i];
     dd += d[i]*d[i];
   }
-  *crvmin = zero;
+  REAL crvmin = zero;
   if (dd == zero) {
-    return;
+    return crvmin;
   }
   ds = zero;
   ss = zero;
@@ -2346,8 +2345,7 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
   qred = zero;
   iterc = 0;
   itermax = n;
-  stage = 1;
-  while (stage == 1) {
+  for (;;) {
     /* Calculate the step to the trust region boundary and the product HD. */
     ++iterc;
     temp = delsq - ss;
@@ -2362,7 +2360,7 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
     alpha = bstep;
     if (dhd > zero) {
       temp = dhd/dd;
-      *crvmin = (iterc == 1 ? temp : MIN(*crvmin,temp));
+      crvmin = (iterc == 1 ? temp : MIN(crvmin,temp));
       temp = gg/dhd;
       alpha = MIN(alpha,temp);
     }
@@ -2380,11 +2378,9 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
     }
 
     /* Begin another conjugate direction iteration if required. */
-    if (alpha >= bstep) {
-      stage = 2;
-    } else {
-      if (qadd <= qred*0.01 || gg <= ggbeg*1e-4 || iterc == itermax) {
-        return;
+    if (alpha < bstep) {
+      if (iterc >= itermax || qadd <= qred*0.01 || gg <= ggbeg*1e-4) {
+        return crvmin;
       }
       temp = gg/ggsav;
       dd = zero;
@@ -2397,18 +2393,19 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
         ss += step[i]*step[i];
       }
       if (ds <= zero) {
-        return;
+        return crvmin;
       }
-      if (ss >= delsq) {
-        stage = 2;
+      if (ss < delsq) {
+        continue;
       }
     }
+    break;
   }
-  *crvmin = zero;
-  while (stage == 2) {
+  crvmin = zero;
+  do {
     /* Test whether an alternative iteration is required. */
     if (gg <= ggbeg*1e-4) {
-      return;
+      break;
     }
     sg = zero;
     shs = zero;
@@ -2419,7 +2416,7 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
     sgk = sg + shs;
     angtest = sgk/SQRT(gg*delsq);
     if (angtest <= -0.99) {
-      return;
+      break;
     }
 
     /* Begin the alternative iteration by calculating D and HD and some
@@ -2447,7 +2444,6 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
     qsav = qbeg;
     qmin = qbeg;
     isave = 0;
-    iu = 49;
     temp = twopi/(REAL)(iu + 1);
     LOOP(i,iu) {
       angle = (REAL)i*temp;
@@ -2491,10 +2487,8 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
     }
     qred += reduc;
     ratio = reduc/qred;
-    if (ratio <= 0.01 || iterc >= itermax) {
-      stage = 3;
-    }
-  }
+  } while (iterc < itermax && ratio > 0.01);
+  return crvmin;
 } /* trsapp */
 
 #undef XPT
