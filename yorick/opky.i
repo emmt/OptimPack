@@ -341,7 +341,13 @@ func opk_minimize(fg, x0, &fx, &gx,
     type = double;
     single = FALSE;
   }
-  x = type(unref(x0));
+
+  /* Initial iterate.  Force copy and conversion then free memory.  Do not use
+     somthing like `x = type(unref(x0))` as it may result in `x` being the same
+     array `x0` and thus impact the caller. */
+  x = type(x0); // force copy and conversion
+  x0 = [];      // free memory
+
   gx = array(type, dimsof(x));
   dims = dimsof(x);
   if (nlcg) {
@@ -355,6 +361,11 @@ func opk_minimize(fg, x0, &fx, &gx,
                                           delta=delta, epsilon=epsilon,
                                           gatol=gatol, grtol=grtol,
                                           stpmin=stpmin, stpmax=stpmax);
+  }
+  if (verb) {
+    elapsed = array(double, 3);
+    timer, elapsed;
+    wall_start = elapsed(3); // WALL time
   }
   task = opk_start(opt, x);
   for (;;) {
@@ -389,26 +400,24 @@ func opk_minimize(fg, x0, &fx, &gx,
     }
     if (stage >= 1) {
       if (verb) {
-        if (opt.evaluations == 1) {
+        evals = opt.evaluations;
+        iters = opt.iterations;
+        if (evals == 1) {
           if (is_string(output)) {
             output = open(output, "a");
           }
-          elapsed = array(double, 3);
-          timer, elapsed;
-          cpu_start = elapsed(1);
-          write, output, format="# %s - %s\n#%s%s\n#%s%s\n",
-            opt.name, opt.description,
-            " ITER  EVAL  REST. CPU (ms)        ",
-            " FUNC              GNORM   STEPLEN",
-            "-----------------------------------",
-            "----------------------------------";
+          write, output, format="# %s - %s\n# %s%s\n# %s%s\n",
+              opt.name, opt.description,
+              "Iter.   Time (ms)    Eval. Reject.",
+              "       Obj. Func.           Grad.       Step",
+              "----------------------------------",
+              "-----------------------------------------------";
         }
-        if (stage >= 2 || (opt.iterations % verb) == 0) {
+        if (stage >= 2 || (iters % verb) == 0) {
           timer, elapsed;
-          cpu = elapsed(1) - cpu_start;
-          write, output, format="%5d %5d %5d %10.3f  %+-24.15e%-9.1e%-9.1e\n",
-            opt.iterations, opt.evaluations, opt.restarts, cpu*1e3, fx,
-            opt.gnorm, opt.step;
+          wall = elapsed(3) - wall_start;
+          write, output, format="%7d %11.3f %7d %7d %23.15e %11.3e %11.3e\n",
+              iters, wall*1e3, evals, opt.restarts, fx, opt.gnorm, opt.step;
         }
       }
       if (stage >= 2) {
