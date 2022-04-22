@@ -10,5 +10,8 @@ EXTRA_DIST = doc yorick .dir-locals.el \
              cutest/OPTIMPACK.SPC cutest/README.optimpack
 
 dist-hook:
-	find $(distdir)/doc -type f -name "*~" -exec rm -f {} \;
-	(cd $(distdir)/yorick; rm -f *~ ywrap.* *.o *.a *.so *.dll *.dylib)
+	find "$(distdir)" -type f -name "*~" -exec rm -f {} \;
+	rm -rf "$(distdir)/doc/latex"
+	rm -rf "$(distdir)/doc/html"
+	rm -rf "$(distdir)/yorick/build"
+	(cd "$(distdir)/yorick"; rm -f *~ ywrap.* *.o *.a *.so *.dll *.dylib)
