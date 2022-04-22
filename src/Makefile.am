@@ -31,11 +31,11 @@ libopk_la_SOURCES = \
     linalg-common.h \
     linalg-single.h \
     linalg-double.h
-libopk_la_LDFLAGS = -version-info 2:0:0
+libopk_la_LDFLAGS = -version-info 3:0:0
 libcobyla_la_SOURCES = optimpack.h cobyla.c cobyla.h
-libcobyla_la_LDFLAGS = -version-info 1:0:0
+libcobyla_la_LDFLAGS = -version-info 2:0:0
 libbobyqa_la_SOURCES = optimpack.h bobyqa.c bobyqa.h
-libbobyqa_la_LDFLAGS = -version-info 1:0:0
+libbobyqa_la_LDFLAGS = -version-info 2:0:0
 libnewuoa_la_SOURCES = optimpack.h newuoa.c newuoa.h
-libnewuoa_la_LDFLAGS = -version-info 1:0:0
+libnewuoa_la_LDFLAGS = -version-info 2:0:0
 # (See doc/NOTES.md for the rationale of libtool version numbers.)
