@@ -34,6 +34,33 @@ extern "C" {
    function (unused by NEWUOA itself). */
 typedef double newuoa_objfun(const opk_index_t n, const double *x, void* data);
 
+/**
+ * @brief Status for NEWUOA routines.
+ *
+ * This type enumerate the possible values returned by newuoa(),
+ * newuoa_get_status() and newuoa_iterate().
+ */
+typedef enum newuoa_status {
+    NEWUOA_INITIAL_ITERATE      =  2, /**< only used internaly */
+    NEWUOA_ITERATE              =  1, /**< caller is requested to evaluate the
+                                       **  objective function and call
+                                       **  newuoa_iterate */
+    NEWUOA_SUCCESS              =  0, /**< algorithm converged */
+    NEWUOA_BAD_NVARS            = -1, /**< bad number of variables */
+    NEWUOA_BAD_NPT              = -2, /**< NPT is not in the required
+                                       **  interval */
+    NEWUOA_BAD_RHO_RANGE        = -3, /**< invalid RHOBEG/RHOEND */
+    NEWUOA_BAD_SCALING          = -4, /**< bad scaling factor(s) */
+    NEWUOA_ROUNDING_ERRORS      = -5, /**< too much cancellation in a
+                                       **  denominator */
+    NEWUOA_TOO_MANY_EVALUATIONS = -6, /**< maximum number of function
+                                       **  evaluations exceeded */
+    NEWUOA_STEP_FAILED          = -7, /**< trust region step has failed to
+                                       **  reduce quadratic approximation */
+    NEWUOA_BAD_ADDRESS          = -8, /**< illegal NULL address */
+    NEWUOA_CORRUPTED            = -9, /**< corrupted or misused workspace */
+} newuoa_status;
+
 /* This subroutine seeks the least value of a function of many variables, by
    a trust region method that forms quadratic models by interpolation.  There
    can be some freedom in the interpolation conditions, which is taken up by
@@ -72,11 +99,12 @@ typedef double newuoa_objfun(const opk_index_t n, const double *x, void* data);
 
    The returned value should be NEWUOA_SUCCESS, but a different value can be
    returned upon error (see `newuoa_reason` for an explanatory message). */
-extern int newuoa(const opk_index_t n, const opk_index_t npt,
-                  newuoa_objfun* objfun, void* data,
-                  double* x, const double rhobeg, const double rhoend,
-                  const opk_index_t iprint, const opk_index_t maxfun,
-                  double* work);
+extern newuoa_status newuoa(
+    const opk_index_t n, const opk_index_t npt,
+    newuoa_objfun* objfun, void* data,
+    double* x, const double rhobeg, const double rhoend,
+    const opk_index_t iprint, const opk_index_t maxfun,
+    double* work);
 
 /**
  * Optimize a function of many variables without derivatives.
@@ -147,34 +175,14 @@ extern int newuoa(const opk_index_t n, const opk_index_t npt,
  *         value is returned on error (see `newuoa_reason` for an explanatory
  *         message).
  */
-extern int
-newuoa_optimize(opk_index_t n, opk_index_t npt,
-                opk_bool_t maximize, newuoa_objfun* objfun, void* data,
-                double x[], const double scl[], double rhobeg, double rhoend,
-                opk_index_t iprint, opk_index_t maxfun, double* work);
-
-/* Possible values returned by NEWUOA. */
-#define NEWUOA_INITIAL_ITERATE       (2) /* only used internaly */
-#define NEWUOA_ITERATE               (1) /* caller is requested to evaluate
-                                            the objective function and call
-                                            newuoa_iterate */
-#define NEWUOA_SUCCESS               (0) /* algorithm converged */
-#define NEWUOA_BAD_NVARS            (-1) /* bad number of variables */
-#define NEWUOA_BAD_NPT              (-2) /* NPT is not in the required
-                                            interval */
-#define NEWUOA_BAD_RHO_RANGE        (-3) /* invalid RHOBEG/RHOEND */
-#define NEWUOA_BAD_SCALING          (-4) /* bad scaling factor(s) */
-#define NEWUOA_ROUNDING_ERRORS      (-5) /* too much cancellation in a
-                                            denominator */
-#define NEWUOA_TOO_MANY_EVALUATIONS (-6) /* maximum number of function
-                                            evaluations exceeded */
-#define NEWUOA_STEP_FAILED          (-7) /* trust region step has failed to
-                                            reduce quadratic approximation */
-#define NEWUOA_BAD_ADDRESS          (-8) /* illegal NULL address */
-#define NEWUOA_CORRUPTED            (-9) /* corrupted or misused workspace */
+extern newuoa_status newuoa_optimize(
+    opk_index_t n, opk_index_t npt,
+    opk_bool_t maximize, newuoa_objfun* objfun, void* data,
+    double x[], const double scl[], double rhobeg, double rhoend,
+    opk_index_t iprint, opk_index_t maxfun, double* work);
 
 /* Get a textual explanation of the status returned by NEWUOA. */
-extern const char* newuoa_reason(int status);
+extern const char* newuoa_reason(newuoa_status status);
 
 /*---------------------------------------------------------------------------*/
 /* REVERSE COMMUNICATION VERSION */
@@ -227,17 +235,17 @@ extern void newuoa_delete(newuoa_context_t* ctx);
    in `x` and if user is requested to compute the function value for the new
    point; `NEWUOA_SUCCESS` if algorithm has converged; anything else indicates
    an error (see `newuoa_reason` for an explanatory message). */
-extern int newuoa_iterate(newuoa_context_t* ctx, double f, double* x);
+extern newuoa_status newuoa_iterate(newuoa_context_t* ctx, double f, double* x);
 
 /* Restart NEWUOA algorithm using the same parameters.  The return value is the
    new status of the algorithm, see `newuoa_get_status` for details. */
-extern int newuoa_restart(newuoa_context_t* ctx);
+extern newuoa_status newuoa_restart(newuoa_context_t* ctx);
 
 /* Get the current status of the algorithm.  Result is: `NEWUOA_ITERATE` if
    user is requested to compute F(X); `NEWUOA_SUCCESS` if algorithm has
    converged; anything else indicates an error (see `newuoa_reason` for an
    explanatory message). */
-extern int newuoa_get_status(const newuoa_context_t* ctx);
+extern newuoa_status newuoa_get_status(const newuoa_context_t* ctx);
 
 /* Get the current number of function evaluations.  Result is -1 if something
    is wrong (e.g. CTX is NULL), nonnegative otherwise. */

@@ -293,7 +293,7 @@ objfun_test(const INTEGER n, const REAL* x, void* data)
 /*---------------------------------------------------------------------------*/
 /* BOBYQA DRIVER ROUTINES */
 
-const char* bobyqa_reason(int status)
+const char* bobyqa_reason(bobyqa_status status)
 {
   switch (status) {
   case BOBYQA_SUCCESS:
@@ -319,23 +319,23 @@ const char* bobyqa_reason(int status)
   }
 }
 
-int
-bobyqa(const INTEGER n, const INTEGER npt,
-       bobyqa_objfun* objfun, void* data,
-       REAL* x, const REAL* xl, const REAL* xu,
-       const REAL rhobeg, const REAL rhoend,
-       const INTEGER iprint, const INTEGER maxfun, REAL* w)
+bobyqa_status bobyqa(
+    const INTEGER n, const INTEGER npt,
+    bobyqa_objfun* objfun, void* data,
+    REAL* x, const REAL* xl, const REAL* xu,
+    const REAL rhobeg, const REAL rhoend,
+    const INTEGER iprint, const INTEGER maxfun, REAL* w)
 {
   return bobyqa_optimize(n, npt, FALSE, objfun, data, x, xl, xu, NULL,
                          rhobeg, rhoend, iprint, maxfun, w);
 }
 
-int
-bobyqa_optimize(const INTEGER n, const INTEGER npt,
-                LOGICAL maximize, bobyqa_objfun* objfun, void* data,
-                REAL* x, const REAL* xl, const REAL* xu, const REAL* scl,
-                const REAL rhobeg, const REAL rhoend,
-                const INTEGER iprint, const INTEGER maxfun, REAL* w)
+bobyqa_status bobyqa_optimize(
+    const INTEGER n, const INTEGER npt,
+    LOGICAL maximize, bobyqa_objfun* objfun, void* data,
+    REAL* x, const REAL* xl, const REAL* xu, const REAL* scl,
+    const REAL rhobeg, const REAL rhoend,
+    const INTEGER iprint, const INTEGER maxfun, REAL* w)
 {
   /* Constants. */
   const REAL zero = FLT(0.0);
@@ -346,7 +346,7 @@ bobyqa_optimize(const INTEGER n, const INTEGER npt,
   INTEGER ibmat, id, ifv, igo, ihq, ipq, isl, isu, ivl, iw, ixa, ixb, ixn,
     ixo, ixp, izmat, j, jsl, jsu, ndim, np;
   context_t ctx;
-  int status;
+  bobyqa_status status;
 
   /* Check arguments. */
   if (n < 2) {
@@ -564,7 +564,7 @@ FORTRAN_NAME(bobyqa,BOBYQA)(const INTEGER* n, const INTEGER* npt,
    W is a one-dimensional array that is used for working space.  Its length
    must be at least 3*NDIM = 3*(NPT+N). */
 
-static int
+static bobyqa_status
 bobyqb(const INTEGER n, const INTEGER npt, const context_t* ctx,
        REAL* x, const REAL* xl, const REAL* xu,
        const REAL rhobeg, const REAL rhoend,
@@ -589,7 +589,7 @@ bobyqb(const INTEGER n, const INTEGER npt, const context_t* ctx,
     gisq, gqsq, pqold, ratio, rho, scaden, vquad, xoptsq;
   INTEGER i, ih, itest, j, jj, k, kbase, knew, kopt, ksav, nf,
     nfsav, nh, np, nptm, nresc, ntrits;
-  int status = BOBYQA_SUCCESS;
+  bobyqa_status status = BOBYQA_SUCCESS;
   const char* reason = NULL;
 
   /* Parameter adjustments to comply with FORTRAN indexing. */

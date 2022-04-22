@@ -286,6 +286,168 @@ FORTRAN_NAME(newuoa,NEWUOA)(const INTEGER* n, const INTEGER* npt, REAL* x,
 #endif /* FORTRAN_NAME */
 
 /*---------------------------------------------------------------------------*/
+/* TRIGONOMETRIC TABLE OF DISCRETE ANGLES */
+
+
+/* angles are 2pi/50*k for k = 0,..., IU */
+#define iu 49
+static const REAL angle_step = 2*M_PI/(iu + 1);
+
+#if 1
+/* sin_cos_table[2*i]     -> sin(k*angle_step)
+   sin_cos_table[2*i + 1] -> cos(k*angle_step)
+*/
+static REAL sin_cos_table[] = {
+#if 1
+   /* values computed in Float64 */
+   0.00000000000000000000,  1.00000000000000000000,
+   0.12533323356430425832,  0.99211470131447787590,
+   0.24868988716485479484,  0.96858316112863107605,
+   0.36812455268467797476,  0.92977648588825145826,
+   0.48175367410171532345,  0.87630668004386358394,
+   0.58778525229247313710,  0.80901699437494745126,
+   0.68454710592868872610,  0.72896862742141155245,
+   0.77051324277578925326,  0.63742398974868963446,
+   0.84432792550201507531,  0.53582679497899654564,
+   0.90482705246601957683,  0.42577929156507265951,
+   0.95105651629515353118,  0.30901699437494745126,
+   0.98228725072868872115,  0.18738131458572451771,
+   0.99802672842827155897,  0.06279051952931330449,
+   0.99802672842827155897, -0.06279051952931340164,
+   0.98228725072868861012, -0.18738131458572482302,
+   0.95105651629515353118, -0.30901699437494756229,
+   0.90482705246601946580, -0.42577929156507271502,
+   0.84432792550201496429, -0.53582679497899687870,
+   0.77051324277578925326, -0.63742398974868974548,
+   0.68454710592868850405, -0.72896862742141166347,
+   0.58778525229247324813, -0.80901699437494734024,
+   0.48175367410171521243, -0.87630668004386358394,
+   0.36812455268467775271, -0.92977648588825145826,
+   0.24868988716485482260, -0.96858316112863107605,
+   0.12533323356430409179, -0.99211470131447787590,
+  -0.00000000000000032162, -1.00000000000000000000,
+  -0.12533323356430428608, -0.99211470131447787590,
+  -0.24868988716485501689, -0.96858316112863107605,
+  -0.36812455268467830782, -0.92977648588825123621,
+  -0.48175367410171537896, -0.87630668004386358394,
+  -0.58778525229247335915, -0.80901699437494722922,
+  -0.68454710592868872610, -0.72896862742141155245,
+  -0.77051324277578936428, -0.63742398974868952344,
+  -0.84432792550201529735, -0.53582679497899632359,
+  -0.90482705246601979887, -0.42577929156507215991,
+  -0.95105651629515353118, -0.30901699437494756229,
+  -0.98228725072868872115, -0.18738131458572462873,
+  -0.99802672842827155897, -0.06279051952931320735,
+  -0.99802672842827155897,  0.06279051952931372083,
+  -0.98228725072868861012,  0.18738131458572512833,
+  -0.95105651629515364220,  0.30901699437494722922,
+  -0.90482705246601957683,  0.42577929156507260400,
+  -0.84432792550201496429,  0.53582679497899676768,
+  -0.77051324277578903121,  0.63742398974868996753,
+  -0.68454710592868828201,  0.72896862742141188551,
+  -0.58778525229247258199,  0.80901699437494778433,
+  -0.48175367410171532345,  0.87630668004386358394,
+  -0.36812455268467786373,  0.92977648588825145826,
+  -0.24868988716485448953,  0.96858316112863118708,
+  -0.12533323356430378648,  0.99211470131447787590,
+#else
+   /* values computed in BigFloat */
+   0.00000000000000000000,  1.00000000000000000000,
+   0.12533323356430424537,  0.99211470131447783105,
+   0.24868988716485478824,  0.96858316112863111949,
+   0.36812455268467795916,  0.92977648588825140366,
+   0.48175367410171527499,  0.87630668004386358731,
+   0.58778525229247312917,  0.80901699437494742410,
+   0.68454710592868867373,  0.72896862742141152315,
+   0.77051324277578923080,  0.63742398974868971018,
+   0.84432792550201507855,  0.53582679497899661827,
+   0.90482705246601952771,  0.42577929156507264886,
+   0.95105651629515357212,  0.30901699437494742410,
+   0.98228725072868868109,  0.18738131458572463054,
+   0.99802672842827156195,  0.06279051952931337608,
+   0.99802672842827156195, -0.06279051952931337608,
+   0.98228725072868868109, -0.18738131458572463054,
+   0.95105651629515357212, -0.30901699437494742410,
+   0.90482705246601952771, -0.42577929156507264886,
+   0.84432792550201507855, -0.53582679497899661827,
+   0.77051324277578923080, -0.63742398974868971018,
+   0.68454710592868867373, -0.72896862742141152315,
+   0.58778525229247312917, -0.80901699437494742410,
+   0.48175367410171527499, -0.87630668004386358731,
+   0.36812455268467795916, -0.92977648588825140366,
+   0.24868988716485478824, -0.96858316112863111949,
+   0.12533323356430424537, -0.99211470131447783105,
+   0.00000000000000000000, -1.00000000000000000000,
+  -0.12533323356430424537, -0.99211470131447783105,
+  -0.24868988716485478824, -0.96858316112863111949,
+  -0.36812455268467795916, -0.92977648588825140366,
+  -0.48175367410171527499, -0.87630668004386358731,
+  -0.58778525229247312917, -0.80901699437494742410,
+  -0.68454710592868867373, -0.72896862742141152315,
+  -0.77051324277578923080, -0.63742398974868971018,
+  -0.84432792550201507855, -0.53582679497899661827,
+  -0.90482705246601952771, -0.42577929156507264886,
+  -0.95105651629515357212, -0.30901699437494742410,
+  -0.98228725072868868109, -0.18738131458572463054,
+  -0.99802672842827156195, -0.06279051952931337608,
+  -0.99802672842827156195,  0.06279051952931337608,
+  -0.98228725072868868109,  0.18738131458572463054,
+  -0.95105651629515357212,  0.30901699437494742410,
+  -0.90482705246601952771,  0.42577929156507264886,
+  -0.84432792550201507855,  0.53582679497899661827,
+  -0.77051324277578923080,  0.63742398974868971018,
+  -0.68454710592868867373,  0.72896862742141152315,
+  -0.58778525229247312917,  0.80901699437494742410,
+  -0.48175367410171527499,  0.87630668004386358731,
+  -0.36812455268467795916,  0.92977648588825140366,
+  -0.24868988716485478824,  0.96858316112863111949,
+  -0.12533323356430424537,  0.99211470131447783105,
+#endif
+};
+static void
+get_sin_cos(REAL* sinptr, REAL* cosptr, INTEGER i)
+{
+  *sinptr = sin_cos_table[2*i];
+  *cosptr = sin_cos_table[2*i + 1];
+}
+#else
+/* do not use the table */
+static void
+get_sin_cos(REAL* sinptr, REAL* cosptr, INTEGER i)
+{
+  REAL angle = (REAL)i*angle_step;
+  *sinptr = SIN(angle);
+  *cosptr = COS(angle);
+}
+#endif
+
+/* Assuming:
+ *
+ *    fprev = f(xbest - 1)
+ *    fbest = f(xbest)
+ *    fnext = f(xbest + 1)
+ *
+ * and:
+ *
+ *    fbest ≤ min(fprev,fnext)   if a minimum of f(x) is sought,
+ *    fbest ≥ max(fprev,fnext)   if a maximum of f(x) is sought,
+ *
+ * this function uses a parabolic interpolation to compute a refinement
+ * dx such that f(xbest + dx) is a better minimum/maximum.
+ */
+static REAL
+parabolic_refinement(REAL fprev, REAL fbest, REAL fnext)
+{
+  if (fprev != fnext) {
+    REAL a = fprev - fbest;
+    REAL b = fnext - fbest;
+    return (a - b)/(2*(a + b));
+  } else {
+    return 0;
+  }
+}
+
+/*---------------------------------------------------------------------------*/
 /* REVERSE COMMUNICATION VERSION */
 
 struct _newuoa_context {
@@ -353,7 +515,7 @@ struct _newuoa_context {
 
   /* Record the current state of the algorithm. */
   INTEGER nevals;
-  int status;
+  newuoa_status status;
 };
 
 #define SAVE(var)     ctx->var = var
@@ -448,7 +610,7 @@ newuoa_delete(newuoa_context_t* ctx)
   }
 }
 
-int
+newuoa_status
 newuoa_restart(newuoa_context_t* ctx)
 {
   if (ctx == NULL) {
@@ -460,7 +622,7 @@ newuoa_restart(newuoa_context_t* ctx)
   return ctx->status;
 }
 
-int
+newuoa_status
 newuoa_get_status(const newuoa_context_t* ctx)
 {
   if (ctx == NULL) {
@@ -490,7 +652,7 @@ newuoa_get_rho(const newuoa_context_t* ctx)
   return ctx->rho;
 }
 
-const char* newuoa_reason(int status)
+const char* newuoa_reason(newuoa_status status)
 {
   switch (status) {
   case NEWUOA_ITERATE:
@@ -571,10 +733,10 @@ const char* newuoa_reason(int status)
    10*NDIM = 10*(NPT+N). */
 
 #ifdef _NEWUOA_REVCOM
-int
+newuoa_status
 newuoa_iterate(newuoa_context_t* ctx, REAL f, REAL* x)
 #else
-int
+newuoa_status
 newuoa_optimize(INTEGER n, INTEGER npt,
                 LOGICAL maximize, newuoa_objfun* objfun, void* data,
                 REAL* x, const REAL* scl, REAL rhobeg, REAL rhoend,
@@ -604,7 +766,7 @@ newuoa_optimize(INTEGER n, INTEGER npt,
     *_zmat, *_d, *_vlag, *_w, *xs;
   INTEGER idz, ih, ipt, itest, jpt, knew, kopt,
     ksave, nf, nfm, nfmm, nfsav, ndim, nh, np, nptm;
-  int status;
+  newuoa_status status;
 
   /* Temporary variables (these variables do not have to be saved in the
      reverse communication version of the algorithm). */
@@ -1629,14 +1791,13 @@ bigden(const INTEGER n, const INTEGER npt, REAL* xopt,
   const REAL two = 2.0;
   const REAL half = 0.5;
   const REAL quart = 0.25;
-  const REAL twopi = 2.0*M_PI;
 
   /* Local variables. */
   REAL alpha, angle, dd, denmax, denold, densav, diff, ds, dstemp, dtest,
-    ss, ssden, sstemp, step, sum, sumold, tau, temp, tempa, tempb, tempc,
+    ss, ssden, sstemp, sum, sumold, tau, temp, tempa, tempb, tempc,
     xoptd, xopts, xoptsq;
   REAL den[9], denex[9], par[9];
-  INTEGER i, ip, isave, iterc, iu, j, jc, k, ksav, nptm, nw;
+  INTEGER i, ip, isave, iterc, j, jc, k, ksav, nptm, nw;
 
   /* Parameter adjustments to comply with FORTRAN indexing. */
   xopt -= 1;
@@ -1863,21 +2024,20 @@ bigden(const INTEGER n, const INTEGER npt, REAL* xopt,
   denold = sum;
   denmax = sum;
   isave = 0;
-  iu = 49;
-  temp = twopi/(REAL)(iu + 1);
   par[0] = one;
   LOOP(i,iu) {
-    angle = (REAL)i*temp;
-    par[1] = COS(angle);
-    par[2] = SIN(angle);
+    get_sin_cos(&par[2], &par[1], i);
+    //angle = (REAL)i*angle_step;
+    //par[1] = COS(angle);
+    //par[2] = SIN(angle);
     for (j = 4; j <= 8; j += 2) {
-      par[j - 1] = par[1]*par[j - 3] - par[2]*par[j - 2];
-      par[j] = par[1]*par[j - 2] + par[2]*par[j - 3];
+      par[j-1] = par[1]*par[j-3] - par[2]*par[j-2];
+      par[j]   = par[1]*par[j-2] + par[2]*par[j-3];
     }
     sumold = sum;
     sum = zero;
     for (j = 1; j <= 9; ++j) {
-      sum += denex[j - 1]*par[j - 1];
+      sum += denex[j-1]*par[j-1];
     }
     if (ABS(sum) > ABS(denmax)) {
       denmax = sum;
@@ -1893,32 +2053,27 @@ bigden(const INTEGER n, const INTEGER npt, REAL* xopt,
   if (isave == iu) {
     tempb = denold;
   }
-  step = zero;
-  if (tempa != tempb) {
-    tempa -= denmax;
-    tempb -= denmax;
-    step = half*(tempa - tempb)/(tempa + tempb);
-  }
-  angle = temp*((REAL)isave + step);
+  angle = angle_step*((REAL)isave +
+                      parabolic_refinement(tempa, denmax, tempb));
 
   /* Calculate the new parameters of the denominator, the new VLAG vector
      and the new D. Then test for convergence. */
   par[1] = COS(angle);
   par[2] = SIN(angle);
   for (j = 4; j <= 8; j += 2) {
-    par[j - 1] = par[1]*par[j - 3] - par[2]*par[j - 2];
-    par[j] = par[1]*par[j - 2] + par[2]*par[j - 3];
+    par[j-1] = par[1]*par[j-3] - par[2]*par[j-2];
+    par[j]   = par[1]*par[j-2] + par[2]*par[j-3];
   }
   *beta = zero;
   denmax = zero;
   for (j = 1; j <= 9; ++j) {
-    *beta += den[j - 1]*par[j - 1];
-    denmax += denex[j - 1]*par[j - 1];
+    *beta += den[j-1]*par[j-1];
+    denmax += denex[j-1]*par[j-1];
   }
   LOOP(k,ndim) {
     vlag[k] = zero;
     for (j = 1; j <= 5; ++j) {
-      vlag[k] += PROD(k,j)*par[j - 1];
+      vlag[k] += PROD(k,j)*par[j-1];
     }
   }
   tau = vlag[knew];
@@ -2028,12 +2183,11 @@ biglag(const INTEGER n, const INTEGER npt, REAL* xopt,
   const REAL half = 0.5;
   const REAL one = 1.0;
   const REAL zero = 0.0;
-  const REAL twopi = 2.0*M_PI;
 
   /* Local variables. */
   REAL angle, cf1, cf2, cf3, cf4, cf5, cth, dd, delsq, denom, dhd, gg, scale,
-    sp, ss, step, sth, sum, tau, taubeg, taumax, tauold, temp, tempa, tempb;
-  INTEGER i, isave, iu, j, k, nptm;
+    sp, ss, sth, sum, tau, taubeg, taumax, tauold, temp, tempa, tempb;
+  INTEGER i, isave, j, k, nptm;
 
   /* Parameter adjustments adjustments */
   xopt -= 1;
@@ -2149,7 +2303,8 @@ biglag(const INTEGER n, const INTEGER npt, REAL* xopt,
     }
 
     /* Calculate the coefficients of the objective function on the circle,
-       beginning with the multiplication of S by the second derivative matrix. */
+       beginning with the multiplication of S by the second derivative
+       matrix. */
     LOOP(k,npt) {
       sum = zero;
       LOOP(j,n) {
@@ -2180,12 +2335,11 @@ biglag(const INTEGER n, const INTEGER npt, REAL* xopt,
     taumax = taubeg;
     tauold = taubeg;
     isave = 0;
-    iu = 49;
-    temp = twopi/(REAL)(iu + 1);
     LOOP(i,iu) {
-      angle = (REAL)i*temp;
-      cth = COS(angle);
-      sth = SIN(angle);
+      //angle = (REAL)i*angle_step;
+      //cth = COS(angle);
+      //sth = SIN(angle);
+      get_sin_cos(&sth, &cth, i);
       tau = cf1 + (cf2 + cf4*cth)*cth + (cf3 + cf5*cth)*sth;
       if (ABS(tau) > ABS(taumax)) {
         taumax = tau;
@@ -2202,13 +2356,8 @@ biglag(const INTEGER n, const INTEGER npt, REAL* xopt,
     if (isave == iu) {
       tempb = taubeg;
     }
-    step = zero;
-    if (tempa != tempb) {
-      tempa -= taumax;
-      tempb -= taumax;
-      step = half*(tempa - tempb)/(tempa + tempb);
-    }
-    angle = temp*((REAL)isave + step);
+    angle = angle_step*((REAL)isave
+                        + parabolic_refinement(tempa, taumax, tempb));
 
     /* Calculate the new D and GD. Then test for convergence. */
     cth = COS(angle);
@@ -2300,15 +2449,13 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
 {
   /* Local variables. */
   REAL alpha, angle, angtest, bstep, cf, cth, dd, dg, dhd, dhs, ds,
-    gg, ggbeg, ggsav, qadd, qbeg, qmin, qnew, qred, qsav, ratio, reduc,
+    gg, ggbeg, ggsav, qadd, qbeg, qmin, qnew, qred, qsav, reduc,
     sg, sgk, shs, ss, sth, temp, tempa, tempb;
   INTEGER i, isave, iterc, itermax, j;
 
   /* Set some constants. */
-  const INTEGER iu = 49;
   const REAL half = 0.5;
   const REAL zero = 0.0;
-  const REAL twopi = 2.0*M_PI;
   REAL delsq = delta*delta;
 
   /* Parameter adjustments to comply with FORTRAN indexing. */
@@ -2345,7 +2492,7 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
   qred = zero;
   iterc = 0;
   itermax = n;
-  for (;;) {
+  while (TRUE) {
     /* Calculate the step to the trust region boundary and the product HD. */
     ++iterc;
     temp = delsq - ss;
@@ -2444,11 +2591,11 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
     qsav = qbeg;
     qmin = qbeg;
     isave = 0;
-    temp = twopi/(REAL)(iu + 1);
     LOOP(i,iu) {
-      angle = (REAL)i*temp;
-      cth = COS(angle);
-      sth = SIN(angle);
+      //angle = (REAL)i*angle_step;
+      //cth = COS(angle);
+      //sth = SIN(angle);
+      get_sin_cos(&sth, &cth, i);
       qnew = (sg + cf*cth)*cth + (dg + dhs*cth)*sth;
       if (qnew < qmin) {
         qmin = qnew;
@@ -2465,19 +2612,12 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
     if (isave == iu) {
       tempb = qbeg;
     }
-    if (tempa != tempb) {
-      tempa -= qmin;
-      tempb -= qmin;
-      angle = half*(tempa - tempb)/(tempa + tempb);
-    } else {
-      angle = zero;
-    }
-    angle = temp*((REAL)isave + angle);
+    angle = angle_step*((REAL)isave +
+                        parabolic_refinement(tempa, qmin, tempb));
 
     /* Calculate the new STEP and HS. Then test for convergence. */
     cth = COS(angle);
     sth = SIN(angle);
-    reduc = qbeg - (sg + cf*cth)*cth - (dg + dhs*cth)*sth;
     gg = zero;
     LOOP(i,n) {
       step[i] = cth*step[i] + sth*d[i];
@@ -2485,9 +2625,9 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
       temp = g[i] + hs[i];
       gg += temp*temp;
     }
+    reduc = qbeg - (sg + cf*cth)*cth - (dg + dhs*cth)*sth;
     qred += reduc;
-    ratio = reduc/qred;
-  } while (iterc < itermax && ratio > 0.01);
+  } while (iterc < itermax && reduc/qred > 0.01);
   return crvmin;
 } /* trsapp */
 

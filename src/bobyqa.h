@@ -35,6 +35,29 @@ extern "C" {
    BOBYQA itself). */
 typedef double bobyqa_objfun(const opk_index_t n, const double* x, void* data);
 
+/**
+ * @brief Status for BOBYQA routines.
+ *
+ * This type enumerate the possible values returned by bobyqa(),
+ * bobyqa_get_status() and bobyqa_iterate().
+ */
+typedef enum bobyqa_status {
+    BOBYQA_SUCCESS              =  0, /**< algorithm converged */
+    BOBYQA_BAD_NVARS            = -1, /**< bad number of variables */
+    BOBYQA_BAD_NPT              = -2, /**< NPT is not in the required
+                                       **  interval */
+    BOBYQA_BAD_RHO_RANGE        = -3, /**< bad trust region radius
+                                       **  parameters */
+    BOBYQA_BAD_SCALING          = -4, /**< bad scaling factor(s) */
+    BOBYQA_TOO_CLOSE            = -5, /**< insufficient space between the
+                                       **  bounds */
+    BOBYQA_ROUNDING_ERRORS      = -6, /**< too much cancellation in a
+                                       **  denominator */
+    BOBYQA_TOO_MANY_EVALUATIONS = -7, /**< maximum number of function
+                                       **  evaluations exceeded */
+    BOBYQA_STEP_FAILED          = -8, /**< a trust region step has failed to
+                                       **  reduce Q */
+} bobyqa_status;
 
 /* BOBYQA seeks the least value of a function of many variables, by applying a
    trust region method that forms quadratic models by interpolation.  There is
@@ -81,12 +104,13 @@ typedef double bobyqa_objfun(const opk_index_t n, const double* x, void* data);
    The array W will be used for working space.  Its length must be at least
    (NPT+5)*(NPT+N)+3*N*(N+5)/2.  Upon successful return, the first element of W
    will be set to the function value at the solution. */
-extern int bobyqa(const opk_index_t n, const opk_index_t npt,
-                  bobyqa_objfun* objfun, void* data, double* x,
-                  const double* xl, const double* xu,
-                  const double rhobeg, const double rhoend,
-                  const opk_index_t iprint, const opk_index_t maxfun,
-                  double* w);
+extern bobyqa_status bobyqa(
+    const opk_index_t n, const opk_index_t npt,
+    bobyqa_objfun* objfun, void* data, double* x,
+    const double* xl, const double* xu,
+    const double rhobeg, const double rhoend,
+    const opk_index_t iprint, const opk_index_t maxfun,
+    double* w);
 
 /*
    SCL is an array of N scaling factors or `NULL`.
@@ -96,33 +120,16 @@ extern int bobyqa(const opk_index_t n, const opk_index_t npt,
    (NPT+5)*(NPT+N)+3*N*(N+5)/2 + 3*N otherwise.  Upon successful return, the
    first element of W will be set to the function value at the solution.
  */
-extern int bobyqa_optimize(const opk_index_t n, const opk_index_t npt,
-                           opk_bool_t maximize, bobyqa_objfun* objfun,
-                           void* data, double* x, const double* xl,
-                           const double* xu, const double* scl,
-                           const double rhobeg, const double rhoend,
-                           const opk_index_t iprint, const opk_index_t maxfun,
-                           double* w);
+extern bobyqa_status bobyqa_optimize(
+    const opk_index_t n, const opk_index_t npt,
+    opk_bool_t maximize, bobyqa_objfun* objfun,
+    void* data, double* x, const double* xl,
+    const double* xu, const double* scl,
+    const double rhobeg, const double rhoend,
+    const opk_index_t iprint, const opk_index_t maxfun,
+    double* w);
 
-
-/* Possible values returned by BOBYQA. */
-#define BOBYQA_SUCCESS               (0) /* algorithm converged */
-#define BOBYQA_BAD_NVARS            (-1) /* bad number of variables */
-#define BOBYQA_BAD_NPT              (-2) /* NPT is not in the required
-                                            interval */
-#define BOBYQA_BAD_RHO_RANGE        (-3) /* bad trust region radius
-                                            parameters */
-#define BOBYQA_BAD_SCALING          (-4) /* bad scaling factor(s) */
-#define BOBYQA_TOO_CLOSE            (-5) /* insufficient space between the
-                                            bounds */
-#define BOBYQA_ROUNDING_ERRORS      (-6) /* too much cancellation in a
-                                            denominator */
-#define BOBYQA_TOO_MANY_EVALUATIONS (-7) /* maximum number of function
-                                            evaluations exceeded */
-#define BOBYQA_STEP_FAILED          (-8) /* a trust region step has failed to
-                                            reduce Q */
-
-extern const char* bobyqa_reason(int status);
+extern const char* bobyqa_reason(bobyqa_status status);
 
 /* Test problem for BOBYQA, the objective function being the sum of the
    reciprocals of all pairwise distances between the points P_I,
@@ -194,7 +201,7 @@ FORTRAN_NAME(bobyqa,BOBYQA)(const opk_index_t* n, const opk_index_t* npt,
                             const opk_index_t* iprint, const opk_index_t* maxfun,
                             double* w);
 
-/* Wrapper function to emulate `newuoa_objfun` objective function calling the
+/* Wrapper function to emulate `bobyqa_objfun` objective function calling the
    user-defined `calfun_` subroutine. */
 extern double
 bobyqa_calfun_wrapper(const opk_index_t n, const double* x, void* data);

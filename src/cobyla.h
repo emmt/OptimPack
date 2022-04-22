@@ -43,6 +43,27 @@ cobyla_calcfc(opk_index_t n, opk_index_t m, const double x[],
               double con[], void* data);
 
 /**
+ * @brief Status for COBYLA routines.
+ *
+ * This type enumerate the possible values returned by cobyla(),
+ * cobyla_get_status() and cobyla_iterate().
+ */
+typedef enum cobyla_status {
+    COBYLA_INITIAL_ITERATE      =  2, /**< only used internally */
+    COBYLA_ITERATE              =  1, /**< user requested to compute
+                                       **  F(X) and C(X) */
+    COBYLA_SUCCESS              =  0, /**< algorithm converged */
+    COBYLA_BAD_NVARS            = -1, /**< bad number of variables */
+    COBYLA_BAD_NCONS            = -2, /**< bad number of constraints */
+    COBYLA_BAD_RHO_RANGE        = -3, /**< invalid trust region parameters */
+    COBYLA_BAD_SCALING          = -4, /**< bad scaling factor(s) */
+    COBYLA_ROUNDING_ERRORS      = -5, /**< rounding errors prevent progress */
+    COBYLA_TOO_MANY_EVALUATIONS = -6, /**< too many evaluations */
+    COBYLA_BAD_ADDRESS          = -7, /**< illegal address */
+    COBYLA_CORRUPTED            = -8, /**< corrupted workspace */
+} cobyla_status;
+
+/**
  * Minimize a function of many variables subject to inequality constraints.
  *
  * The `cobyla` algorithm minimizes an objective function `f(x)` subject to `m`
@@ -137,12 +158,12 @@ cobyla_calcfc(opk_index_t n, opk_index_t m, const double x[],
  *         other value indicates an error (use `cobyla_reason` to have an
  *         explanation).
  */
-extern int
-cobyla(opk_index_t n, opk_index_t m,
-       cobyla_calcfc* fc, void* data,
-       double x[], double rhobeg, double rhoend,
-       opk_index_t iprint, opk_index_t maxfun,
-       double work[], opk_index_t iact[]);
+extern cobyla_status cobyla(
+    opk_index_t n, opk_index_t m,
+    cobyla_calcfc* fc, void* data,
+    double x[], double rhobeg, double rhoend,
+    opk_index_t iprint, opk_index_t maxfun,
+    double work[], opk_index_t iact[]);
 
 /**
  * Minimize or maximize a function of many variables subject to inequality
@@ -201,28 +222,12 @@ cobyla(opk_index_t n, opk_index_t m,
  *         other value indicates an error (use `cobyla_reason` to have an
  *         explanation).
  */
-extern int
-cobyla_optimize(opk_index_t n, opk_index_t m,
-                opk_bool_t maximize, cobyla_calcfc* fc, void* data,
-                double x[], const double scl[], double rhobeg, double rhoend,
-                opk_index_t iprint, opk_index_t maxfun,
-                double work[], opk_index_t iact[]);
-
-/* Possible values returned by `cobyla`, `cobyla_get_status` and
-   `cobyla_iterate`: */
-#define COBYLA_INITIAL_ITERATE       (2) /* only used internally */
-#define COBYLA_ITERATE               (1) /* user requested to compute
-                                            F(X) and C(X) */
-#define COBYLA_SUCCESS               (0) /* algorithm converged */
-#define COBYLA_BAD_NVARS            (-1) /* bad number of variables */
-#define COBYLA_BAD_NCONS            (-2) /* bad number of constraints */
-#define COBYLA_BAD_RHO_RANGE        (-3) /* invalid trust region parameters */
-#define COBYLA_BAD_SCALING          (-4) /* bad scaling factor(s) */
-#define COBYLA_ROUNDING_ERRORS      (-5) /* rounding errors prevent
-                                            progress */
-#define COBYLA_TOO_MANY_EVALUATIONS (-6) /* too many evaluations */
-#define COBYLA_BAD_ADDRESS          (-7) /* illegal address */
-#define COBYLA_CORRUPTED            (-8) /* corrupted workspace */
+extern cobyla_status cobyla_optimize(
+    opk_index_t n, opk_index_t m,
+    opk_bool_t maximize, cobyla_calcfc* fc, void* data,
+    double x[], const double scl[], double rhobeg, double rhoend,
+    opk_index_t iprint, opk_index_t maxfun,
+    double work[], opk_index_t iact[]);
 
 /* Opaque structure used by the reverse communication variant of COBYLA. */
 typedef struct _cobyla_context cobyla_context_t;
@@ -271,20 +276,18 @@ cobyla_delete(cobyla_context_t* ctx);
    solution (the corresponding function value can be retrieved with
    `cobyla_get_last_f`); anything else indicates an error (see `cobyla_reason`
    for an explanatory message). */
-extern int
-cobyla_iterate(cobyla_context_t* ctx, double f, double x[], double c[]);
+extern cobyla_status cobyla_iterate(
+    cobyla_context_t* ctx, double f, double x[], double c[]);
 
 /* Restart COBYLA algorithm using the same parameters.  The return value is
    the new status of the algorithm, see `cobyla_get_status` for details. */
-extern int
-cobyla_restart(cobyla_context_t* ctx);
+extern cobyla_status cobyla_restart(cobyla_context_t* ctx);
 
 /* Get the current status of the algorithm.  Result is: `COBYLA_ITERATE` if
    user is requested to compute F(X) and C(X); `COBYLA_SUCCESS` if algorithm
    has converged; anything else indicates an error (see `cobyla_reason` for an
    explanatory message). */
-extern int
-cobyla_get_status(const cobyla_context_t* ctx);
+extern cobyla_status cobyla_get_status(const cobyla_context_t* ctx);
 
 /* Get the current number of function evaluations.  Result is -1 if something
    is wrong (e.g. CTX is NULL), nonnegative otherwise. */
@@ -306,9 +309,7 @@ cobyla_get_last_f(const cobyla_context_t* ctx);
 
 /* Get a textual explanation of the status returned by `cobyla`,
    `cobyla_get_status` and `cobyla_iterate`. */
-extern const char*
-cobyla_reason(int status);
-
+extern const char* cobyla_reason(cobyla_status status);
 
 /*---------------------------------------------------------------------------*/
 /* FORTRAN SUPPORT */

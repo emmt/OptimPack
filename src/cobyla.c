@@ -197,7 +197,7 @@ struct _cobyla_context {
   REAL parmu, parsig, prerec, prerem, rho, f;
   INTEGER ibrnch, iflag, ifull, jdrop;
 
-  int status;
+  cobyla_status status;
 };
 
 cobyla_context_t*
@@ -258,7 +258,7 @@ cobyla_delete(cobyla_context_t* ctx)
   }
 }
 
-int
+cobyla_status
 cobyla_restart(cobyla_context_t* ctx)
 {
   if (ctx == NULL) {
@@ -270,7 +270,7 @@ cobyla_restart(cobyla_context_t* ctx)
   return ctx->status;
 }
 
-int
+cobyla_status
 cobyla_get_status(const cobyla_context_t* ctx)
 {
   if (ctx == NULL) {
@@ -341,10 +341,10 @@ cobyla_get_last_f(const cobyla_context_t* ctx)
 #endif
 
 #ifdef _COBYLA_REVCOM
-int
+cobyla_status
 cobyla_iterate(cobyla_context_t* ctx, REAL f, REAL x[], REAL c[])
 #else
-int
+cobyla_status
 cobyla_optimize(INTEGER n, INTEGER m,
                 LOGICAL maximize, cobyla_calcfc* calcfc, void* data,
                 REAL x[], const REAL scl[], REAL rhobeg, REAL rhoend,
@@ -376,7 +376,7 @@ cobyla_optimize(INTEGER n, INTEGER m,
 #else
   REAL f;
 #endif
-  int status;
+  cobyla_status status;
 
 #ifdef _COBYLA_REVCOM
 
@@ -1556,7 +1556,7 @@ trstlp(const INTEGER n, const INTEGER m, const REAL a[], const REAL b[],
 /*---------------------------------------------------------------------------*/
 
 const char*
-cobyla_reason(int status)
+cobyla_reason(cobyla_status status)
 {
   switch (status) {
   case COBYLA_ITERATE:
@@ -1971,7 +1971,7 @@ testing_revcom(INTEGER n, INTEGER m, REAL rhobeg, REAL rhoend,
   REAL f;
   REAL* c;
   cobyla_context_t* ctx;
-  int status;
+  cobyla_status status;
   const char* reason;
 
   if (m > 0) {
