@@ -9,6 +9,8 @@ others/
 work/
 doc/html
 doc/latex
+*.orig
+*.out*
 
 # Autotools files
 Makefile
