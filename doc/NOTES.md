@@ -57,7 +57,7 @@ To have binaries automatically build by [Yggdrasil](https://github.com/JuliaPack
 
 1. Fork the Yggdrasil project on GitHub:
 
-2. Clone the fork and make a branch and edit the file `Yggdrasil/O/OptimPack/build_tarballs.jl`:
+2. Clone the fork, make a branch, and edit the file `Yggdrasil/O/OptimPack/build_tarballs.jl`:
    ```{.sh}
    git clone git@github.com:emmt/Yggdrasil.git
    cd Yggdrasil
@@ -68,6 +68,23 @@ To have binaries automatically build by [Yggdrasil](https://github.com/JuliaPack
    ```{.sh}
    sha256sum optimpack-${VERSION}.tar.gz
    ```
+
+3. Check that products can be built (from the `Yggdrasil/O/OptimPack` directory):
+   ```{.sh}
+   julia-1.3 build_tarballs.jl
+   ```
+   You may upload the products (in the directory `Yggdrasil/O/OptimPack/products`) to
+   the release page on GitHub.
+
+4. Commit changes, push the branch to GitHub:
+   ```{.sh}
+   git checkin -m "Update for OptimPack version ${VERSION}" build_tarballs.jl
+   git push --all
+   ```
+
+5. As suggested by this last command, create a pull request at
+   https://github.com/emmt/Yggdrasil/pull/new/optimpack.
+
 
 ## Prerequisites
 
