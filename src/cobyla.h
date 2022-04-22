@@ -49,18 +49,18 @@ cobyla_calcfc(opk_index n, opk_index m, const double x[],
  * cobyla_get_status() and cobyla_iterate().
  */
 typedef enum {
-    COBYLA_INITIAL_ITERATE      =  2, /**< only used internally */
-    COBYLA_ITERATE              =  1, /**< user requested to compute
-                                       **  F(X) and C(X) */
-    COBYLA_SUCCESS              =  0, /**< algorithm converged */
-    COBYLA_BAD_NVARS            = -1, /**< bad number of variables */
-    COBYLA_BAD_NCONS            = -2, /**< bad number of constraints */
-    COBYLA_BAD_RHO_RANGE        = -3, /**< invalid trust region parameters */
-    COBYLA_BAD_SCALING          = -4, /**< bad scaling factor(s) */
-    COBYLA_ROUNDING_ERRORS      = -5, /**< rounding errors prevent progress */
-    COBYLA_TOO_MANY_EVALUATIONS = -6, /**< too many evaluations */
-    COBYLA_BAD_ADDRESS          = -7, /**< illegal address */
-    COBYLA_CORRUPTED            = -8, /**< corrupted workspace */
+    COBYLA_INITIAL_ITERATE      =  2, /**< Only used internally */
+    COBYLA_ITERATE              =  1, /**< User requested to compute
+                                       *   F(X) and C(X) */
+    COBYLA_SUCCESS              =  0, /**< Algorithm converged */
+    COBYLA_BAD_NVARS            = -1, /**< Bad number of variables */
+    COBYLA_BAD_NCONS            = -2, /**< Bad number of constraints */
+    COBYLA_BAD_RHO_RANGE        = -3, /**< Invalid trust region parameters */
+    COBYLA_BAD_SCALING          = -4, /**< Bad scaling factor(s) */
+    COBYLA_ROUNDING_ERRORS      = -5, /**< Rounding errors prevent progress */
+    COBYLA_TOO_MANY_EVALUATIONS = -6, /**< Too many evaluations */
+    COBYLA_BAD_ADDRESS          = -7, /**< Illegal address */
+    COBYLA_CORRUPTED            = -8, /**< Corrupted workspace */
 } cobyla_status;
 
 /**

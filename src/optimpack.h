@@ -1037,7 +1037,7 @@ typedef enum {
   OPK_TASK_COMPUTE_FG  =  1, /**< Caller must compute f(x) and g(x). */
   OPK_TASK_NEW_X       =  2, /**< A new iterate is available. */
   OPK_TASK_FINAL_X     =  3, /**< Algorithm has converged, solution is
-                              **  available. */
+                              *   available. */
   OPK_TASK_WARNING     =  4  /**< Algorithm terminated with a warning. */
 } opk_task;
 
@@ -1528,25 +1528,25 @@ typedef struct opk_convexset_ opk_convexset;
  */
 typedef enum {
   OPK_BOUND_NONE            = 0, /**< No-bound (associated value must be
-                                  **  `NULL`). */
+                                  *   `NULL`). */
   OPK_BOUND_SCALAR_FLOAT    = 1, /**< Scalar bound (associated value is the
-                                  **  address of a float). */
+                                  *   address of a float). */
   OPK_BOUND_SCALAR_DOUBLE   = 2, /**< Scalar bound (associated value is the
-                                  **  address of a double). */
+                                  *   address of a double). */
   OPK_BOUND_STATIC_FLOAT    = 3, /**< Bounds are stored in a static array of
-                                  **  float's (associated value is the address
-                                  **  of the array). */
+                                  *   float's (associated value is the address
+                                  *   of the array). */
   OPK_BOUND_STATIC_DOUBLE   = 4, /**< Bounds are stored in a static array of
-                                  **  double's (associated value is the address
-                                  **  of the array). */
+                                  *   double's (associated value is the address
+                                  *   of the array). */
   OPK_BOUND_VOLATILE_FLOAT  = 5, /**< Bounds are stored in a volatile array of
-                                  **  floats's (associated value is the address
-                                  **  of the array). */
+                                  *   floats's (associated value is the address
+                                  *   of the array). */
   OPK_BOUND_VOLATILE_DOUBLE = 6, /**< Bounds are stored in a volatile array of
-                                  **  double's (associated value is the address
-                                  **  of the array). */
+                                  *   double's (associated value is the address
+                                  *   of the array). */
   OPK_BOUND_VECTOR          = 7  /**< Vector bound (associated value is the
-                                  **  address of an `opk_vector`). */
+                                  *   address of an `opk_vector`). */
 } opk_bound_type;
 
 /**
@@ -1784,9 +1784,9 @@ typedef struct opk_vmlmb_ opk_vmlmb;
 typedef enum {
   OPK_SCALING_NONE             = 0, /**< No-scaling. */
   OPK_SCALING_OREN_SPEDICATO   = 1, /**< Scaling by:
-                                     **  {@code gamma = (s'.y)/(y'.y)} */
+                                     *   {@code gamma = (s'.y)/(y'.y)} */
   OPK_SCALING_BARZILAI_BORWEIN = 2  /**< Scaling by:
-                                     **  {@code gamma = (s'.s)/(s'.y)} */
+                                     *   {@code gamma = (s'.s)/(s'.y)} */
 } opk_bfgs_scaling;
 
 /** Structure used to store the settings of a VMLMB optimizer. */

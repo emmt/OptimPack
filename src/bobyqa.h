@@ -42,21 +42,21 @@ typedef double bobyqa_objfun(const opk_index n, const double* x, void* data);
  * bobyqa_get_status() and bobyqa_iterate().
  */
 typedef enum {
-    BOBYQA_SUCCESS              =  0, /**< algorithm converged */
-    BOBYQA_BAD_NVARS            = -1, /**< bad number of variables */
+    BOBYQA_SUCCESS              =  0, /**< Algorithm converged */
+    BOBYQA_BAD_NVARS            = -1, /**< Bad number of variables */
     BOBYQA_BAD_NPT              = -2, /**< NPT is not in the required
-                                       **  interval */
-    BOBYQA_BAD_RHO_RANGE        = -3, /**< bad trust region radius
-                                       **  parameters */
-    BOBYQA_BAD_SCALING          = -4, /**< bad scaling factor(s) */
-    BOBYQA_TOO_CLOSE            = -5, /**< insufficient space between the
-                                       **  bounds */
-    BOBYQA_ROUNDING_ERRORS      = -6, /**< too much cancellation in a
-                                       **  denominator */
-    BOBYQA_TOO_MANY_EVALUATIONS = -7, /**< maximum number of function
-                                       **  evaluations exceeded */
-    BOBYQA_STEP_FAILED          = -8, /**< a trust region step has failed to
-                                       **  reduce Q */
+                                       *   interval */
+    BOBYQA_BAD_RHO_RANGE        = -3, /**< Bad trust region radius
+                                       *   parameters */
+    BOBYQA_BAD_SCALING          = -4, /**< Bad scaling factor(s) */
+    BOBYQA_TOO_CLOSE            = -5, /**< Insufficient space between the
+                                       *   bounds */
+    BOBYQA_ROUNDING_ERRORS      = -6, /**< Too much cancellation in a
+                                       *   denominator */
+    BOBYQA_TOO_MANY_EVALUATIONS = -7, /**< Maximum number of function
+                                       *   evaluations exceeded */
+    BOBYQA_STEP_FAILED          = -8, /**< A trust region step has failed to
+                                       *   reduce Q */
 } bobyqa_status;
 
 /* BOBYQA seeks the least value of a function of many variables, by applying a

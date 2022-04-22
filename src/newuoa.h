@@ -41,24 +41,24 @@ typedef double newuoa_objfun(const opk_index n, const double *x, void* data);
  * newuoa_get_status() and newuoa_iterate().
  */
 typedef enum {
-    NEWUOA_INITIAL_ITERATE      =  2, /**< only used internaly */
-    NEWUOA_ITERATE              =  1, /**< caller is requested to evaluate the
-                                       **  objective function and call
-                                       **  newuoa_iterate */
-    NEWUOA_SUCCESS              =  0, /**< algorithm converged */
-    NEWUOA_BAD_NVARS            = -1, /**< bad number of variables */
+    NEWUOA_INITIAL_ITERATE      =  2, /**< Only used internaly */
+    NEWUOA_ITERATE              =  1, /**< Caller is requested to evaluate the
+                                       *   objective function and call
+                                       *   newuoa_iterate() */
+    NEWUOA_SUCCESS              =  0, /**< Algorithm converged */
+    NEWUOA_BAD_NVARS            = -1, /**< Bad number of variables */
     NEWUOA_BAD_NPT              = -2, /**< NPT is not in the required
-                                       **  interval */
-    NEWUOA_BAD_RHO_RANGE        = -3, /**< invalid RHOBEG/RHOEND */
-    NEWUOA_BAD_SCALING          = -4, /**< bad scaling factor(s) */
-    NEWUOA_ROUNDING_ERRORS      = -5, /**< too much cancellation in a
-                                       **  denominator */
-    NEWUOA_TOO_MANY_EVALUATIONS = -6, /**< maximum number of function
-                                       **  evaluations exceeded */
-    NEWUOA_STEP_FAILED          = -7, /**< trust region step has failed to
-                                       **  reduce quadratic approximation */
-    NEWUOA_BAD_ADDRESS          = -8, /**< illegal NULL address */
-    NEWUOA_CORRUPTED            = -9, /**< corrupted or misused workspace */
+                                       *   interval */
+    NEWUOA_BAD_RHO_RANGE        = -3, /**< Invalid RHOBEG/RHOEND */
+    NEWUOA_BAD_SCALING          = -4, /**< Bad scaling factor(s) */
+    NEWUOA_ROUNDING_ERRORS      = -5, /**< Too much cancellation in a
+                                       *   denominator */
+    NEWUOA_TOO_MANY_EVALUATIONS = -6, /**< Maximum number of function
+                                       *   evaluations exceeded */
+    NEWUOA_STEP_FAILED          = -7, /**< Trust region step has failed to
+                                       *   reduce quadratic approximation */
+    NEWUOA_BAD_ADDRESS          = -8, /**< Illegal NULL address */
+    NEWUOA_CORRUPTED            = -9, /**< Corrupted or misused workspace */
 } newuoa_status;
 
 /* This subroutine seeks the least value of a function of many variables, by
