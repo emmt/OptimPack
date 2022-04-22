@@ -349,13 +349,17 @@ extern const char*
 opk_get_reason(opk_status status);
 
 /**
- * Retrieve OptimPack status from `errno`.
+ * Retrieve OptimPack status from C library error code.
  *
  * This function is needed to figure out the kind of errors for the few
  * routines which do not return a status (mostly the ones which create
  * objects).
+ *
+ * @param code   The error code, usually `errno`.
+ *
+ * @return The OptimPack status corresponding to the error.
  */
-extern opk_status opk_guess_status(void);
+extern opk_status opk_guess_status(int code);
 
 /**
  * Copy a string.

@@ -98,9 +98,9 @@ opk_get_reason(opk_status status)
 #undef OPK_STATUS_
 }
 
-opk_status opk_guess_status(void)
+opk_status opk_guess_status(int code)
 {
-  switch (errno) {
+  switch (code) {
 #ifdef ENOMEM
   case ENOMEM: return OPK_INSUFFICIENT_MEMORY;
 #endif
