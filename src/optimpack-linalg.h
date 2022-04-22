@@ -30,10 +30,10 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef _OPTIMPACK_LINALG_H
-#define _OPTIMPACK_LINALG_H 1
+#ifndef OPTIMPACK_LINALG_H_
+#define OPTIMPACK_LINALG_H_ 1
 
-#ifndef _OPTIMPACK_H
+#ifndef OPTIMPACK_H_
 # include "optimpack.h"
 #endif
 
@@ -82,44 +82,44 @@ OPK_BEGIN_C_DECLS
 # define OPK_BLAS_UNIT        CblasUnit
 # define OPK_BLAS_LEFT        CblasLeft
 # define OPK_BLAS_RIGHT       CblasRight
-# define opk_blas_order_t     CBLAS_ORDER
-# define opk_blas_trans_t     CBLAS_TRANSPOSE
-# define opk_blas_uplo_t      CBLAS_UPLO
-# define opk_blas_diag_t      CBLAS_DIAG
-# define opk_blas_side_t      CBLAS_SIDE
+# define opk_blas_order     CBLAS_ORDER
+# define opk_blas_trans     CBLAS_TRANSPOSE
+# define opk_blas_uplo      CBLAS_UPLO
+# define opk_blas_diag      CBLAS_DIAG
+# define opk_blas_side      CBLAS_SIDE
 
 #else /* not HAVE_CBLAS */
 
 /** Matrix storage order. */
-typedef enum _opk_blas_order {
+typedef enum {
   OPK_BLAS_ROW_MAJOR  = 101, /**< Matrix elements stored in row major order. */
   OPK_BLAS_COL_MAJOR  = 102  /**< Matrix elements stored in column major order. */
-} opk_blas_order_t;
+} opk_blas_order;
 
 /** Matrix transpose. */
-typedef enum _opk_blas_trans {
+typedef enum {
   OPK_BLAS_NO_TRANS   = 111, /**< Do not transpose matrix. */
   OPK_BLAS_TRANS      = 112, /**< Transpose matrix. */
   OPK_BLAS_CONJ_TRANS = 113  /**< Conjugate transpose. */
-} opk_blas_trans_t;
+} opk_blas_trans;
 
 /** Part of a triangular matrix to use. */
-typedef enum _opk_blas_uplo {
+typedef enum {
   OPK_BLAS_UPPER = 121, /**< Use upper triangular part. */
   OPK_BLAS_LOWER = 122  /**< Use lower triangular part. */
-} opk_blas_uplo_t;
+} opk_blas_uplo;
 
 /** Is diagonal unit? */
-typedef enum _opk_blas_diag {
+typedef enum {
   OPK_BLAS_NON_UNIT = 131, /**< Non unit diagonal. */
   OPK_BLAS_UNIT     = 132  /**< Unit diagonal. */
-} opk_blas_diag_t;
+} opk_blas_diag;
 
 /** Side of matrix multiply. */
-typedef enum _opk_blas_side {
+typedef enum {
   OPK_BLAS_LEFT  = 141, /**< Left multiply. */
   OPK_BLAS_RIGHT = 142  /**< Right multiply. */
-} opk_blas_side_t;
+} opk_blas_side;
 
 #endif /* HAVE_CBLAS */
 
@@ -149,8 +149,8 @@ typedef enum _opk_blas_side {
  * @see opk_samax, opk_idamax.
  */
 extern double
-opk_damax(opk_index_t n, const double x[],
-          opk_index_t incx);
+opk_damax(opk_index n, const double x[],
+          opk_index incx);
 
 /**
  * Maximum absolute value of a single precision vector.
@@ -158,8 +158,8 @@ opk_damax(opk_index_t n, const double x[],
  * @see opk_damax, opk_isamax.
  */
 extern float
-opk_samax(opk_index_t n, const float x[],
-          opk_index_t incx);
+opk_samax(opk_index n, const float x[],
+          opk_index incx);
 
 /**
  * Sum of the absolute values of a vector.
@@ -176,8 +176,8 @@ opk_samax(opk_index_t n, const float x[],
  * @see opk_sasum.
  */
 extern double
-opk_dasum(opk_index_t n,
-          const double x[], opk_index_t incx);
+opk_dasum(opk_index n,
+          const double x[], opk_index incx);
 
 /**
  * Sum of the absolute values of a vector.
@@ -185,8 +185,8 @@ opk_dasum(opk_index_t n,
  * @see opk_dasum.
  */
 extern float
-opk_sasum(opk_index_t n,
-          const float x[], opk_index_t incx);
+opk_sasum(opk_index n,
+          const float x[], opk_index incx);
 
 /**
  * Linear combination of two vectors.
@@ -205,9 +205,9 @@ opk_sasum(opk_index_t n,
  * @see opk_saxpy.
  */
 extern void
-opk_daxpy(opk_index_t n, double a,
-          const double x[], opk_index_t incx,
-          double y[], opk_index_t incy);
+opk_daxpy(opk_index n, double a,
+          const double x[], opk_index incx,
+          double y[], opk_index incy);
 
 /**
  * Linear combination of two vectors.
@@ -215,9 +215,9 @@ opk_daxpy(opk_index_t n, double a,
  * @see opk_daxpy.
  */
 extern void
-opk_saxpy(opk_index_t n, float a,
-          const float x[], opk_index_t incx,
-          float y[], opk_index_t incy);
+opk_saxpy(opk_index n, float a,
+          const float x[], opk_index incx,
+          float y[], opk_index incy);
 
 /**
  * Copy a vector into another one.
@@ -234,9 +234,9 @@ opk_saxpy(opk_index_t n, float a,
  * @see opk_scopy, opk_dswap.
  */
 extern void
-opk_dcopy(opk_index_t n,
-          const double x[], opk_index_t incx,
-          double y[], opk_index_t incy);
+opk_dcopy(opk_index n,
+          const double x[], opk_index incx,
+          double y[], opk_index incy);
 
 /**
  * Copy a vector into another one.
@@ -244,9 +244,9 @@ opk_dcopy(opk_index_t n,
  * @see opk_dcopy, opk_sswap.
  */
 extern void
-opk_scopy(opk_index_t n,
-          const float x[], opk_index_t incx,
-          float y[], opk_index_t incy);
+opk_scopy(opk_index n,
+          const float x[], opk_index incx,
+          float y[], opk_index incy);
 
 /**
  * Dot product of two vectors.
@@ -265,9 +265,9 @@ opk_scopy(opk_index_t n,
  * @see opk_sdot.
  */
 extern double
-opk_ddot(opk_index_t n,
-         const double x[], opk_index_t incx,
-         const double y[], opk_index_t incy);
+opk_ddot(opk_index n,
+         const double x[], opk_index incx,
+         const double y[], opk_index incy);
 
 /**
  * Dot product of two vectors.
@@ -275,9 +275,9 @@ opk_ddot(opk_index_t n,
  * @see opk_ddot.
  */
 extern float
-opk_sdot(opk_index_t n,
-         const float x[], opk_index_t incx,
-         const float y[], opk_index_t incy);
+opk_sdot(opk_index n,
+         const float x[], opk_index incx,
+         const float y[], opk_index incy);
 
 /**
  * Euclidean norm of a vector.
@@ -296,8 +296,8 @@ opk_sdot(opk_index_t n,
  * @see opk_snrm2.
  */
 extern double
-opk_dnrm2(opk_index_t n,
-          const double x[], opk_index_t incx);
+opk_dnrm2(opk_index n,
+          const double x[], opk_index incx);
 
 /**
  * Euclidean norm of a vector.
@@ -305,8 +305,8 @@ opk_dnrm2(opk_index_t n,
  * @see opk_dnrm2.
  */
 extern float
-opk_snrm2(opk_index_t n,
-          const float x[], opk_index_t incx);
+opk_snrm2(opk_index n,
+          const float x[], opk_index incx);
 
 /**
  * Scaling of a vector.
@@ -325,8 +325,8 @@ opk_snrm2(opk_index_t n,
  * @see opk_sscal.
  */
 extern void
-opk_dscal(opk_index_t n, double a,
-          double x[], opk_index_t incx);
+opk_dscal(opk_index n, double a,
+          double x[], opk_index incx);
 
 /**
  * Scaling of a vector.
@@ -334,8 +334,8 @@ opk_dscal(opk_index_t n, double a,
  * @see opk_dscal.
  */
 extern void
-opk_sscal(opk_index_t n, float a,
-          float  x[], opk_index_t incx);
+opk_sscal(opk_index n, float a,
+          float  x[], opk_index incx);
 
 /**
  * Sum of the values of a vector.
@@ -351,8 +351,8 @@ opk_sscal(opk_index_t n, float a,
  * @see opk_ssum, opk_dasum.
  */
 extern double
- opk_dsum(opk_index_t n,
-          const double x[], opk_index_t incx);
+ opk_dsum(opk_index n,
+          const double x[], opk_index incx);
 
 /**
  * Sum of the absolute values of a vector.
@@ -360,8 +360,8 @@ extern double
  * @see opk_dsum, opk_sasum.
  */
 extern float
-opk_ssum(opk_index_t n,
-         const float x[], opk_index_t incx);
+opk_ssum(opk_index n,
+         const float x[], opk_index incx);
 
 /**
  * Exchanging contents of two vectors.
@@ -378,9 +378,9 @@ opk_ssum(opk_index_t n,
  * @see opk_sswap, opk_dcopy.
  */
 extern void
-opk_dswap(opk_index_t n,
-          double x[], opk_index_t incx,
-          double y[], opk_index_t incy);
+opk_dswap(opk_index n,
+          double x[], opk_index incx,
+          double y[], opk_index incy);
 
 /**
  * Exchanging contents of two vectors.
@@ -388,9 +388,9 @@ opk_dswap(opk_index_t n,
  * @see opk_dswap, opk_scopy.
  */
 extern void
-opk_sswap(opk_index_t n,
-          float x[], opk_index_t incx,
-          float y[], opk_index_t incy);
+opk_sswap(opk_index n,
+          float x[], opk_index incx,
+          float y[], opk_index incy);
 
 /**
  * Fill an array with zeros.
@@ -406,8 +406,8 @@ opk_sswap(opk_index_t n,
  */
 
 extern void
-opk_dzero(opk_index_t n,
-          double x[], opk_index_t incx);
+opk_dzero(opk_index n,
+          double x[], opk_index incx);
 
 /**
  * Fill an array with zeros.
@@ -422,8 +422,8 @@ opk_dzero(opk_index_t n,
  * @see opk_dzero.
  */
 extern void
-opk_szero(opk_index_t n,
-          float  x[], opk_index_t incx);
+opk_szero(opk_index n,
+          float  x[], opk_index incx);
 
 /**
  * Get index of maximum absolute value of a vector.
@@ -441,18 +441,18 @@ opk_szero(opk_index_t n,
  *
  * @see opk_isamax, opk_damax.
  */
-extern opk_index_t
-opk_idamax(opk_index_t n,
-           const double x[], opk_index_t incx);
+extern opk_index
+opk_idamax(opk_index n,
+           const double x[], opk_index incx);
 
 /**
  * Get index of maximum absolute value of a vector.
  *
  * @see opk_idamax, opk_samax.
  */
-extern opk_index_t
-opk_isamax(opk_index_t n,
-           const float x[], opk_index_t incx);
+extern opk_index
+opk_isamax(opk_index n,
+           const float x[], opk_index incx);
 
 
 /** @} */
@@ -504,13 +504,13 @@ opk_isamax(opk_index_t n,
  * @see opk_sgemv.
  */
 extern int
-opk_dgemv(opk_blas_trans_t trans,
-          opk_index_t m, opk_index_t n,
+opk_dgemv(opk_blas_trans trans,
+          opk_index m, opk_index n,
           double alpha,
-          const double a[], opk_index_t lda,
-          const double x[], opk_index_t incx,
+          const double a[], opk_index lda,
+          const double x[], opk_index incx,
           double beta,
-          double y[], opk_index_t incy);
+          double y[], opk_index incy);
 
 /**
  * Matrix-vector operation.
@@ -518,13 +518,13 @@ opk_dgemv(opk_blas_trans_t trans,
  * @see opk_dgemv.
  */
 extern int
-opk_sgemv(opk_blas_trans_t trans,
-          opk_index_t m, opk_index_t n,
+opk_sgemv(opk_blas_trans trans,
+          opk_index m, opk_index n,
           float alpha,
-          const float a[], opk_index_t lda,
-          const float x[], opk_index_t incx,
+          const float a[], opk_index lda,
+          const float x[], opk_index incx,
           float beta,
-          float y[], opk_index_t incy);
+          float y[], opk_index incy);
 
 /**
  * Multiplication of a vector by a triangular matrix.
@@ -574,12 +574,12 @@ opk_sgemv(opk_blas_trans_t trans,
  * @see opk_strmv, opk_dtrsv.
  */
 extern int
-opk_dtrmv(opk_blas_uplo_t uplo,
-          opk_blas_trans_t trans,
-          opk_blas_diag_t diag,
-          opk_index_t n,
-          const double a[], opk_index_t lda,
-          double x[], opk_index_t incx);
+opk_dtrmv(opk_blas_uplo uplo,
+          opk_blas_trans trans,
+          opk_blas_diag diag,
+          opk_index n,
+          const double a[], opk_index lda,
+          double x[], opk_index incx);
 
 /**
  * Multiplication of a vector by a triangular matrix.
@@ -587,12 +587,12 @@ opk_dtrmv(opk_blas_uplo_t uplo,
  * @see opk_dtrmv, opk_strsv.
  */
 extern int
-opk_strmv(opk_blas_uplo_t uplo,
-          opk_blas_trans_t trans,
-          opk_blas_diag_t diag,
-          opk_index_t n,
-          const float a[], opk_index_t lda,
-          float x[], opk_index_t incx);
+opk_strmv(opk_blas_uplo uplo,
+          opk_blas_trans trans,
+          opk_blas_diag diag,
+          opk_index n,
+          const float a[], opk_index lda,
+          float x[], opk_index incx);
 
 /**
  * Solves a tringular linear system of equations.
@@ -646,12 +646,12 @@ opk_strmv(opk_blas_uplo_t uplo,
  * @see opk_strsv, opk_dtrmv.
  */
 extern int
-opk_dtrsv(opk_blas_uplo_t uplo,
-          opk_blas_trans_t trans,
-          opk_blas_diag_t diag,
-          opk_index_t n,
-          const double a[], opk_index_t lda,
-          double x[], opk_index_t incx);
+opk_dtrsv(opk_blas_uplo uplo,
+          opk_blas_trans trans,
+          opk_blas_diag diag,
+          opk_index n,
+          const double a[], opk_index lda,
+          double x[], opk_index incx);
 
 /**
  * Solves a tringular linear system of equations.
@@ -659,12 +659,12 @@ opk_dtrsv(opk_blas_uplo_t uplo,
  * @see opk_dtrsv, opk_strmv.
  */
 extern int
-opk_strsv(opk_blas_uplo_t uplo,
-          opk_blas_trans_t trans,
-          opk_blas_diag_t diag,
-          opk_index_t n,
-          const float a[], opk_index_t lda,
-          float x[], opk_index_t incx);
+opk_strsv(opk_blas_uplo uplo,
+          opk_blas_trans trans,
+          opk_blas_diag diag,
+          opk_index n,
+          const float a[], opk_index lda,
+          float x[], opk_index incx);
 
 /** @} */
 
@@ -739,16 +739,16 @@ opk_strsv(opk_blas_uplo_t uplo,
  * @see opk_sgemm.
  */
 extern int
-opk_dgemm(opk_blas_trans_t transa,
-          opk_blas_trans_t transb,
-          opk_index_t m,
-          opk_index_t n,
-          opk_index_t k,
+opk_dgemm(opk_blas_trans transa,
+          opk_blas_trans transb,
+          opk_index m,
+          opk_index n,
+          opk_index k,
           double alpha,
-          const double a[], opk_index_t lda,
-          const double b[], opk_index_t ldb,
+          const double a[], opk_index lda,
+          const double b[], opk_index ldb,
           double beta,
-          double c[], opk_index_t ldc);
+          double c[], opk_index ldc);
 
 /**
  * Performs a matrix-matrix operation.
@@ -756,16 +756,16 @@ opk_dgemm(opk_blas_trans_t transa,
  * @see opk_dgemm.
  */
 extern int
-opk_sgemm(opk_blas_trans_t transa,
-          opk_blas_trans_t transb,
-          opk_index_t m,
-          opk_index_t n,
-          opk_index_t k,
+opk_sgemm(opk_blas_trans transa,
+          opk_blas_trans transb,
+          opk_index m,
+          opk_index n,
+          opk_index k,
           float alpha,
-          const float a[], opk_index_t lda,
-          const float b[], opk_index_t ldb,
+          const float a[], opk_index lda,
+          const float b[], opk_index ldb,
           float beta,
-          float c[], opk_index_t ldc);
+          float c[], opk_index ldc);
 
 /**
  * Performs a symmetric rank k operation.
@@ -831,14 +831,14 @@ opk_sgemm(opk_blas_trans_t transa,
  * @see opk_ssyrk.
  */
 extern int
-opk_dsyrk(opk_blas_uplo_t uplo,
-          opk_blas_trans_t trans,
-          opk_index_t n,
-          opk_index_t k,
+opk_dsyrk(opk_blas_uplo uplo,
+          opk_blas_trans trans,
+          opk_index n,
+          opk_index k,
           double alpha,
-          const double a[], opk_index_t lda,
+          const double a[], opk_index lda,
           double beta,
-          double c[], opk_index_t ldc);
+          double c[], opk_index ldc);
 
 /**
  * Performs a symmetric rank k operation.
@@ -846,14 +846,14 @@ opk_dsyrk(opk_blas_uplo_t uplo,
  * @see opk_dsyrk.
  */
 extern int
-opk_ssyrk(opk_blas_uplo_t uplo,
-          opk_blas_trans_t trans,
-          opk_index_t n,
-          opk_index_t k,
+opk_ssyrk(opk_blas_uplo uplo,
+          opk_blas_trans trans,
+          opk_index n,
+          opk_index k,
           float alpha,
-          const float a[], opk_index_t lda,
+          const float a[], opk_index lda,
           float beta,
-          float c[], opk_index_t ldc);
+          float c[], opk_index ldc);
 
 /** @} */
 
@@ -914,20 +914,20 @@ opk_ssyrk(opk_blas_uplo_t uplo,
  * @see
  *   opk_spotf2.
  */
-extern opk_index_t
-opk_dpotf2(opk_blas_uplo_t uplo,
-           opk_index_t n,
-           double a[], opk_index_t lda);
+extern opk_index
+opk_dpotf2(opk_blas_uplo uplo,
+           opk_index n,
+           double a[], opk_index lda);
 
 /**
  * Cholesky factorization of a real symmetric positive definite matrix.
  *
  * @see opk_dpotf2.
  */
-extern opk_index_t
-opk_spotf2(opk_blas_uplo_t uplo,
-           opk_index_t n,
-           float a[], opk_index_t lda);
+extern opk_index
+opk_spotf2(opk_blas_uplo uplo,
+           opk_index n,
+           float a[], opk_index lda);
 
 /** @} */
 
@@ -976,7 +976,7 @@ typedef enum {
                                progress */
   OPK_CG_NON_CONVEX =  6, /**< non-positive definitiveness has been detected */
   OPK_CG_TRUNCATED  =  7  /**< step truncated at trust region boundary */
-} opk_cg_state_t;
+} opk_cg_state;
 
 /**
  * Preconditioned linear conjugate gradient (double precision).
@@ -1108,9 +1108,9 @@ typedef enum {
  * @see opk_dlcg, opk_splcg.
  */
 extern void
-opk_dplcg(opk_index_t n, double p[], double q[],
+opk_dplcg(opk_index n, double p[], double q[],
           double r[], double x[], double z[],
-          double rho[4], opk_cg_state_t *state);
+          double rho[4], opk_cg_state *state);
 
 /**
  * Preconditioned linear conjugate gradient (single precision).
@@ -1118,9 +1118,9 @@ opk_dplcg(opk_index_t n, double p[], double q[],
  * @see opk_slcg(), opk_dplcg() for the meaning of the arguments.
  */
 extern void
-opk_splcg(opk_index_t n, float p[], float q[],
+opk_splcg(opk_index n, float p[], float q[],
           float r[], float x[], float z[],
-          float rho[4], opk_cg_state_t *state);
+          float rho[4], opk_cg_state *state);
 
 /**
  * Linear conjugate gradient (double precision).
@@ -1133,8 +1133,8 @@ opk_splcg(opk_index_t n, float p[], float q[],
  * @see opk_slcg, opk_dplcg.
  */
 extern void
-opk_dlcg(opk_index_t n, double p[], double q[], double r[],
-         double x[], double rho[4], opk_cg_state_t *state);
+opk_dlcg(opk_index n, double p[], double q[], double r[],
+         double x[], double rho[4], opk_cg_state *state);
 
 /**
  * Linear conjugate gradient (single precision).
@@ -1147,8 +1147,8 @@ opk_dlcg(opk_index_t n, double p[], double q[], double r[],
  * @see opk_dlcg(), opk_dplcg().
  */
 extern void
-opk_slcg(opk_index_t n, float p[], float q[], float r[],
-         float x[], float rho[4], opk_cg_state_t *state);
+opk_slcg(opk_index n, float p[], float q[], float r[],
+         float x[], float rho[4], opk_cg_state *state);
 
 /**
  * Trust region conjugate gradient (double precision).
@@ -1256,10 +1256,10 @@ opk_slcg(opk_index_t n, float p[], float q[], float r[],
  * @see opk_strcg, opk_dplcg.
  */
 extern void
-opk_dtrcg(opk_index_t n, double p[], const double q[],
+opk_dtrcg(opk_index n, double p[], const double q[],
           double r[], double x[], const double z[],
           double delta, double rho[5],
-          opk_cg_state_t *state);
+          opk_cg_state *state);
 
 /**
  * Trust region conjugate gradient (single precision).
@@ -1272,10 +1272,10 @@ opk_dtrcg(opk_index_t n, double p[], const double q[],
  * @see opk_dtrcg, opk_dplcg.
  */
 extern void
-opk_strcg(opk_index_t n, float p[], const float q[],
+opk_strcg(opk_index n, float p[], const float q[],
           float r[], float x[], const float z[],
           float delta, float rho[5],
-          opk_cg_state_t *state);
+          opk_cg_state *state);
 
 /** @} */
 
@@ -1283,4 +1283,4 @@ opk_strcg(opk_index_t n, float p[], const float q[],
 
 OPK_END_C_DECLS
 
-#endif /* _OPTIMPACK_LINALG_H */
+#endif /* OPTIMPACK_LINALG_H_ */

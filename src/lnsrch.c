@@ -59,24 +59,24 @@ non_finite(double x)
   return (isnan(x) || isinf(x));
 }
 
-static opk_lnsrch_task_t
-failure(opk_lnsrch_t* ls, opk_status_t status)
+static opk_lnsrch_task
+failure(opk_lnsrch* ls, opk_status status)
 {
   ls->status = status;
   ls->task = OPK_LNSRCH_ERROR;
   return ls->task;
 }
 
-static opk_lnsrch_task_t
-warning(opk_lnsrch_t* ls, opk_status_t status)
+static opk_lnsrch_task
+warning(opk_lnsrch* ls, opk_status status)
 {
   ls->status = status;
   ls->task = OPK_LNSRCH_WARNING;
   return ls->task;
 }
 
-static opk_lnsrch_task_t
-success(opk_lnsrch_t* ls, opk_lnsrch_task_t status)
+static opk_lnsrch_task
+success(opk_lnsrch* ls, opk_lnsrch_task status)
 {
   ls->status = OPK_SUCCESS;
   ls->task = status;
@@ -87,19 +87,19 @@ success(opk_lnsrch_t* ls, opk_lnsrch_task_t status)
 /* UNIFIED INTERFACE FOR LINE SEARCH */
 
 void
-finalize_line_search(opk_object_t* obj)
+finalize_line_search(opk_object* obj)
 {
-  opk_lnsrch_t* ws = (opk_lnsrch_t*)obj;
+  opk_lnsrch* ws = (opk_lnsrch*)obj;
   if (ws->ops->finalize != NULL) {
     ws->ops->finalize(ws);
   }
 }
 
-opk_lnsrch_t*
-opk_allocate_line_search(opk_lnsrch_operations_t *ops,
+opk_lnsrch*
+opk_allocate_line_search(opk_lnsrch_operations *ops,
                          size_t size)
 {
-  opk_lnsrch_t* ls;
+  opk_lnsrch* ls;
 
   if (ops == NULL || ops->start == NULL || ops->iterate == NULL) {
     errno = EFAULT;
@@ -109,8 +109,8 @@ opk_allocate_line_search(opk_lnsrch_operations_t *ops,
     errno = EINVAL;
     return NULL;
   }
-  size = OPK_MAX(size, sizeof(opk_lnsrch_t));
-  ls = (opk_lnsrch_t*)opk_allocate_object(finalize_line_search, size);
+  size = OPK_MAX(size, sizeof(opk_lnsrch));
+  ls = (opk_lnsrch*)opk_allocate_object(finalize_line_search, size);
   if (ls != NULL) {
     ls->ops = ops;
     ls->status = OPK_NOT_STARTED;
@@ -121,8 +121,8 @@ opk_allocate_line_search(opk_lnsrch_operations_t *ops,
 
 /* after an error or convergence, you must call opk_lnsrch_start */
 
-opk_lnsrch_task_t
-opk_lnsrch_start(opk_lnsrch_t* ls, double f0, double g0,
+opk_lnsrch_task
+opk_lnsrch_start(opk_lnsrch* ls, double f0, double g0,
                  double stp, double stpmin, double stpmax)
 {
   if (ls == NULL) {
@@ -151,8 +151,8 @@ opk_lnsrch_start(opk_lnsrch_t* ls, double f0, double g0,
   return ls->ops->start(ls);
 }
 
-opk_lnsrch_task_t
-opk_lnsrch_iterate(opk_lnsrch_t* ls, double* stp_ptr,
+opk_lnsrch_task
+opk_lnsrch_iterate(opk_lnsrch* ls, double* stp_ptr,
                    double f1, double g1)
 {
   int bound;
@@ -190,49 +190,49 @@ opk_lnsrch_iterate(opk_lnsrch_t* ls, double* stp_ptr,
 }
 
 double
-opk_lnsrch_get_step(const opk_lnsrch_t* ls)
+opk_lnsrch_get_step(const opk_lnsrch* ls)
 {
   return (ls != NULL && ls->task == OPK_LNSRCH_SEARCH ? ls->stp : -1.0);
 }
 
-opk_lnsrch_task_t
-opk_lnsrch_get_task(const opk_lnsrch_t* ls)
+opk_lnsrch_task
+opk_lnsrch_get_task(const opk_lnsrch* ls)
 {
   return (ls != NULL ? ls->task : OPK_LNSRCH_ERROR);
 }
 
-opk_status_t
-opk_lnsrch_get_status(const opk_lnsrch_t* ls)
+opk_status
+opk_lnsrch_get_status(const opk_lnsrch* ls)
 {
   return (ls != NULL ? ls->status : OPK_ILLEGAL_ADDRESS);
 }
 
-opk_bool_t
-opk_lnsrch_has_errors(const opk_lnsrch_t* ls)
+opk_bool
+opk_lnsrch_has_errors(const opk_lnsrch* ls)
 {
   return (opk_lnsrch_get_task(ls) == OPK_LNSRCH_ERROR);
 }
 
-opk_bool_t
-opk_lnsrch_has_warnings(const opk_lnsrch_t* ls)
+opk_bool
+opk_lnsrch_has_warnings(const opk_lnsrch* ls)
 {
   return (opk_lnsrch_get_task(ls) == OPK_LNSRCH_WARNING);
 }
 
-opk_bool_t
-opk_lnsrch_converged(const opk_lnsrch_t* ls)
+opk_bool
+opk_lnsrch_converged(const opk_lnsrch* ls)
 {
   return (opk_lnsrch_get_task(ls) == OPK_LNSRCH_CONVERGENCE);
 }
 
-opk_bool_t
-opk_lnsrch_finished(const opk_lnsrch_t* ls)
+opk_bool
+opk_lnsrch_finished(const opk_lnsrch* ls)
 {
   return (opk_lnsrch_get_task(ls) != OPK_LNSRCH_SEARCH);
 }
 
-opk_bool_t
-opk_lnsrch_use_deriv(const opk_lnsrch_t* ls)
+opk_bool
+opk_lnsrch_use_deriv(const opk_lnsrch* ls)
 {
   return ls->ops->use_deriv;
 }
@@ -241,23 +241,23 @@ opk_lnsrch_use_deriv(const opk_lnsrch_t* ls)
 /* ARMIJO (BACKTRACKING) LINE SEARCH */
 
 /* Sub-type for Armijo line search. */
-typedef struct _backtrack_lnsrch {
-  opk_lnsrch_t base; /* Base type (must be the first member). */
+typedef struct {
+  opk_lnsrch base; /* Base type (must be the first member). */
   double ftol;
   double amin;
-} backtrack_lnsrch_t;
+} backtrack_lnsrch;
 
-static opk_lnsrch_task_t
-backtrack_start(opk_lnsrch_t* ls)
+static opk_lnsrch_task
+backtrack_start(opk_lnsrch* ls)
 {
   return success(ls, OPK_LNSRCH_SEARCH);
 }
 
-static opk_lnsrch_task_t
-backtrack_iterate(opk_lnsrch_t* ls,
+static opk_lnsrch_task
+backtrack_iterate(opk_lnsrch* ls,
                   double* stp_ptr, double f, double g)
 {
-  backtrack_lnsrch_t* bls = (backtrack_lnsrch_t*)ls;
+  backtrack_lnsrch* bls = (backtrack_lnsrch*)ls;
   double stp = *stp_ptr;
 
   /* Check for convergence otherwise take a (safeguarded) bisection step unless
@@ -295,26 +295,26 @@ backtrack_iterate(opk_lnsrch_t* ls,
   return success(ls, OPK_LNSRCH_SEARCH);
 }
 
-static opk_lnsrch_operations_t backtrack_operations = {
+static opk_lnsrch_operations backtrack_operations = {
   NULL,
   backtrack_start,
   backtrack_iterate,
   FALSE
 };
 
-opk_lnsrch_t*
+opk_lnsrch*
 opk_lnsrch_new_backtrack(double ftol, double amin)
 {
-  opk_lnsrch_t* ls;
+  opk_lnsrch* ls;
 
   if (ftol <= 0 || ftol > 0.5 || amin <= 0 || amin >= 1) {
     errno = EINVAL;
     return NULL;
   }
   ls = opk_allocate_line_search(&backtrack_operations,
-                                sizeof(backtrack_lnsrch_t));
+                                sizeof(backtrack_lnsrch));
   if (ls != NULL) {
-    backtrack_lnsrch_t* bls = (backtrack_lnsrch_t*)ls;
+    backtrack_lnsrch* bls = (backtrack_lnsrch*)ls;
     bls->ftol = ftol;
     bls->amin = amin;
   }
@@ -325,22 +325,22 @@ opk_lnsrch_new_backtrack(double ftol, double amin)
 /* NONMONOTONE LINE SEARCH */
 
 /* Sub-type for nonmonotone line search. */
-typedef struct _nonmonotone_lnsrch {
-  opk_lnsrch_t base; /**< Base type (must be the first member). */
+typedef struct {
+  opk_lnsrch base; /**< Base type (must be the first member). */
   double sigma1;     /**< Lower steplength bound to trigger bisection. */
   double sigma2;     /**< Upper steplength relative bound to trigger bisection. */
   double ftol;       /**< Parameter for the function reduction criterion. */
   double fmax;       /**< Maximum function value for the past M steps. */
   double* fsav;      /**< Function values for M last accepted steps. */
-  opk_index_t m;     /**< Number of previous steps to remember. */
-  opk_index_t mp;    /**< Number of steps since starting. */
-} nonmonotone_lnsrch_t;
+  opk_index m;     /**< Number of previous steps to remember. */
+  opk_index mp;    /**< Number of steps since starting. */
+} nonmonotone_lnsrch;
 
-static opk_lnsrch_task_t
-nonmonotone_start(opk_lnsrch_t* ls)
+static opk_lnsrch_task
+nonmonotone_start(opk_lnsrch* ls)
 {
-  nonmonotone_lnsrch_t* nmls = (nonmonotone_lnsrch_t*)ls;
-  opk_index_t j, n;
+  nonmonotone_lnsrch* nmls = (nonmonotone_lnsrch*)ls;
+  opk_index j, n;
 
   /* Save function value. */
   nmls->fsav[nmls->mp%nmls->m] = ls->finit;
@@ -360,18 +360,18 @@ nonmonotone_start(opk_lnsrch_t* ls)
 
 #if 0
 static void
-nonmonotone_reset(opk_lnsrch_t* ls)
+nonmonotone_reset(opk_lnsrch* ls)
 {
-  nonmonotone_lnsrch_t* nmls = (nonmonotone_lnsrch_t*)ls;
+  nonmonotone_lnsrch* nmls = (nonmonotone_lnsrch*)ls;
   nmls->mp = 0;
 }
 #endif
 
-static opk_lnsrch_task_t
-nonmonotone_iterate(opk_lnsrch_t* ls,
+static opk_lnsrch_task
+nonmonotone_iterate(opk_lnsrch* ls,
                     double* stp_ptr, double f, double g)
 {
-  nonmonotone_lnsrch_t* nmls = (nonmonotone_lnsrch_t*)ls;
+  nonmonotone_lnsrch* nmls = (nonmonotone_lnsrch*)ls;
   double alpha, delta, q, r;
 
   /* Check whether Armijo-like condition satisfied. */
@@ -411,18 +411,18 @@ nonmonotone_iterate(opk_lnsrch_t* ls,
   return success(ls, OPK_LNSRCH_SEARCH);
 }
 
-static opk_lnsrch_operations_t nonmonotone_operations = {
+static opk_lnsrch_operations nonmonotone_operations = {
   NULL,
   nonmonotone_start,
   nonmonotone_iterate,
   FALSE
 };
 
-opk_lnsrch_t*
-opk_lnsrch_new_nonmonotone(opk_index_t m, double ftol,
+opk_lnsrch*
+opk_lnsrch_new_nonmonotone(opk_index m, double ftol,
                            double sigma1, double sigma2)
 {
-  opk_lnsrch_t* ls;
+  opk_lnsrch* ls;
   size_t size, offset;
 
   if (non_finite(ftol) || non_finite(sigma1) || non_finite(sigma1) ||
@@ -431,11 +431,11 @@ opk_lnsrch_new_nonmonotone(opk_index_t m, double ftol,
     errno = EINVAL;
     return NULL;
   }
-  offset = ROUND_UP(sizeof(nonmonotone_lnsrch_t), sizeof(double));
+  offset = ROUND_UP(sizeof(nonmonotone_lnsrch), sizeof(double));
   size = offset + m*sizeof(double);
   ls = opk_allocate_line_search(&nonmonotone_operations, size);
   if (ls != NULL) {
-    nonmonotone_lnsrch_t* nmls = (nonmonotone_lnsrch_t*)ls;
+    nonmonotone_lnsrch* nmls = (nonmonotone_lnsrch*)ls;
     nmls->ftol = ftol;
     nmls->sigma1 = sigma1;
     nmls->sigma2 = sigma2;
@@ -450,8 +450,8 @@ opk_lnsrch_new_nonmonotone(opk_index_t m, double ftol,
 /* MORÉ AND THUENTE CUBIC LINE SEARCH */
 
 /* Sub-type for Moré and Thuente cubic line search. */
-typedef struct _csrch_lnsrch {
-  opk_lnsrch_t base; /* Base type (must be the first member). */
+typedef struct {
+  opk_lnsrch base; /* Base type (must be the first member). */
 
   /* Convergence parameters. */
   double ftol;
@@ -474,19 +474,19 @@ typedef struct _csrch_lnsrch {
   double stmax;
   double width;
   double width1;
-  opk_bool_t brackt;
+  opk_bool brackt;
 
   /* The algorithm has two different stages. */
   int stage;
-} csrch_lnsrch_t;
+} csrch_lnsrch;
 
-static csrch_lnsrch_t*
-csrch_get_workspace(opk_lnsrch_t* ls);
+static csrch_lnsrch*
+csrch_get_workspace(opk_lnsrch* ls);
 
-static opk_lnsrch_task_t
-csrch_start(opk_lnsrch_t* ls)
+static opk_lnsrch_task
+csrch_start(opk_lnsrch* ls)
 {
-  csrch_lnsrch_t* cls;
+  csrch_lnsrch* cls;
 
   cls = csrch_get_workspace(ls);
   if (cls == NULL) {
@@ -519,12 +519,12 @@ csrch_start(opk_lnsrch_t* ls)
   return success(ls, OPK_LNSRCH_SEARCH);
 }
 
-static opk_lnsrch_task_t
-csrch_iterate(opk_lnsrch_t* ls,
+static opk_lnsrch_task
+csrch_iterate(opk_lnsrch* ls,
               double* stp_ptr, double f, double g)
 {
   double ftest;
-  csrch_lnsrch_t* cls;
+  csrch_lnsrch* cls;
   int result;
 
   cls = csrch_get_workspace(ls);
@@ -628,7 +628,7 @@ csrch_iterate(opk_lnsrch_t* ls,
   return success(ls, OPK_LNSRCH_SEARCH);
 }
 
-static opk_lnsrch_operations_t csrch_operations = {
+static opk_lnsrch_operations csrch_operations = {
   NULL,
   csrch_start,
   csrch_iterate,
@@ -636,20 +636,20 @@ static opk_lnsrch_operations_t csrch_operations = {
 };
 
 
-static csrch_lnsrch_t*
-csrch_get_workspace(opk_lnsrch_t* ls)
+static csrch_lnsrch*
+csrch_get_workspace(opk_lnsrch* ls)
 {
   if (ls->ops == &csrch_operations) {
-    return (csrch_lnsrch_t*)ls;
+    return (csrch_lnsrch*)ls;
   } else {
     return NULL;
   }
 }
 
-opk_lnsrch_t*
+opk_lnsrch*
 opk_lnsrch_new_csrch(double ftol, double gtol, double xtol)
 {
-  opk_lnsrch_t* ls;
+  opk_lnsrch* ls;
 
   if (ftol < 0) {
     errno = EINVAL;
@@ -664,9 +664,9 @@ opk_lnsrch_new_csrch(double ftol, double gtol, double xtol)
     return NULL;
   }
   ls = opk_allocate_line_search(&csrch_operations,
-                                 sizeof(csrch_lnsrch_t));
+                                 sizeof(csrch_lnsrch));
   if (ls != NULL) {
-    csrch_lnsrch_t* cls = (csrch_lnsrch_t*)ls;
+    csrch_lnsrch* cls = (csrch_lnsrch*)ls;
     cls->ftol = ftol;
     cls->gtol = gtol;
     cls->xtol = xtol;
@@ -910,11 +910,11 @@ static double max3(double val1, double val2, double val3)
  * Argonne National Laboratory and University of Minnesota.
  * Brett M. Averick and Jorge J. Moré.
  */
-opk_status_t
+opk_status
 opk_cstep(double* stx_ptr, double* fx_ptr, double* dx_ptr,
           double* sty_ptr, double* fy_ptr, double* dy_ptr,
           double* stp_ptr, double  fp,     double  dp,
-          opk_bool_t* brackt_ptr, double stpmin, double stpmax)
+          opk_bool* brackt_ptr, double stpmin, double stpmax)
 {
   /* Get values of input/output variables. */
   double stx = *stx_ptr, fx = *fx_ptr, dx = *dx_ptr;

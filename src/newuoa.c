@@ -21,10 +21,10 @@
 
 /* To re-use as much as the code for the reverse communication routines, we use
    a trick which consists in "self-including" this file with different macros
-   (_NEWUOA_PART1, _NEWUOA_PART2, etc.) defined so as to skip or modify certain
+   (NEWUOA_PART1_, NEWUOA_PART2_, etc.) defined so as to skip or modify certain
    parts of the source file. */
-#ifndef _NEWUOA_PART1
-#define _NEWUOA_PART1 1
+#ifndef NEWUOA_PART1_
+#define NEWUOA_PART1_ 1
 
 #include <errno.h>
 #include <stdlib.h>
@@ -38,8 +38,8 @@
 
 /* Set basic types according to those in `optimpack.h` */
 #undef SINGLE_PRECISION
-#define LOGICAL opk_bool_t
-#define INTEGER opk_index_t
+#define LOGICAL opk_bool
+#define INTEGER opk_index
 
 /* Macros to deal with single/double precision. */
 #undef REAL
@@ -450,7 +450,7 @@ parabolic_refinement(REAL fprev, REAL fbest, REAL fnext)
 /*---------------------------------------------------------------------------*/
 /* REVERSE COMMUNICATION VERSION */
 
-struct _newuoa_context {
+struct newuoa_context_ {
   /* Constants during the iterations. */
   INTEGER n;
   INTEGER npt;
@@ -522,13 +522,13 @@ struct _newuoa_context {
 #define RESTORE(var)  var = ctx->var
 
 /* FIXME: remove maxfun, replace nevals by nf? */
-newuoa_context_t*
+newuoa_context*
 newuoa_create(const INTEGER n, const INTEGER npt,
               const REAL rhobeg, const REAL rhoend,
               const INTEGER iprint, const INTEGER maxfun)
 {
   INTEGER np, nptm, ndim;
-  newuoa_context_t* ctx;
+  newuoa_context* ctx;
   size_t size, offset;
 
   /* Check arguments. */
@@ -561,10 +561,10 @@ newuoa_create(const INTEGER n, const INTEGER npt,
   }
 
   /* Allocate memory. */
-  size = sizeof(newuoa_context_t);
+  size = sizeof(newuoa_context);
   offset = ROUND_UP(size, sizeof(REAL));
   size = offset + ((npt+13)*(npt+n)+3*n*(n+3)/2)*sizeof(REAL);
-  ctx = (newuoa_context_t*)malloc(size);
+  ctx = (newuoa_context*)malloc(size);
   if (ctx == NULL) {
     return NULL;
   }
@@ -603,7 +603,7 @@ newuoa_create(const INTEGER n, const INTEGER npt,
 } /* newuoa_create */
 
 void
-newuoa_delete(newuoa_context_t* ctx)
+newuoa_delete(newuoa_context* ctx)
 {
   if (ctx != NULL) {
     free((void*)ctx);
@@ -611,7 +611,7 @@ newuoa_delete(newuoa_context_t* ctx)
 }
 
 newuoa_status
-newuoa_restart(newuoa_context_t* ctx)
+newuoa_restart(newuoa_context* ctx)
 {
   if (ctx == NULL) {
     errno = EFAULT;
@@ -623,7 +623,7 @@ newuoa_restart(newuoa_context_t* ctx)
 }
 
 newuoa_status
-newuoa_get_status(const newuoa_context_t* ctx)
+newuoa_get_status(const newuoa_context* ctx)
 {
   if (ctx == NULL) {
     errno = EFAULT;
@@ -633,7 +633,7 @@ newuoa_get_status(const newuoa_context_t* ctx)
 }
 
 INTEGER
-newuoa_get_nevals(const newuoa_context_t* ctx)
+newuoa_get_nevals(const newuoa_context* ctx)
 {
   if (ctx == NULL) {
     errno = EFAULT;
@@ -643,7 +643,7 @@ newuoa_get_nevals(const newuoa_context_t* ctx)
 }
 
 REAL
-newuoa_get_rho(const newuoa_context_t* ctx)
+newuoa_get_rho(const newuoa_context* ctx)
 {
   if (ctx == NULL) {
     errno = EFAULT;
@@ -682,13 +682,13 @@ const char* newuoa_reason(newuoa_status status)
   }
 }
 
-/* Include this file with the macro _NEWUOA_REVCOM defined to generate the code
+/* Include this file with the macro NEWUOA_REVCOM_ defined to generate the code
    `newuoa_iterate` in place of `newuoa_optimize`. */
-#define _NEWUOA_REVCOM 1
+#define NEWUOA_REVCOM_ 1
 #include __FILE__
-#undef _NEWUOA_REVCOM
+#undef NEWUOA_REVCOM_
 
-#endif /* _NEWUOA_PART1 */
+#endif /* NEWUOA_PART1_ */
 
 /*---------------------------------------------------------------------------*/
 /* NEWUOA MAIN SUBROUTINES */
@@ -732,16 +732,16 @@ const char* newuoa_reason(newuoa_status status)
    The array W will be used for working space. Its length must be at least
    10*NDIM = 10*(NPT+N). */
 
-#ifdef _NEWUOA_REVCOM
+#ifdef NEWUOA_REVCOM_
 newuoa_status
-newuoa_iterate(newuoa_context_t* ctx, REAL f, REAL* x)
+newuoa_iterate(newuoa_context* ctx, REAL f, REAL* x)
 #else
 newuoa_status
 newuoa_optimize(INTEGER n, INTEGER npt,
                 LOGICAL maximize, newuoa_objfun* objfun, void* data,
                 REAL* x, const REAL* scl, REAL rhobeg, REAL rhoend,
                 const INTEGER iprint, const INTEGER maxfun, REAL* work)
-#endif /* _NEWUOA_REVCOM */
+#endif /* NEWUOA_REVCOM_ */
 {
   /* Constants. */
   const REAL one = 1.0;
@@ -753,7 +753,7 @@ newuoa_optimize(INTEGER n, INTEGER npt,
   REAL alpha, beta, crvmin, delta, diff, diffa, diffb, diffc, dnorm, dsq,
     dstep, fbeg, fopt, gqsq, ratio, recip, reciq, rho, rhosq, vquad,
     xipt, xjpt, xoptsq;
-#ifdef _NEWUOA_REVCOM
+#ifdef NEWUOA_REVCOM_
   REAL rhobeg, rhoend;
   INTEGER n, npt, iprint, maxfun;
 #else
@@ -773,7 +773,7 @@ newuoa_optimize(INTEGER n, INTEGER npt,
   REAL bsum, detrat, distsq, dx, fsave, temp, tempa, tempb;
   INTEGER i, j, k, ktemp;
 
-#ifdef _NEWUOA_REVCOM
+#ifdef NEWUOA_REVCOM_
 
   /* Check arguments. */
   if (ctx == NULL) {
@@ -860,7 +860,7 @@ newuoa_optimize(INTEGER n, INTEGER npt,
   nptm = npt - np;
   reason = NULL;
 
-#ifndef _NEWUOA_REVCOM
+#ifndef NEWUOA_REVCOM_
 
   /* Decide whether scaling is needed. */
   if (scl != NULL) {
@@ -932,7 +932,7 @@ newuoa_optimize(INTEGER n, INTEGER npt,
 #endif
 
   /* Parameter adjustments and macros to comply with FORTRAN indexing. */
-#ifdef _NEWUOA_REVCOM
+#ifdef NEWUOA_REVCOM_
 #  define BASE(arr,off)  ctx->arr - (off)
 #else
 #  define BASE(arr,off)       arr - (off)
@@ -967,7 +967,7 @@ newuoa_optimize(INTEGER n, INTEGER npt,
 #define VLAG(a1)    _vlag[a1]
 #define W(a1)       _w[a1]
 
-#ifdef _NEWUOA_REVCOM
+#ifdef NEWUOA_REVCOM_
   /* Increment the number of function evaluation and, if this is not the first
      evaluation: branch to the code where the function value was requested. */
   if (++ctx->nevals > 1) {
@@ -1315,7 +1315,7 @@ newuoa_optimize(INTEGER n, INTEGER npt,
     goto done;
   }
 
-#ifdef _NEWUOA_REVCOM
+#ifdef NEWUOA_REVCOM_
   if (status == NEWUOA_INITIAL_ITERATE) {
     /* We already know the functiuon value. */
     status = NEWUOA_ITERATE;
@@ -1339,7 +1339,7 @@ newuoa_optimize(INTEGER n, INTEGER npt,
             (long)nf, (double)f);
     print_x(OUTPUT, n, NULL, xs, NULL);
   }
-#ifndef _NEWUOA_REVCOM
+#ifndef NEWUOA_REVCOM_
   if (maximize) {
     f = -f;
   }
@@ -1602,7 +1602,7 @@ newuoa_optimize(INTEGER n, INTEGER npt,
       if (iprint >= 3) {
         fprintf(OUTPUT, "\n");
       }
-#ifdef _NEWUOA_REVCOM
+#ifdef NEWUOA_REVCOM_
       fprintf(OUTPUT, "\n"
               "    New RHO =%11.4E "
               "    Number of function values =%6ld\n"
@@ -1638,7 +1638,7 @@ newuoa_optimize(INTEGER n, INTEGER npt,
     f = fopt;
   }
 
-#ifndef _NEWUOA_REVCOM
+#ifndef NEWUOA_REVCOM_
   /* Scale the final variables, if scaling. */
   if (scl != NULL) {
     for (i = 0; i < n; ++i) {
@@ -1652,7 +1652,7 @@ newuoa_optimize(INTEGER n, INTEGER npt,
 
   if (iprint > 0) {
     if (status == NEWUOA_SUCCESS) {
-#ifdef _NEWUOA_REVCOM
+#ifdef NEWUOA_REVCOM_
       fprintf(OUTPUT, "\n"
               "    At the return from NEWUOA "
               "    Number of function values =%6ld\n"
@@ -1673,7 +1673,7 @@ newuoa_optimize(INTEGER n, INTEGER npt,
     }
   }
 
-#ifdef _NEWUOA_REVCOM
+#ifdef NEWUOA_REVCOM_
 
   /* Save local variables. */
  save:
@@ -1738,8 +1738,8 @@ newuoa_optimize(INTEGER n, INTEGER npt,
 #undef VLAG
 #undef W
 
-#ifndef _NEWUOA_PART2
-#define _NEWUOA_PART2 1
+#ifndef NEWUOA_PART2_
+#define NEWUOA_PART2_ 1
 
 /*
  * N is the number of variables.
@@ -2809,4 +2809,4 @@ print_x(FILE* output, INTEGER n, const REAL scl[],
   }
 }
 
-#endif /* _NEWUOA_PART2 */
+#endif /* NEWUOA_PART2_ */

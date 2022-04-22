@@ -38,8 +38,8 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef _OPK_FMIN_C
-#define _OPK_FMIN_C 1
+#ifndef OPK_FMIN_C_
+#define OPK_FMIN_C_ 1
 
 #include <string.h>
 #include <stdlib.h>
@@ -58,10 +58,10 @@
 
 static const double FMIN_EPSILON = DBL_EPSILON;
 static const double FMIN_INFINITY = HUGE_VAL;
-static double _FMIN_SQRT_EPSILON_ = -1.0;
+static double FMIN_SQRT_EPSILON_ = -1.0;
 
-#define FMIN_SQRT_EPSILON ((_FMIN_SQRT_EPSILON_ > 0.0) ? _FMIN_SQRT_EPSILON_ \
-                         : (_FMIN_SQRT_EPSILON_ = sqrt(FMIN_EPSILON)))
+#define FMIN_SQRT_EPSILON ((FMIN_SQRT_EPSILON_ > 0.0) ? FMIN_SQRT_EPSILON_ \
+                         : (FMIN_SQRT_EPSILON_ = sqrt(FMIN_EPSILON)))
 
 #define SWAP(a, b, temp)  temp = a; a = b; b = temp
 
@@ -76,7 +76,7 @@ static const double FMIN_BETA  = 6.18033988749894848204586834365638E-1;
 #endif
 static const double FMIN_GAMMA = 1.61803398874989484820458683436564E+0;
 
-typedef struct _opk_fmin_context {
+typedef struct {
   double a, b, u, fu, v, fv, w, fw, x;
   double prec;
   long nevals;
@@ -84,7 +84,7 @@ typedef struct _opk_fmin_context {
   unsigned int flags;
   opk_fmin_task status;
   int stage;
-} opk_fmin_context_t;
+} opk_fmin_context;
 
 /* DOCUMENT FMIN_EPSILON  = the smallest positive floating point x such
                             that 1 + x is numerically not equal to 1.
@@ -96,13 +96,13 @@ typedef struct _opk_fmin_context {
    SEE ALSO: machine_constant, fmin_golden, fmin_brent.
  */
 
-opk_fmin_context_t*
+opk_fmin_context*
 opk_fmin_new(int method)
 {
-  opk_fmin_context_t* ctx;
-  ctx = (opk_fmin_context_t*)malloc(sizeof(opk_fmin_context_t));
+  opk_fmin_context* ctx;
+  ctx = (opk_fmin_context*)malloc(sizeof(opk_fmin_context));
   if (ctx != NULL) {
-    memset(ctx, 0, sizeof(opk_fmin_context_t));
+    memset(ctx, 0, sizeof(opk_fmin_context));
     ctx->status = OPK_FMIN_START - 1;
     ctx->prec = FMIN_SQRT_EPSILON;
   }
@@ -110,15 +110,15 @@ opk_fmin_new(int method)
 }
 
 void
-opk_fmin_destroy(opk_fmin_context_t* ctx)
+opk_fmin_destroy(opk_fmin_context* ctx)
 {
   if (ctx != NULL) {
     free((void*)ctx);
   }
 }
 
-int
-opk_fmin_set_precision(opk_fmin_context_t* ctx, double prec)
+opk_status
+opk_fmin_set_precision(opk_fmin_context* ctx, double prec)
 {
   if (ctx == NULL) {
     return OPK_ILLEGAL_ADDRESS;
@@ -131,7 +131,7 @@ opk_fmin_set_precision(opk_fmin_context_t* ctx, double prec)
 }
 
 double
-opk_fmin_get_precision(opk_fmin_context_t* ctx)
+opk_fmin_get_precision(opk_fmin_context* ctx)
 {
   if (ctx != NULL) return ctx->prec;
   errno = EFAULT;
@@ -139,23 +139,23 @@ opk_fmin_get_precision(opk_fmin_context_t* ctx)
 }
 
 unsigned int
-opk_fmin_get_flags(opk_fmin_context_t* ctx)
+opk_fmin_get_flags(opk_fmin_context* ctx)
 {
   if (ctx != NULL) return ctx->flags;
   errno = EFAULT;
   return 0;
 }
 
-int
-opk_fmin_get_status(opk_fmin_context_t* ctx)
+opk_fmin_task
+opk_fmin_get_status(opk_fmin_context* ctx)
 {
   if (ctx != NULL) return ctx->status;
   errno = EFAULT;
   return OPK_FMIN_ERROR;
 }
 
-int
-opk_fmin_start(opk_fmin_context_t* ctx,
+opk_status
+opk_fmin_start(opk_fmin_context* ctx,
                double a, double b,
                unsigned int flags)
 {
@@ -176,8 +176,8 @@ opk_fmin_start(opk_fmin_context_t* ctx,
 
 #define MAYBE_GET(ptr, expr)  if (ptr != NULL) *ptr = expr
 
-int
-opk_fmin_get_initial(opk_fmin_context_t* ctx,
+opk_status
+opk_fmin_get_initial(opk_fmin_context* ctx,
                      double* a, double* b,
                      unsigned int* flags)
 {
@@ -193,8 +193,8 @@ opk_fmin_get_initial(opk_fmin_context_t* ctx,
   return OPK_SUCCESS;
 }
 
-int
-opk_fmin_get_final(opk_fmin_context_t* ctx,
+opk_status
+opk_fmin_get_final(opk_fmin_context* ctx,
                    double* xmin, double* xlo, double* xup,
                    double* fmin, double* flo, double* fup,
                    long* nevals)
@@ -234,7 +234,8 @@ opk_fmin_get_final(opk_fmin_context_t* ctx,
  *    ctx->stage =  5    evaluation of f(x) while converging
  */
 
-int opk_fmin_next(opk_fmin_context_t* ctx, double* xptr, double fx)
+opk_fmin_task
+opk_fmin_next(opk_fmin_context* ctx, double* xptr, double fx)
 {
 #define a     (ctx->a)
 #define b     (ctx->b)
@@ -393,7 +394,7 @@ int opk_fmin_next(opk_fmin_context_t* ctx, double* xptr, double fx)
    Reverse callback interface:
 
    double x, a, b;
-   opk_fmin_context_t* c = opk_fmin_new();
+   opk_fmin_context* c = opk_fmin_new();
    int stage;
 
    if (opk_fmin_start(c, a, b, flags) != OPK_SUCCESS) {
@@ -464,7 +465,7 @@ double fmin_test_f(double x)
 }
 #endif
 
-#else /* _OPK_FMIN_C *********************************************************/
+#else /* OPK_FMIN_C_ *********************************************************/
 
 #ifdef OPK_FMIN_WITH_CONTEXT
 
@@ -609,4 +610,4 @@ int func(args)
 
 #endif /* OPK_FMIN_WITH_CONTEXT */
 
-#endif /* _OPK_FMIN_C */
+#endif /* OPK_FMIN_C_ */

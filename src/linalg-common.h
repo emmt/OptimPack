@@ -31,13 +31,13 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef _OPK_LINALG_COMMON_H
-#define _OPK_LINALG_COMMON_H 1
+#ifndef OPK_LINALG_COMMON_H_
+#define OPK_LINALG_COMMON_H_ 1
 
-#ifndef _OPTIMPACK_H
+#ifndef OPTIMPACK_H_
 # include "optimpack.h"
 #endif
-#ifndef _OPTIMPACK_LINALG_H
+#ifndef OPTIMPACK_LINALG_H_
 # include "optimpack-linalg.h"
 #endif
 
@@ -46,7 +46,7 @@
 #define MAX(x,y)  ((x)>=(y)?(x):(y))
 #define SIGN(x,y) ((((x)<0)==((y)<0))?(x):-(x))
 
-#endif /* _OPK_LINALG_COMMON_H */
+#endif /* OPK_LINALG_COMMON_H_ */
 
 /* Undefined macros prior to proper definitions. */
 #undef real_t

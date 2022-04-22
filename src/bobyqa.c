@@ -29,8 +29,8 @@
 
 /* Set basic types according to those in `optimpack.h` */
 #undef SINGLE_PRECISION
-#define LOGICAL opk_bool_t
-#define INTEGER opk_index_t
+#define LOGICAL opk_bool
+#define INTEGER opk_index
 
 /* Macros to deal with single/double precision. */
 #undef REAL
@@ -99,14 +99,14 @@
 
 /* The following context and macros are to deal with scaling of variables and
    minimizing/maximizing the objective function. */
-typedef struct _context {
+typedef struct {
   bobyqa_objfun* objfun; /* objective function */
   void*          data;   /* client data for the objective function */
   const REAL*    scl;    /* scaling factors */
   REAL*          ws;     /* temporary workspace */
   REAL           sgn;    /* sign: +1 for minimize, -1 for maximize */
   INTEGER        n;      /* number of variables */
-} context_t;
+} context;
 
 #define GET_VARIABLES(ctx, x) ((ctx)->scl == NULL ? (x) : \
                                scale((ctx)->ws, (ctx)->n, (ctx)->scl, (x)))
@@ -121,10 +121,10 @@ static void
 print_error(const char* reason);
 
 static void
-print_x(FILE* output, const context_t* ctx, const REAL x[], const REAL dx[]);
+print_x(FILE* output, const context* ctx, const REAL x[], const REAL dx[]);
 
 static int
-bobyqb(const INTEGER n, const INTEGER npt, const context_t* ctx,
+bobyqb(const INTEGER n, const INTEGER npt, const context* ctx,
        REAL* x, const REAL* xl, const REAL* xu,
        const REAL rhobeg, const REAL rhoend,
        const INTEGER iprint, const INTEGER maxfun,
@@ -141,7 +141,7 @@ altmov(const INTEGER n, const INTEGER npt, REAL xpt[],
        REAL* cauchy, REAL* glag, REAL* hcol, REAL* w);
 
 static void
-prelim(const INTEGER n, const INTEGER npt, const context_t* ctx,
+prelim(const INTEGER n, const INTEGER npt, const context* ctx,
        REAL* x, const REAL* xl, const REAL* xu,
        const REAL rhobeg, const INTEGER iprint,
        const INTEGER maxfun, REAL* xbase, REAL* xpt, REAL* fval,
@@ -157,7 +157,7 @@ trsbox(const INTEGER n, const INTEGER npt, REAL* xpt,
        REAL* hs, REAL* hred, REAL* dsq, REAL* crvmin);
 
 static void
-rescue(const INTEGER n, const INTEGER npt, const context_t* ctx,
+rescue(const INTEGER n, const INTEGER npt, const context* ctx,
        const REAL* xl, const REAL* xu,
        const INTEGER iprint, const INTEGER maxfun,
        REAL* xbase, REAL* xpt, REAL* fval, REAL* xopt,
@@ -345,7 +345,7 @@ bobyqa_status bobyqa_optimize(
   REAL temp;
   INTEGER ibmat, id, ifv, igo, ihq, ipq, isl, isu, ivl, iw, ixa, ixb, ixn,
     ixo, ixp, izmat, j, jsl, jsu, ndim, np;
-  context_t ctx;
+  context ctx;
   bobyqa_status status;
 
   /* Check arguments. */
@@ -565,7 +565,7 @@ FORTRAN_NAME(bobyqa,BOBYQA)(const INTEGER* n, const INTEGER* npt,
    must be at least 3*NDIM = 3*(NPT+N). */
 
 static bobyqa_status
-bobyqb(const INTEGER n, const INTEGER npt, const context_t* ctx,
+bobyqb(const INTEGER n, const INTEGER npt, const context* ctx,
        REAL* x, const REAL* xl, const REAL* xu,
        const REAL rhobeg, const REAL rhoend,
        const INTEGER iprint, const INTEGER maxfun,
@@ -1700,7 +1700,7 @@ altmov(const INTEGER n, const INTEGER npt, REAL xpt[],
 #undef XPT
 
 static void
-prelim(const INTEGER n, const INTEGER npt, const context_t* ctx,
+prelim(const INTEGER n, const INTEGER npt, const context* ctx,
        REAL* x, const REAL* xl, const REAL* xu,
        const REAL rhobeg, const INTEGER iprint,
        const INTEGER maxfun, REAL* xbase, REAL* xpt, REAL* fval,
@@ -1955,7 +1955,7 @@ prelim(const INTEGER n, const INTEGER npt, const context_t* ctx,
    the final quadratic model. */
 
 static void
-rescue(const INTEGER n, const INTEGER npt, const context_t* ctx,
+rescue(const INTEGER n, const INTEGER npt, const context* ctx,
        const REAL* xl, const REAL* xu,
        const INTEGER iprint, const INTEGER maxfun,
        REAL* xbase, REAL* xpt, REAL* fval, REAL* xopt,
@@ -2961,7 +2961,7 @@ print_error(const char* reason)
 }
 
 static void
-print_x(FILE* output, const context_t* ctx, const REAL x[], const REAL dx[])
+print_x(FILE* output, const context* ctx, const REAL x[], const REAL dx[])
 {
   INTEGER i, k, n = ctx->n;
   const REAL* scl = ctx->scl;

@@ -32,8 +32,8 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef _OPK_LCG_C
-#define _OPK_LCG_C 1
+#ifndef OPK_LCG_C_
+#define OPK_LCG_C_ 1
 
 #include <math.h>
 
@@ -60,16 +60,16 @@
 #include "linalg-double.h"
 #include __FILE__
 
-#else /* _OPK_LCG_C defined */
+#else /* OPK_LCG_C_ defined */
 
 #ifdef OPK_PLCG
 void
-OPK_PLCG(const opk_index_t n, real_t p[], real_t q[], real_t r[],
-         real_t x[], real_t z[], real_t rho[4], opk_cg_state_t *state)
+OPK_PLCG(const opk_index n, real_t p[], real_t q[], real_t r[],
+         real_t x[], real_t z[], real_t rho[4], opk_cg_state *state)
 {
   const real_t zero = OPK_REALCONST(0.0);
   real_t pq, alpha, beta;
-  opk_index_t i;
+  opk_index i;
 
   switch (*state) {
 
@@ -180,8 +180,8 @@ OPK_PLCG(const opk_index_t n, real_t p[], real_t q[], real_t r[],
 
 #if defined(OPK_PLCG) && defined(OPK_LCG)
 void
-OPK_LCG(const opk_index_t n, real_t p[], real_t q[], real_t r[],
-        real_t x[], real_t rho[4], opk_cg_state_t *state)
+OPK_LCG(const opk_index n, real_t p[], real_t q[], real_t r[],
+        real_t x[], real_t rho[4], opk_cg_state *state)
 {
   OPK_PLCG(n, p, q, r, x, (real_t *)0, rho, state);
 }
@@ -198,9 +198,9 @@ OPK_LCG(const opk_index_t n, real_t p[], real_t q[], real_t r[],
  *  ... RHO[4] = |X|
  */
 void
-OPK_TRCG(const opk_index_t n, real_t p[], const real_t q[], real_t r[],
+OPK_TRCG(const opk_index n, real_t p[], const real_t q[], real_t r[],
          real_t x[], const real_t z[], const real_t delta,
-         real_t rho[5], opk_cg_state_t *state)
+         real_t rho[5], opk_cg_state *state)
 {
   const real_t zero = OPK_REALCONST(0.0);
   const real_t one  = OPK_REALCONST(1.0);
@@ -406,4 +406,4 @@ OPK_TRCG(const opk_index_t n, real_t p[], const real_t q[], real_t r[],
 }
 #endif /* OPK_TRCG */
 
-#endif /* _OPK_LCG_C defined */
+#endif /* OPK_LCG_C_ defined */

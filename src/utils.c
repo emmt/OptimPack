@@ -88,18 +88,17 @@ opk_error(const char* reason)
 }
 
 const char*
-opk_get_reason(opk_status_t status)
+opk_get_reason(opk_status status)
 {
-#define _OPK_STATUS(a,b,c) case b: return c;
+#define OPK_STATUS_(a,b,c) case b: return c;
   switch (status) {
-    _OPK_STATUS_LIST
+    OPK_STATUS_LIST_
   default: return "";
   }
-#undef _OPK_STATUS
+#undef OPK_STATUS_
 }
 
-opk_status_t
-opk_guess_status()
+opk_status opk_guess_status(void)
 {
   switch (errno) {
 #ifdef ENOMEM
@@ -115,7 +114,7 @@ opk_guess_status()
   }
 }
 
-extern opk_status_t
+extern opk_status
 opk_get_integer_constant(const char* name, long* ptr)
 {
   long dummy;
@@ -126,9 +125,9 @@ opk_get_integer_constant(const char* name, long* ptr)
   if (name != NULL && name[0] != 0) {
 #define TEST(sym) if (strcmp(name, #sym) == 0) { *ptr = (long)(sym); \
                                                   return OPK_SUCCESS; }
-#define _OPK_STATUS(val,sym,msg) TEST(sym);
-    _OPK_STATUS_LIST;
-#undef _OPK_STATUS
+#define OPK_STATUS_(val,sym,msg) TEST(sym);
+    OPK_STATUS_LIST_;
+#undef OPK_STATUS_
 
     TEST(OPK_TRUE);
     TEST(OPK_FALSE);

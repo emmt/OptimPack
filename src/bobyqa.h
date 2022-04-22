@@ -20,8 +20,8 @@
  * Read the accompanying `LICENSE` file for details.
  */
 
-#ifndef _BOBYQA_H
-#define  _BOBYQA_H 1
+#ifndef BOBYQA_H_
+#define  BOBYQA_H_ 1
 
 #include "optimpack.h"
 
@@ -33,7 +33,7 @@ extern "C" {
    returned value is the function value at X the current variables, N is the
    number of variables and DATA is anything needed by the function (unused by
    BOBYQA itself). */
-typedef double bobyqa_objfun(const opk_index_t n, const double* x, void* data);
+typedef double bobyqa_objfun(const opk_index n, const double* x, void* data);
 
 /**
  * @brief Status for BOBYQA routines.
@@ -41,7 +41,7 @@ typedef double bobyqa_objfun(const opk_index_t n, const double* x, void* data);
  * This type enumerate the possible values returned by bobyqa(),
  * bobyqa_get_status() and bobyqa_iterate().
  */
-typedef enum bobyqa_status {
+typedef enum {
     BOBYQA_SUCCESS              =  0, /**< algorithm converged */
     BOBYQA_BAD_NVARS            = -1, /**< bad number of variables */
     BOBYQA_BAD_NPT              = -2, /**< NPT is not in the required
@@ -105,11 +105,11 @@ typedef enum bobyqa_status {
    (NPT+5)*(NPT+N)+3*N*(N+5)/2.  Upon successful return, the first element of W
    will be set to the function value at the solution. */
 extern bobyqa_status bobyqa(
-    const opk_index_t n, const opk_index_t npt,
+    const opk_index n, const opk_index npt,
     bobyqa_objfun* objfun, void* data, double* x,
     const double* xl, const double* xu,
     const double rhobeg, const double rhoend,
-    const opk_index_t iprint, const opk_index_t maxfun,
+    const opk_index iprint, const opk_index maxfun,
     double* w);
 
 /*
@@ -121,12 +121,12 @@ extern bobyqa_status bobyqa(
    first element of W will be set to the function value at the solution.
  */
 extern bobyqa_status bobyqa_optimize(
-    const opk_index_t n, const opk_index_t npt,
-    opk_bool_t maximize, bobyqa_objfun* objfun,
+    const opk_index n, const opk_index npt,
+    opk_bool maximize, bobyqa_objfun* objfun,
     void* data, double* x, const double* xl,
     const double* xu, const double* scl,
     const double rhobeg, const double rhoend,
-    const opk_index_t iprint, const opk_index_t maxfun,
+    const opk_index iprint, const opk_index maxfun,
     double* w);
 
 extern const char* bobyqa_reason(bobyqa_status status);
@@ -195,21 +195,21 @@ extern void bobyqa_test(void);
    that satisfies the bounds given in XL and XU.
 */
 extern int
-FORTRAN_NAME(bobyqa,BOBYQA)(const opk_index_t* n, const opk_index_t* npt,
+FORTRAN_NAME(bobyqa,BOBYQA)(const opk_index* n, const opk_index* npt,
                             double* x, const double* xl, const double* xu,
                             const double* rhobeg, const double* rhoend,
-                            const opk_index_t* iprint, const opk_index_t* maxfun,
+                            const opk_index* iprint, const opk_index* maxfun,
                             double* w);
 
 /* Wrapper function to emulate `bobyqa_objfun` objective function calling the
    user-defined `calfun_` subroutine. */
 extern double
-bobyqa_calfun_wrapper(const opk_index_t n, const double* x, void* data);
+bobyqa_calfun_wrapper(const opk_index n, const double* x, void* data);
 
 /* Subroutine that must be defined by the application to use the FORTRAN
    wrapper to BOBYQA. */
 extern int
-FORTRAN_NAME(calfun,CALFUN)(const opk_index_t* n, double* x, double* f);
+FORTRAN_NAME(calfun,CALFUN)(const opk_index* n, double* x, double* f);
 
 #endif /* FORTRAN_LINKAGE */
 
@@ -217,4 +217,4 @@ FORTRAN_NAME(calfun,CALFUN)(const opk_index_t* n, double* x, double* f);
 }
 #endif
 
-#endif /* _BOBYQA_H */
+#endif /* BOBYQA_H_ */

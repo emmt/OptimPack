@@ -78,8 +78,8 @@ static const double GATOL = 0.0;
 static const double DELTA   = 5e-2;
 static const double EPSILON = 0.0;
 
-struct _opk_nlcg {
-  opk_object_t base;      /* Base type (must be the first member). */
+struct opk_nlcg_ {
+  opk_object base;      /* Base type (must be the first member). */
   double f0;              /* Function value at the start of the line search. */
   double g0norm;          /* Euclidean norm of G0, the gradient at the start of
                              the line search. */
@@ -103,29 +103,29 @@ struct _opk_nlcg {
                              rule (for information). */
   double stpmin;          /* Relative lower bound for the step length. */
   double stpmax;          /* Relative upper bound for the step length. */
-  int (*update)(opk_nlcg_t* opt,
-                const opk_vector_t* x,
-                const opk_vector_t* g);
+  int (*update)(opk_nlcg* opt,
+                const opk_vector* x,
+                const opk_vector* g);
                           /* The update "method" is called to update the search
                              direction.  The returned value indicates whether
                              the updating rule has been successful, otherwise a
                              restart is needed. */
-  opk_vspace_t* vspace;   /* Vector space of the variables of the problem. */
-  opk_lnsrch_t* lnsrch;   /* Line search method. */
-  opk_vector_t* x0;       /* Variables at start of line search. */
-  opk_vector_t* g0;       /* Gradient at start of line search. */
-  opk_vector_t* d;        /* (Anti-)search direction, new iterate is searched
+  opk_vspace* vspace;   /* Vector space of the variables of the problem. */
+  opk_lnsrch* lnsrch;   /* Line search method. */
+  opk_vector* x0;       /* Variables at start of line search. */
+  opk_vector* g0;       /* Gradient at start of line search. */
+  opk_vector* d;        /* (Anti-)search direction, new iterate is searched
                              as: x = x0 - alpha*d, for alpha >= 0. */
-  opk_vector_t* y;        /* Work vector (e.g., to store the gradient
+  opk_vector* y;        /* Work vector (e.g., to store the gradient
                              difference: Y = G - G0). */
-  opk_index_t iterations; /* Number of iterations. */
-  opk_index_t restarts;   /* Number of algorithm restarts. */
-  opk_index_t evaluations;/* Number of function and gradient evaluations. */
+  opk_index iterations; /* Number of iterations. */
+  opk_index restarts;   /* Number of algorithm restarts. */
+  opk_index evaluations;/* Number of function and gradient evaluations. */
   unsigned int flags;     /* Conjugate gradient method and options. */
-  opk_status_t status;    /* Current error status. */
-  opk_task_t task;        /* Pending caller task. */
-  opk_bool_t fmin_given;  /* Indicate whether FMIN is specified. */
-  opk_bool_t update_Hager_Zhang_orig;
+  opk_status status;    /* Current error status. */
+  opk_task task;        /* Pending caller task. */
+  opk_bool fmin_given;  /* Indicate whether FMIN is specified. */
+  opk_bool update_Hager_Zhang_orig;
 };
 
 static double
@@ -144,16 +144,16 @@ non_finite(double x)
   return (isnan(x) || isinf(x));
 }
 
-static opk_task_t
-success(opk_nlcg_t* opt, opk_task_t task)
+static opk_task
+success(opk_nlcg* opt, opk_task task)
 {
   opt->status = OPK_SUCCESS;
   opt->task = task;
   return opt->task;
 }
 
-static opk_task_t
-failure(opk_nlcg_t* opt, opk_status_t status)
+static opk_task
+failure(opk_nlcg* opt, opk_status status)
 {
   opt->status = status;
   opt->task = OPK_TASK_ERROR;
@@ -182,8 +182,8 @@ failure(opk_nlcg_t* opt, opk_status_t status)
 
 /* Helper function to compute search direction as: d' = g + beta*d. */
 static int
-update0(opk_nlcg_t* opt,
-        const opk_vector_t* g,
+update0(opk_nlcg* opt,
+        const opk_vector* g,
         double beta)
 {
   if ((opt->beta = beta) == 0) {
@@ -196,8 +196,8 @@ update0(opk_nlcg_t* opt,
 /* Helper function to compute search direction as: d' = g + beta*d
    possibly with the constraint that beta > 0. */
 static int
-update1(opk_nlcg_t* opt,
-        const opk_vector_t* g,
+update1(opk_nlcg* opt,
+        const opk_vector* g,
         double beta)
 {
   if ((opt->flags & OPK_NLCG_POWELL) == OPK_NLCG_POWELL && beta < 0) {
@@ -212,8 +212,8 @@ update1(opk_nlcg_t* opt,
 
 /* Form: Y = G - G0 */
 static void
-form_y(opk_nlcg_t* opt,
-       const opk_vector_t* g)
+form_y(opk_nlcg* opt,
+       const opk_vector* g)
 {
   opk_vaxpby(opt->y, 1, g, -1, opt->g0);
 }
@@ -226,9 +226,9 @@ form_y(opk_nlcg_t* opt,
  * with y = g - g0.
  */
 static int
-update_Hestenes_Stiefel(opk_nlcg_t* opt,
-                        const opk_vector_t* x,
-                        const opk_vector_t* g)
+update_Hestenes_Stiefel(opk_nlcg* opt,
+                        const opk_vector* x,
+                        const opk_vector* g)
 {
   double gty, dty, beta;
   form_y(opt, g);
@@ -246,9 +246,9 @@ update_Hestenes_Stiefel(opk_nlcg_t* opt,
  * (this value is always >= 0 and can only be zero at a stationary point).
  */
 static int
-update_Fletcher_Reeves(opk_nlcg_t* opt,
-                       const opk_vector_t* x,
-                       const opk_vector_t* g)
+update_Fletcher_Reeves(opk_nlcg* opt,
+                       const opk_vector* x,
+                       const opk_vector* g)
 {
   double r = opt->gnorm/opt->g0norm;
   return update0(opt, g, r*r);
@@ -260,9 +260,9 @@ update_Fletcher_Reeves(opk_nlcg_t* opt,
  *     beta = <g,y>/<g0,g0>
  */
 static int
-update_Polak_Ribiere_Polyak(opk_nlcg_t* opt,
-                            const opk_vector_t* x,
-                            const opk_vector_t* g)
+update_Polak_Ribiere_Polyak(opk_nlcg* opt,
+                            const opk_vector* x,
+                            const opk_vector* g)
 {
   double beta;
   form_y(opt, g);
@@ -278,9 +278,9 @@ update_Polak_Ribiere_Polyak(opk_nlcg_t* opt,
  * (this value is always >= 0 and can only be zero at a stationnary point).
  */
 static int
-update_Fletcher(opk_nlcg_t* opt,
-                const opk_vector_t* x,
-                const opk_vector_t* g)
+update_Fletcher(opk_nlcg* opt,
+                const opk_vector* x,
+                const opk_vector* g)
 {
   double beta = -opt->gnorm*(opt->gnorm/opt->dtg0);
   return update0(opt, g, beta);
@@ -292,9 +292,9 @@ update_Fletcher(opk_nlcg_t* opt,
  *     beta = -<g,y>/<d,g0>
  */
 static int
-update_Liu_Storey(opk_nlcg_t* opt,
-                  const opk_vector_t* x,
-                  const opk_vector_t* g)
+update_Liu_Storey(opk_nlcg* opt,
+                  const opk_vector* x,
+                  const opk_vector* g)
 {
   double gty, beta;
   form_y(opt, g);
@@ -309,9 +309,9 @@ update_Liu_Storey(opk_nlcg_t* opt,
  *     beta = <g,g>/<d,y>
  */
 static int
-update_Dai_Yuan(opk_nlcg_t* opt,
-                const opk_vector_t* x,
-                const opk_vector_t* g)
+update_Dai_Yuan(opk_nlcg* opt,
+                const opk_vector* x,
+                const opk_vector* g)
 {
   double dty, beta;
   form_y(opt, g);
@@ -327,9 +327,9 @@ update_Dai_Yuan(opk_nlcg_t* opt,
  *          = (<g,y> - 2*<y,y>*<d,g>/<d,y>)/<d,y>
  */
 static int
-update_Hager_Zhang(opk_nlcg_t* opt,
-                   const opk_vector_t* x,
-                   const opk_vector_t* g)
+update_Hager_Zhang(opk_nlcg* opt,
+                   const opk_vector* x,
+                   const opk_vector* g)
 {
   double dty, beta;
   form_y(opt, g);
@@ -380,9 +380,9 @@ update_Hager_Zhang(opk_nlcg_t* opt,
  * method, beta = c2/c1.
  */
 static int
-update_Perry_Shanno(opk_nlcg_t* opt,
-                    const opk_vector_t* x,
-                    const opk_vector_t* g)
+update_Perry_Shanno(opk_nlcg* opt,
+                    const opk_vector* x,
+                    const opk_vector* g)
 {
   double yty, dty, gty, dtg, c1, c2, c3;
   form_y(opt, g);
@@ -405,9 +405,9 @@ update_Perry_Shanno(opk_nlcg_t* opt,
 }
 
 static void
-finalize_nlcg(opk_object_t* obj)
+finalize_nlcg(opk_object* obj)
 {
-  opk_nlcg_t* opt = (opk_nlcg_t*)obj;
+  opk_nlcg* opt = (opk_nlcg*)obj;
   OPK_DROP(opt->vspace);
   OPK_DROP(opt->lnsrch);
   OPK_DROP(opt->x0);
@@ -419,18 +419,18 @@ finalize_nlcg(opk_object_t* obj)
 /*---------------------------------------------------------------------------*/
 /* PUBLIC INTERFACE */
 
-opk_nlcg_t*
-opk_new_nlcg_optimizer(const opk_nlcg_options_t* opts,
-                       opk_vspace_t* vspace,
-                       opk_lnsrch_t* lnsrch)
+opk_nlcg*
+opk_new_nlcg_optimizer(const opk_nlcg_options* opts,
+                       opk_vspace* vspace,
+                       opk_lnsrch* lnsrch)
 {
-  opk_nlcg_options_t options;
-  opk_nlcg_t* opt;
-  opk_bool_t g0_needed, y_needed;
+  opk_nlcg_options options;
+  opk_nlcg* opt;
+  opk_bool g0_needed, y_needed;
   unsigned int flags;
-  int (*update)(opk_nlcg_t* opt,
-                const opk_vector_t* x,
-                const opk_vector_t* g);
+  int (*update)(opk_nlcg* opt,
+                const opk_vector* x,
+                const opk_vector* g);
 
   /* Check options. */
   if (opts == NULL) {
@@ -499,7 +499,7 @@ opk_new_nlcg_optimizer(const opk_nlcg_options_t* opts,
   }
 
   /* We allocate enough memory for the workspace and instanciate it. */
-  opt = (opk_nlcg_t*)opk_allocate_object(finalize_nlcg, sizeof(opk_nlcg_t));
+  opt = (opk_nlcg*)opk_allocate_object(finalize_nlcg, sizeof(opk_nlcg));
   if (opt == NULL) {
     return NULL;
   }
@@ -556,44 +556,44 @@ opk_new_nlcg_optimizer(const opk_nlcg_options_t* opts,
 }
 
 double
-opk_get_nlcg_step(const opk_nlcg_t* opt)
+opk_get_nlcg_step(const opk_nlcg* opt)
 {
   return (opt == NULL ? -1.0 : opt->alpha);
 }
 
 double
-opk_get_nlcg_gnorm(const opk_nlcg_t* opt)
+opk_get_nlcg_gnorm(const opk_nlcg* opt)
 {
   return (opt == NULL ? -1.0 : opt->gnorm);
 }
 
-opk_index_t
-opk_get_nlcg_iterations(const opk_nlcg_t* opt)
+opk_index
+opk_get_nlcg_iterations(const opk_nlcg* opt)
 {
   return opt->iterations;
 }
 
-opk_index_t
-opk_get_nlcg_restarts(const opk_nlcg_t* opt)
+opk_index
+opk_get_nlcg_restarts(const opk_nlcg* opt)
 {
   return opt->restarts;
 }
 
-opk_index_t
-opk_get_nlcg_evaluations(const opk_nlcg_t* opt)
+opk_index
+opk_get_nlcg_evaluations(const opk_nlcg* opt)
 {
   return opt->evaluations;
 }
 
 extern size_t
-opk_get_nlcg_name(char* buf, size_t size, const opk_nlcg_t* opt)
+opk_get_nlcg_name(char* buf, size_t size, const opk_nlcg* opt)
 {
   return opk_copy_string(buf, size, "NLCG");
 }
 
 
 size_t
-opk_get_nlcg_description(char* buf, size_t size, const opk_nlcg_t* opt)
+opk_get_nlcg_description(char* buf, size_t size, const opk_nlcg* opt)
 {
   char str[80];
   int and;
@@ -644,20 +644,20 @@ opk_get_nlcg_description(char* buf, size_t size, const opk_nlcg_t* opt)
   return opk_copy_string(buf, size, str);
 }
 
-opk_task_t
-opk_get_nlcg_task(const opk_nlcg_t* opt)
+opk_task
+opk_get_nlcg_task(const opk_nlcg* opt)
 {
   return opt->task;
 }
 
-opk_status_t
-opk_get_nlcg_status(const opk_nlcg_t* opt)
+opk_status
+opk_get_nlcg_status(const opk_nlcg* opt)
 {
   return opt->status;
 }
 
 void
-_opk_set_nlcg_status(opk_nlcg_t* opt, opk_status_t status)
+opk__set_nlcg_status(opk_nlcg* opt, opk_status status)
 {
   opt->status = status;
   if (status != OPK_SUCCESS) {
@@ -666,13 +666,13 @@ _opk_set_nlcg_status(opk_nlcg_t* opt, opk_status_t status)
 }
 
 double
-opk_get_nlcg_beta(const opk_nlcg_t* opt)
+opk_get_nlcg_beta(const opk_nlcg* opt)
 {
   return opt->beta;
 }
 
 void
-opk_get_nlcg_default_options(opk_nlcg_options_t* opts)
+opk_get_nlcg_default_options(opk_nlcg_options* opts)
 {
   if (opts != NULL) {
     opts->delta = DELTA;
@@ -687,8 +687,8 @@ opk_get_nlcg_default_options(opk_nlcg_options_t* opts)
   }
 }
 
-opk_status_t
-opk_check_nlcg_options(const opk_nlcg_options_t* opts)
+opk_status
+opk_check_nlcg_options(const opk_nlcg_options* opts)
 {
   if (opts == NULL) {
     return OPK_ILLEGAL_ADDRESS;
@@ -705,8 +705,8 @@ opk_check_nlcg_options(const opk_nlcg_options_t* opts)
   return OPK_SUCCESS;
 }
 
-opk_task_t
-opk_start_nlcg(opk_nlcg_t* opt, opk_vector_t* x)
+opk_task
+opk_start_nlcg(opk_nlcg* opt, opk_vector* x)
 {
   opt->iterations = 0;
   opt->evaluations = 0;
@@ -714,18 +714,18 @@ opk_start_nlcg(opk_nlcg_t* opt, opk_vector_t* x)
   return success(opt, OPK_TASK_COMPUTE_FG);
 }
 
-opk_task_t
-opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x,
-                 double f, opk_vector_t* g)
+opk_task
+opk_iterate_nlcg(opk_nlcg* opt, opk_vector* x,
+                 double f, opk_vector* g)
 {
   /*
    * The new iterate is:
    *    x_{k+1} = x_{k} - \alpha_{k} d_{k}
    * as we consider the anti-search direction here.
    */
-  opk_status_t status = 0;
-  opk_task_t next_task;
-  opk_lnsrch_task_t lnsrch_task = 0;
+  opk_status status = 0;
+  opk_task next_task;
+  opk_lnsrch_task lnsrch_task = 0;
 
   switch (opt->task) {
 

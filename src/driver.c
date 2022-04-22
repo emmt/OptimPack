@@ -42,116 +42,116 @@
 
 /*---------------------------------------------------------------------------*/
 
-typedef struct _operations operations_t;
+typedef struct operations_ operations;
 
-struct _opk_optimizer {
-  opk_object_t base;  /* base type (must be the first member) */
-  operations_t* ops;
-  opk_object_t* optimizer;
-  opk_vspace_t* vspace;
-  opk_vector_t* x;
-  opk_vector_t* g;
-  opk_convexset_t* box;
-  opk_index_t n;
-  opk_algorithm_t algorithm;
+struct opk_optimizer_ {
+  opk_object base;  /* base type (must be the first member) */
+  operations* ops;
+  opk_object* optimizer;
+  opk_vspace* vspace;
+  opk_vector* x;
+  opk_vector* g;
+  opk_convexset* box;
+  opk_index n;
+  opk_algorithm algorithm;
   int single;
 };
 
-struct _operations {
-  opk_task_t   (*start)(opk_optimizer_t* opt);
-  opk_task_t   (*iterate)(opk_optimizer_t* opt, double f);
-  opk_task_t   (*get_task)(const opk_optimizer_t* opt);
-  opk_status_t (*get_status)(const opk_optimizer_t* opt);
-  void         (*set_status)(opk_optimizer_t* opt, opk_status_t status);
-  opk_index_t  (*get_evaluations)(const opk_optimizer_t* opt);
-  opk_index_t  (*get_iterations)(const opk_optimizer_t* opt);
-  opk_index_t  (*get_restarts)(const opk_optimizer_t* opt);
+struct operations_ {
+  opk_task   (*start)(opk_optimizer* opt);
+  opk_task   (*iterate)(opk_optimizer* opt, double f);
+  opk_task   (*get_task)(const opk_optimizer* opt);
+  opk_status (*get_status)(const opk_optimizer* opt);
+  void         (*set_status)(opk_optimizer* opt, opk_status status);
+  opk_index  (*get_evaluations)(const opk_optimizer* opt);
+  opk_index  (*get_iterations)(const opk_optimizer* opt);
+  opk_index  (*get_restarts)(const opk_optimizer* opt);
   size_t       (*get_name)(char* buf, size_t size,
-                           const opk_optimizer_t* opt);
+                           const opk_optimizer* opt);
   size_t       (*get_description)(char* buf, size_t size,
-                                  const opk_optimizer_t* opt);
-  double       (*get_step)(const opk_optimizer_t* opt);
-  double       (*get_gnorm)(const opk_optimizer_t* opt);
+                                  const opk_optimizer* opt);
+  double       (*get_step)(const opk_optimizer* opt);
+  double       (*get_gnorm)(const opk_optimizer* opt);
 };
 
 /*---------------------------------------------------------------------------*/
 /* NON-LINEAR CONJUGATE GRADIENT (NLCG) METHOD */
 
-#define NLCG(obj) ((opk_nlcg_t*)(obj))
+#define NLCG(obj) ((opk_nlcg*)(obj))
 
-static opk_task_t
-nlcg_start(opk_optimizer_t* opt)
+static opk_task
+nlcg_start(opk_optimizer* opt)
 {
   return opk_start_nlcg(NLCG(opt->optimizer), opt->x);
 }
 
-static opk_task_t
-nlcg_iterate(opk_optimizer_t* opt, double f)
+static opk_task
+nlcg_iterate(opk_optimizer* opt, double f)
 {
   return opk_iterate_nlcg(NLCG(opt->optimizer), opt->x, f, opt->g);
 }
 
-static opk_task_t
-nlcg_get_task(const opk_optimizer_t* opt)
+static opk_task
+nlcg_get_task(const opk_optimizer* opt)
 {
   return opk_get_nlcg_task(NLCG(opt->optimizer));
 }
 
-static opk_status_t
-nlcg_get_status(const opk_optimizer_t* opt)
+static opk_status
+nlcg_get_status(const opk_optimizer* opt)
 {
   return opk_get_nlcg_status(NLCG(opt->optimizer));
 }
 
 static void
-nlcg_set_status(opk_optimizer_t* opt, opk_status_t status)
+nlcg_set_status(opk_optimizer* opt, opk_status status)
 {
-  _opk_set_nlcg_status(NLCG(opt->optimizer), status);
+  opk__set_nlcg_status(NLCG(opt->optimizer), status);
 }
 
-static opk_index_t
-nlcg_get_evaluations(const opk_optimizer_t* opt)
+static opk_index
+nlcg_get_evaluations(const opk_optimizer* opt)
 {
   return opk_get_nlcg_evaluations(NLCG(opt->optimizer));
 }
 
-static opk_index_t
-nlcg_get_iterations(const opk_optimizer_t* opt)
+static opk_index
+nlcg_get_iterations(const opk_optimizer* opt)
 {
   return opk_get_nlcg_iterations(NLCG(opt->optimizer));
 }
 
-static opk_index_t
-nlcg_get_restarts(const opk_optimizer_t* opt)
+static opk_index
+nlcg_get_restarts(const opk_optimizer* opt)
 {
   return opk_get_nlcg_restarts(NLCG(opt->optimizer));
 }
 
 static size_t
-nlcg_get_name(char* buf, size_t size, const opk_optimizer_t* opt)
+nlcg_get_name(char* buf, size_t size, const opk_optimizer* opt)
 {
   return opk_get_nlcg_name(buf, size, NLCG(opt->optimizer));
 }
 
 static size_t
-nlcg_get_description(char* buf, size_t size, const opk_optimizer_t* opt)
+nlcg_get_description(char* buf, size_t size, const opk_optimizer* opt)
 {
   return opk_get_nlcg_description(buf, size, NLCG(opt->optimizer));
 }
 
 static double
-nlcg_get_step(const opk_optimizer_t* opt)
+nlcg_get_step(const opk_optimizer* opt)
 {
   return opk_get_nlcg_step(NLCG(opt->optimizer));
 }
 
 static double
-nlcg_get_gnorm(const opk_optimizer_t* opt)
+nlcg_get_gnorm(const opk_optimizer* opt)
 {
   return opk_get_nlcg_gnorm(NLCG(opt->optimizer));
 }
 
-static operations_t nlcg_ops = {
+static operations nlcg_ops = {
   nlcg_start,
   nlcg_iterate,
   nlcg_get_task,
@@ -169,82 +169,82 @@ static operations_t nlcg_ops = {
 /*---------------------------------------------------------------------------*/
 /* LIMITED MEMORY VARIABLE METRIC METHOD WITH BOUNDS */
 
-#define VMLMB(obj) ((opk_vmlmb_t*)(obj))
+#define VMLMB(obj) ((opk_vmlmb*)(obj))
 
-static opk_task_t
-vmlmb_start(opk_optimizer_t* opt)
+static opk_task
+vmlmb_start(opk_optimizer* opt)
 {
   return opk_start_vmlmb(VMLMB(opt->optimizer), opt->x);
 }
 
-static opk_task_t
-vmlmb_iterate(opk_optimizer_t* opt, double f)
+static opk_task
+vmlmb_iterate(opk_optimizer* opt, double f)
 {
   return opk_iterate_vmlmb(VMLMB(opt->optimizer), opt->x, f, opt->g);
 }
 
-static opk_task_t
-vmlmb_get_task(const opk_optimizer_t* opt)
+static opk_task
+vmlmb_get_task(const opk_optimizer* opt)
 {
   return opk_get_vmlmb_task(VMLMB(opt->optimizer));
 }
 
-static opk_status_t
-vmlmb_get_status(const opk_optimizer_t* opt)
+static opk_status
+vmlmb_get_status(const opk_optimizer* opt)
 {
   return opk_get_vmlmb_status(VMLMB(opt->optimizer));
 }
 
 static void
-vmlmb_set_status(opk_optimizer_t* opt, opk_status_t status)
+vmlmb_set_status(opk_optimizer* opt, opk_status status)
 {
-  _opk_set_vmlmb_status(VMLMB(opt->optimizer), status);
+  opk__set_vmlmb_status(VMLMB(opt->optimizer), status);
 }
 
-static opk_index_t
-vmlmb_get_evaluations(const opk_optimizer_t* opt)
+static opk_index
+vmlmb_get_evaluations(const opk_optimizer* opt)
 {
   return opk_get_vmlmb_evaluations(VMLMB(opt->optimizer));
 }
 
-static opk_index_t
-vmlmb_get_iterations(const opk_optimizer_t* opt)
+static opk_index
+vmlmb_get_iterations(const opk_optimizer* opt)
 {
   return opk_get_vmlmb_iterations(VMLMB(opt->optimizer));
 }
 
-static opk_index_t
-vmlmb_get_restarts(const opk_optimizer_t* opt)
+static opk_index
+vmlmb_get_restarts(const opk_optimizer* opt)
 {
   return opk_get_vmlmb_restarts(VMLMB(opt->optimizer));
 }
 
 static size_t
-vmlmb_get_name(char* buf, size_t size, const opk_optimizer_t* opt)
+vmlmb_get_name(char* buf, size_t size, const opk_optimizer* opt)
 {
   return opk_copy_string(buf, size,
                          opk_get_vmlmb_method_name(VMLMB(opt->optimizer)));
 }
 
 static size_t
-vmlmb_get_description(char* buf, size_t size, const opk_optimizer_t* opt)
+vmlmb_get_description(char* buf, size_t size, const opk_optimizer* opt)
 {
   return opk_get_vmlmb_description(buf, size, VMLMB(opt->optimizer));
 }
 
 static double
-vmlmb_get_step(const opk_optimizer_t* opt)
+vmlmb_get_step(const opk_optimizer* opt)
 {
   return opk_get_vmlmb_step(VMLMB(opt->optimizer));
 }
 
 static double
-vmlmb_get_gnorm(const opk_optimizer_t* opt)
+vmlmb_get_gnorm(const opk_optimizer* opt)
 {
   return opk_get_vmlmb_gnorm(VMLMB(opt->optimizer));
 }
 
-static operations_t vmlmb_ops = {
+static operations vmlmb_ops = {
   vmlmb_start,
   vmlmb_iterate,
   vmlmb_get_task,
@@ -277,9 +277,9 @@ static operations_t vmlmb_ops = {
 
 
 static void
-finalize_optimizer(opk_object_t* obj)
+finalize_optimizer(opk_object* obj)
 {
-  opk_optimizer_t *opt = (opk_optimizer_t*)obj;
+  opk_optimizer *opt = (opk_optimizer*)obj;
   OPK_DROP(opt->optimizer);
   OPK_DROP(opt->vspace);
   OPK_DROP(opt->x);
@@ -290,18 +290,18 @@ finalize_optimizer(opk_object_t* obj)
 #define CHECK_BOUND_TYPE(t) (OPK_BOUND_NONE <= (t) &&  \
                              (t) <= OPK_BOUND_VECTOR)
 
-extern opk_optimizer_t *
-opk_new_optimizer(opk_algorithm_t algorithm, /* optimization algorithm */
+extern opk_optimizer *
+opk_new_optimizer(opk_algorithm algorithm, /* optimization algorithm */
                   const void* opts, /* options */
-                  opk_type_t type, /* type of variables: OPK_FLOAT or
+                  opk_eltype type, /* type of variables: OPK_FLOAT or
                                       OPK_DOUBLE */
-                  opk_index_t n, /* number of variables */
-                  opk_bound_type_t lower_type, void* lower_addr,
-                  opk_bound_type_t upper_type, void* upper_addr,
-                  opk_lnsrch_t* lnschr)
+                  opk_index n, /* number of variables */
+                  opk_bound_type lower_type, void* lower_addr,
+                  opk_bound_type upper_type, void* upper_addr,
+                  opk_lnsrch* lnschr)
 {
-  opk_optimizer_t* opt = NULL;
-  opk_bool_t single, bounded;
+  opk_optimizer* opt = NULL;
+  opk_bool single, bounded;
 
   /* Check some generic parameters. */
   if (n < 1) {
@@ -340,8 +340,8 @@ opk_new_optimizer(opk_algorithm_t algorithm, /* optimization algorithm */
   }
 
   /* Allocate optimizer and instanciate it. */
-  opt = (opk_optimizer_t*)opk_allocate_object(finalize_optimizer,
-                                              sizeof(opk_optimizer_t));
+  opt = (opk_optimizer*)opk_allocate_object(finalize_optimizer,
+                                              sizeof(opk_optimizer));
   opt->single = single;
   opt->n = n;
   opt->algorithm = algorithm;
@@ -366,8 +366,8 @@ opk_new_optimizer(opk_algorithm_t algorithm, /* optimization algorithm */
   if (bounded) {
     /* Take care of simply wrapping static arrays if the bounds are provided as
        such. */
-    opk_vector_t* lower_vector = NULL;
-    opk_vector_t* upper_vector = NULL;
+    opk_vector* lower_vector = NULL;
+    opk_vector* upper_vector = NULL;
     if (lower_type == (single ? OPK_BOUND_STATIC_FLOAT
                        : OPK_BOUND_STATIC_DOUBLE)) {
       if (single) {
@@ -405,11 +405,11 @@ opk_new_optimizer(opk_algorithm_t algorithm, /* optimization algorithm */
     }
   }
   if (algorithm == OPK_ALGORITHM_NLCG) {
-    opt->optimizer = (opk_object_t*)opk_new_nlcg_optimizer(opts, opt->vspace,
+    opt->optimizer = (opk_object*)opk_new_nlcg_optimizer(opts, opt->vspace,
                                                            lnschr);
     opt->ops = &nlcg_ops;
   } else {
-    opt->optimizer = (opk_object_t*)opk_new_vmlmb_optimizer(opts, opt->vspace,
+    opt->optimizer = (opk_object*)opk_new_vmlmb_optimizer(opts, opt->vspace,
                                                             lnschr, opt->box);
     opt->ops = &vmlmb_ops;
   }
@@ -423,15 +423,15 @@ opk_new_optimizer(opk_algorithm_t algorithm, /* optimization algorithm */
 }
 
 void
-opk_destroy_optimizer(opk_optimizer_t *opt)
+opk_destroy_optimizer(opk_optimizer *opt)
 {
   OPK_DROP(opt);
 }
 
-opk_task_t
-opk_start(opk_optimizer_t *opt,  void* x)
+opk_task
+opk_start(opk_optimizer *opt,  void* x)
 {
-  opk_status_t status;
+  opk_status status;
   if (opt == NULL) {
     return OPK_TASK_ERROR;
   }
@@ -451,10 +451,10 @@ opk_start(opk_optimizer_t *opt,  void* x)
   return opt->ops->start(opt);
 }
 
-opk_task_t
-opk_iterate(opk_optimizer_t *opt, void* x, double f, void* g)
+opk_task
+opk_iterate(opk_optimizer *opt, void* x, double f, void* g)
 {
-  opk_status_t status;
+  opk_status status;
   if (opt == NULL) {
     return OPK_TASK_ERROR;
   }
@@ -480,38 +480,38 @@ opk_iterate(opk_optimizer_t *opt, void* x, double f, void* g)
   return opt->ops->iterate(opt, f);
 }
 
-opk_task_t
-opk_get_task(const opk_optimizer_t* opt)
+opk_task
+opk_get_task(const opk_optimizer* opt)
 {
   return (opt == NULL ? OPK_TASK_ERROR : opt->ops->get_task(opt));
 }
 
-opk_status_t
-opk_get_status(const opk_optimizer_t* opt)
+opk_status
+opk_get_status(const opk_optimizer* opt)
 {
   return (opt == NULL ? OPK_ILLEGAL_ADDRESS : opt->ops->get_status(opt));
 }
 
-opk_index_t
-opk_get_evaluations(const opk_optimizer_t* opt)
+opk_index
+opk_get_evaluations(const opk_optimizer* opt)
 {
   return (opt == NULL ? 0 : opt->ops->get_evaluations(opt));
 }
 
-opk_index_t
-opk_get_iterations(const opk_optimizer_t* opt)
+opk_index
+opk_get_iterations(const opk_optimizer* opt)
 {
   return (opt == NULL ? 0 : opt->ops->get_iterations(opt));
 }
 
-opk_index_t
-opk_get_restarts(const opk_optimizer_t* opt)
+opk_index
+opk_get_restarts(const opk_optimizer* opt)
 {
   return (opt == NULL ? 0 : opt->ops->get_restarts(opt));
 }
 
 size_t
-opk_get_name(char* buf, size_t size, const opk_optimizer_t* opt)
+opk_get_name(char* buf, size_t size, const opk_optimizer* opt)
 {
   if (opt == NULL) {
     return opk_copy_string(buf, size, "");
@@ -521,19 +521,19 @@ opk_get_name(char* buf, size_t size, const opk_optimizer_t* opt)
 }
 
 size_t
-opk_get_description(char* buf, size_t size, const opk_optimizer_t* opt)
+opk_get_description(char* buf, size_t size, const opk_optimizer* opt)
 {
   return opt->ops->get_description(buf, size, opt);
 }
 
 double
-opk_get_step(const opk_optimizer_t* opt)
+opk_get_step(const opk_optimizer* opt)
 {
   return (opt == NULL ? -1 : opt->ops->get_step(opt));
 }
 
 double
-opk_get_gnorm(const opk_optimizer_t* opt)
+opk_get_gnorm(const opk_optimizer* opt)
 {
   return (opt == NULL ? 0 : opt->ops->get_gnorm(opt));
 }

@@ -20,8 +20,8 @@
  * Copyright (c) 2015, Éric Thiébaut (C version).
  */
 
-#ifndef _COBYLA_H
-#define  _COBYLA_H 1
+#ifndef COBYLA_H_
+#define  COBYLA_H_ 1
 
 #include "optimpack.h"
 
@@ -39,7 +39,7 @@ extern "C" {
  * needed by the function (unused by COBYLA itself).
  */
 typedef double
-cobyla_calcfc(opk_index_t n, opk_index_t m, const double x[],
+cobyla_calcfc(opk_index n, opk_index m, const double x[],
               double con[], void* data);
 
 /**
@@ -48,7 +48,7 @@ cobyla_calcfc(opk_index_t n, opk_index_t m, const double x[],
  * This type enumerate the possible values returned by cobyla(),
  * cobyla_get_status() and cobyla_iterate().
  */
-typedef enum cobyla_status {
+typedef enum {
     COBYLA_INITIAL_ITERATE      =  2, /**< only used internally */
     COBYLA_ITERATE              =  1, /**< user requested to compute
                                        **  F(X) and C(X) */
@@ -159,11 +159,11 @@ typedef enum cobyla_status {
  *         explanation).
  */
 extern cobyla_status cobyla(
-    opk_index_t n, opk_index_t m,
+    opk_index n, opk_index m,
     cobyla_calcfc* fc, void* data,
     double x[], double rhobeg, double rhoend,
-    opk_index_t iprint, opk_index_t maxfun,
-    double work[], opk_index_t iact[]);
+    opk_index iprint, opk_index maxfun,
+    double work[], opk_index iact[]);
 
 /**
  * Minimize or maximize a function of many variables subject to inequality
@@ -223,14 +223,14 @@ extern cobyla_status cobyla(
  *         explanation).
  */
 extern cobyla_status cobyla_optimize(
-    opk_index_t n, opk_index_t m,
-    opk_bool_t maximize, cobyla_calcfc* fc, void* data,
+    opk_index n, opk_index m,
+    opk_bool maximize, cobyla_calcfc* fc, void* data,
     double x[], const double scl[], double rhobeg, double rhoend,
-    opk_index_t iprint, opk_index_t maxfun,
-    double work[], opk_index_t iact[]);
+    opk_index iprint, opk_index maxfun,
+    double work[], opk_index iact[]);
 
 /* Opaque structure used by the reverse communication variant of COBYLA. */
-typedef struct _cobyla_context cobyla_context_t;
+typedef struct cobyla_context_ cobyla_context;
 
 /* Allocate a new reverse communication workspace for COBYLA algorithm.  The
    returned address is `NULL` to indicate an error due to either invalid
@@ -241,7 +241,7 @@ typedef struct _cobyla_context cobyla_context_t;
    A typical usage is:
    ```
    double x[N], c[M], f;
-   cobyla_context_t* ctx;
+   cobyla_context* ctx;
    x[...] = ...; // initial solution
    ctx = cobyla_create(N, M, RHOBEG, RHOEND, IPRINT, MAXFUN);
    status = cobyla_get_status(ctx);
@@ -257,14 +257,14 @@ typedef struct _cobyla_context cobyla_context_t;
    }
    ```
  */
-extern cobyla_context_t*
-cobyla_create(opk_index_t n, opk_index_t m, double rhobeg, double rhoend,
-              opk_index_t iprint, opk_index_t maxfun);
+extern cobyla_context*
+cobyla_create(opk_index n, opk_index m, double rhobeg, double rhoend,
+              opk_index iprint, opk_index maxfun);
 
 /* Release ressources allocated for COBYLA reverse communication workspace.
    Argument can be `NULL`. */
 extern void
-cobyla_delete(cobyla_context_t* ctx);
+cobyla_delete(cobyla_context* ctx);
 
 /* Perform the next iteration of the reverse communication variant of the
    COBYLA algorithm.  On entry, the workspace status must be `COBYLA_ITERATE`,
@@ -277,35 +277,35 @@ cobyla_delete(cobyla_context_t* ctx);
    `cobyla_get_last_f`); anything else indicates an error (see `cobyla_reason`
    for an explanatory message). */
 extern cobyla_status cobyla_iterate(
-    cobyla_context_t* ctx, double f, double x[], double c[]);
+    cobyla_context* ctx, double f, double x[], double c[]);
 
 /* Restart COBYLA algorithm using the same parameters.  The return value is
    the new status of the algorithm, see `cobyla_get_status` for details. */
-extern cobyla_status cobyla_restart(cobyla_context_t* ctx);
+extern cobyla_status cobyla_restart(cobyla_context* ctx);
 
 /* Get the current status of the algorithm.  Result is: `COBYLA_ITERATE` if
    user is requested to compute F(X) and C(X); `COBYLA_SUCCESS` if algorithm
    has converged; anything else indicates an error (see `cobyla_reason` for an
    explanatory message). */
-extern cobyla_status cobyla_get_status(const cobyla_context_t* ctx);
+extern cobyla_status cobyla_get_status(const cobyla_context* ctx);
 
 /* Get the current number of function evaluations.  Result is -1 if something
    is wrong (e.g. CTX is NULL), nonnegative otherwise. */
-extern opk_index_t
-cobyla_get_nevals(const cobyla_context_t* ctx);
+extern opk_index
+cobyla_get_nevals(const cobyla_context* ctx);
 
 /* Get the current size of the trust region.  Result is 0 if algorithm has not
    yet been started (before first iteration), -1 if something is wrong
    (e.g. CTX is NULL), strictly positive otherwise. */
 extern double
-cobyla_get_rho(const cobyla_context_t* ctx);
+cobyla_get_rho(const cobyla_context* ctx);
 
 /* Get the last function value.  Upon convergence of `cobyla_iterate`
    (i.e. return with status `COBYLA_SUCCESS`), this value corresponds to the
    function at the solution; otherwise, this value corresponds to the previous
    set of variables. */
 extern double
-cobyla_get_last_f(const cobyla_context_t* ctx);
+cobyla_get_last_f(const cobyla_context* ctx);
 
 /* Get a textual explanation of the status returned by `cobyla`,
    `cobyla_get_status` and `cobyla_iterate`. */
@@ -367,10 +367,10 @@ extern const char* cobyla_reason(cobyla_status status);
  * subject to the constraint functions being nonnegative.
  */
 extern int
-FORTRAN_NAME(cobyla,COBYLA)(opk_index_t* n, opk_index_t* m, double x[],
+FORTRAN_NAME(cobyla,COBYLA)(opk_index* n, opk_index* m, double x[],
                             double* rhobeg, double* rhoend,
-                            opk_index_t* iprint, opk_index_t* maxfun,
-                            double w[], opk_index_t iact[]);
+                            opk_index* iprint, opk_index* maxfun,
+                            double w[], opk_index iact[]);
 
 #endif /* FORTRAN_LINKAGE */
 
@@ -378,4 +378,4 @@ FORTRAN_NAME(cobyla,COBYLA)(opk_index_t* n, opk_index_t* m, double x[],
 }
 #endif
 
-#endif /* _COBYLA_H */
+#endif /* COBYLA_H_ */

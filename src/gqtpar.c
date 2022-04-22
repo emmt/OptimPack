@@ -41,8 +41,8 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef _OPK_GQTPAR_C
-#define _OPK_GQTPAR_C 1
+#ifndef OPK_GQTPAR_C_
+#define OPK_GQTPAR_C_ 1
 
 #include <string.h>
 #include <math.h>
@@ -65,16 +65,16 @@
 #include "linalg-double.h"
 #include __FILE__
 
-#else /* _OPK_GQTPAR_C is defined --------------------------------------------*/
+#else /* OPK_GQTPAR_C_ is defined --------------------------------------------*/
 
 #ifdef OPK_GQT
 
 int
-OPK_GQT(const opk_index_t n, real_t a_[], const opk_index_t lda,
+OPK_GQT(const opk_index n, real_t a_[], const opk_index lda,
         const real_t b_[], const real_t delta,
         const real_t rtol, const real_t atol,
-        const opk_index_t itmax, real_t *par_ptr, real_t *fx_ptr,
-        real_t x_[], opk_index_t *iter_ptr, real_t z_[],
+        const opk_index itmax, real_t *par_ptr, real_t *fx_ptr,
+        real_t x_[], opk_index *iter_ptr, real_t z_[],
         real_t wa1_[], real_t wa2_[])
 {
   /* Define some macros to mimic FORTRAN indexing. */
@@ -99,7 +99,7 @@ OPK_GQT(const opk_index_t n, real_t a_[], const opk_index_t lda,
   real_t alpha, anorm, bnorm, prod, rxnorm, rznorm, xnorm;
   real_t par, parc, parf, parl, pars, paru;
   real_t temp, temp1, temp2, temp3;
-  opk_index_t indef, j, iter;
+  opk_index indef, j, iter;
   int rednc, info;
 
   /* Initialization. */
@@ -361,7 +361,7 @@ OPK_GQT(const opk_index_t n, real_t a_[], const opk_index_t lda,
 #ifdef OPK_ESTSV
 
 real_t
-OPK_ESTSV(opk_index_t n, const real_t r_[], opk_index_t ldr, real_t z_[])
+OPK_ESTSV(opk_index n, const real_t r_[], opk_index ldr, real_t z_[])
 {
   /* Define some macros to mimic FORTRAN indexing. */
 #undef z
@@ -374,7 +374,7 @@ OPK_ESTSV(opk_index_t n, const real_t r_[], opk_index_t ldr, real_t z_[])
   const real_t ONE   = OPK_REALCONST(1.0);
   const real_t SMALL = OPK_REALCONST(0.01);
   real_t e, s, sm, temp, w, wm, ynorm, znorm;
-  opk_index_t i, j;
+  opk_index i, j;
 
   /* Clear vector z. */
   if (n > 0) {
@@ -459,4 +459,4 @@ OPK_ESTSV(opk_index_t n, const real_t r_[], opk_index_t ldr, real_t z_[])
 
 #endif /* OPK_ESTSV */
 
-#endif /* _OPK_GQTPAR_C */
+#endif /* OPK_GQTPAR_C_ */

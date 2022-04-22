@@ -19,8 +19,8 @@
  * Read the accompanying `LICENSE` file for details.
  */
 
-#ifndef _NEWUOA_H
-#define  _NEWUOA_H 1
+#ifndef NEWUOA_H_
+#define  NEWUOA_H_ 1
 
 #include "optimpack.h"
 
@@ -32,7 +32,7 @@ extern "C" {
    returned value is the function value at X, the current variables, N is the
    number of variables and DATA is anything else needed by the objective
    function (unused by NEWUOA itself). */
-typedef double newuoa_objfun(const opk_index_t n, const double *x, void* data);
+typedef double newuoa_objfun(const opk_index n, const double *x, void* data);
 
 /**
  * @brief Status for NEWUOA routines.
@@ -40,7 +40,7 @@ typedef double newuoa_objfun(const opk_index_t n, const double *x, void* data);
  * This type enumerate the possible values returned by newuoa(),
  * newuoa_get_status() and newuoa_iterate().
  */
-typedef enum newuoa_status {
+typedef enum {
     NEWUOA_INITIAL_ITERATE      =  2, /**< only used internaly */
     NEWUOA_ITERATE              =  1, /**< caller is requested to evaluate the
                                        **  objective function and call
@@ -100,10 +100,10 @@ typedef enum newuoa_status {
    The returned value should be NEWUOA_SUCCESS, but a different value can be
    returned upon error (see `newuoa_reason` for an explanatory message). */
 extern newuoa_status newuoa(
-    const opk_index_t n, const opk_index_t npt,
+    const opk_index n, const opk_index npt,
     newuoa_objfun* objfun, void* data,
     double* x, const double rhobeg, const double rhoend,
-    const opk_index_t iprint, const opk_index_t maxfun,
+    const opk_index iprint, const opk_index maxfun,
     double* work);
 
 /**
@@ -176,10 +176,10 @@ extern newuoa_status newuoa(
  *         message).
  */
 extern newuoa_status newuoa_optimize(
-    opk_index_t n, opk_index_t npt,
-    opk_bool_t maximize, newuoa_objfun* objfun, void* data,
+    opk_index n, opk_index npt,
+    opk_bool maximize, newuoa_objfun* objfun, void* data,
     double x[], const double scl[], double rhobeg, double rhoend,
-    opk_index_t iprint, opk_index_t maxfun, double* work);
+    opk_index iprint, opk_index maxfun, double* work);
 
 /* Get a textual explanation of the status returned by NEWUOA. */
 extern const char* newuoa_reason(newuoa_status status);
@@ -188,7 +188,7 @@ extern const char* newuoa_reason(newuoa_status status);
 /* REVERSE COMMUNICATION VERSION */
 
 /* Opaque structure used by the reverse communication version of NEWUOA. */
-typedef struct _newuoa_context newuoa_context_t;
+typedef struct newuoa_context_ newuoa_context;
 
 /* Allocate a new reverse communication workspace for NEWUOA algorithm.  The
    returned address is `NULL` to indicate an error: either invalid parameters
@@ -204,7 +204,7 @@ typedef struct _newuoa_context newuoa_context_t;
    A typical usage is:
    ```
    double x[N], f;
-   newuoa_context_t* ctx;
+   newuoa_context* ctx;
    x[...] = ...; // initial solution
    ctx = newuoa_create(N, NPT, RHOBEG, RHOEND, IPRINT, MAXFUN);
    status = newuoa_get_status(ctx);
@@ -219,14 +219,14 @@ typedef struct _newuoa_context newuoa_context_t;
    }
    ```
  */
-extern newuoa_context_t*
-newuoa_create(const opk_index_t n, const opk_index_t npt,
+extern newuoa_context*
+newuoa_create(const opk_index n, const opk_index npt,
               const double rhobeg, const double rhoend,
-              const opk_index_t iprint, const opk_index_t maxfun);
+              const opk_index iprint, const opk_index maxfun);
 
 /* Release ressource allocated for NEWUOA reverse communication workspace.
    Argument can be `NULL`. */
-extern void newuoa_delete(newuoa_context_t* ctx);
+extern void newuoa_delete(newuoa_context* ctx);
 
 /* Perform the next iteration of the reverse communication version of the
    NEWUOA algorithm.  On entry, the workspace status must be `NEWUOA_ITERATE`,
@@ -235,26 +235,26 @@ extern void newuoa_delete(newuoa_context_t* ctx);
    in `x` and if user is requested to compute the function value for the new
    point; `NEWUOA_SUCCESS` if algorithm has converged; anything else indicates
    an error (see `newuoa_reason` for an explanatory message). */
-extern newuoa_status newuoa_iterate(newuoa_context_t* ctx, double f, double* x);
+extern newuoa_status newuoa_iterate(newuoa_context* ctx, double f, double* x);
 
 /* Restart NEWUOA algorithm using the same parameters.  The return value is the
    new status of the algorithm, see `newuoa_get_status` for details. */
-extern newuoa_status newuoa_restart(newuoa_context_t* ctx);
+extern newuoa_status newuoa_restart(newuoa_context* ctx);
 
 /* Get the current status of the algorithm.  Result is: `NEWUOA_ITERATE` if
    user is requested to compute F(X); `NEWUOA_SUCCESS` if algorithm has
    converged; anything else indicates an error (see `newuoa_reason` for an
    explanatory message). */
-extern newuoa_status newuoa_get_status(const newuoa_context_t* ctx);
+extern newuoa_status newuoa_get_status(const newuoa_context* ctx);
 
 /* Get the current number of function evaluations.  Result is -1 if something
    is wrong (e.g. CTX is NULL), nonnegative otherwise. */
-extern opk_index_t newuoa_get_nevals(const newuoa_context_t* ctx);
+extern opk_index newuoa_get_nevals(const newuoa_context* ctx);
 
 /* Get the current size of the trust region.  Result is 0 if algorithm not yet
    started (before first iteration), -1 if something is wrong (e.g. CTX is
    NULL), strictly positive otherwise. */
-extern double newuoa_get_rho(const newuoa_context_t* ctx);
+extern double newuoa_get_rho(const newuoa_context* ctx);
 
 /*---------------------------------------------------------------------------*/
 /* FORTRAN SUPPORT */
@@ -305,18 +305,18 @@ extern double newuoa_get_rho(const newuoa_context_t* ctx);
    variables X(1),X(2),...,X(N), which are generated automatically
    by NEWUOA. */
 extern int
-FORTRAN_NAME(newuoa,NEWUOA)(const opk_index_t* n, const opk_index_t* npt,
+FORTRAN_NAME(newuoa,NEWUOA)(const opk_index* n, const opk_index* npt,
                             double* x, const double* rhobeg,
-                            const double* rhoend, const opk_index_t* iprint,
-                            const opk_index_t* maxfun, double* w);
+                            const double* rhoend, const opk_index* iprint,
+                            const opk_index* maxfun, double* w);
 
 /* Wrapper function to emulate `newuoa_calfun` function calling
    the user-defined `calfun_` subroutine. */
-extern double newuoa_calfun_wrapper(const opk_index_t n, const double* x, void* data);
+extern double newuoa_calfun_wrapper(const opk_index n, const double* x, void* data);
 
 /* Subroutine that must be defined by the application to use the FORTRAN
    wrapper to NEWUOA. */
-extern int calfun_(const opk_index_t* n, double *x, double *f);
+extern int calfun_(const opk_index* n, double *x, double *f);
 
 #endif /* FORTRAN_LINKAGE */
 
@@ -341,4 +341,4 @@ extern void newuoa_test(void);
 }
 #endif
 
-#endif /* _NEWUOA_H */
+#endif /* NEWUOA_H_ */

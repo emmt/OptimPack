@@ -22,10 +22,10 @@
 
 /* To re-use as much as the code for the reverse communication routines, we use
    a trick which consists in "self-including" this file with different macros
-   (_COBYLA_PART1, _COBYLA_PART2, etc.) defined so as to skip or modify certain
+   (COBYLA_PART1_, COBYLA_PART2_, etc.) defined so as to skip or modify certain
    parts of the source file. */
-#ifndef _COBYLA_PART1
-#define _COBYLA_PART1 1
+#ifndef COBYLA_PART1_
+#define COBYLA_PART1_ 1
 
 #include <stdlib.h>
 #include <string.h>
@@ -37,8 +37,8 @@
 
 /* Set basic types according to those in `optimpack.h` */
 #undef SINGLE_PRECISION
-#define LOGICAL opk_bool_t
-#define INTEGER opk_index_t
+#define LOGICAL opk_bool
+#define INTEGER opk_index
 
 /* Macros to deal with single/double precision. */
 #undef REAL
@@ -172,7 +172,7 @@ FORTRAN_NAME(cobyla,COBYLA)(INTEGER* n, INTEGER* m, REAL x[], REAL* rhobeg,
 /*---------------------------------------------------------------------------*/
 /* Reverse communication version. */
 
-struct _cobyla_context {
+struct cobyla_context_ {
   INTEGER n;      /* number of variables */
   INTEGER m;      /* number of constraints */
   INTEGER iprint;
@@ -200,11 +200,11 @@ struct _cobyla_context {
   cobyla_status status;
 };
 
-cobyla_context_t*
+cobyla_context*
 cobyla_create(INTEGER n, INTEGER m, REAL rhobeg, REAL rhoend,
               INTEGER iprint, INTEGER maxfun)
 {
-  cobyla_context_t* ctx;
+  cobyla_context* ctx;
   size_t size, offset1, offset2;
 
   /* Check arguments. */
@@ -214,12 +214,12 @@ cobyla_create(INTEGER n, INTEGER m, REAL rhobeg, REAL rhoend,
   }
 
   /* Allocate memory. */
-  size = sizeof(cobyla_context_t);
+  size = sizeof(cobyla_context);
   offset1 = ROUND_UP(size, sizeof(INTEGER));
   size = offset1 + (m + 1)*sizeof(INTEGER);
   offset2 = ROUND_UP(size, sizeof(REAL));
   size = offset2 + (n*(3*n + 2*m + 11) + 4*m + 6)*sizeof(REAL);
-  ctx = (cobyla_context_t*)malloc(size);
+  ctx = (cobyla_context*)malloc(size);
   if (ctx == NULL) {
     return NULL;
   }
@@ -251,7 +251,7 @@ cobyla_create(INTEGER n, INTEGER m, REAL rhobeg, REAL rhoend,
 }
 
 void
-cobyla_delete(cobyla_context_t* ctx)
+cobyla_delete(cobyla_context* ctx)
 {
   if (ctx != NULL) {
     free((void*)ctx);
@@ -259,7 +259,7 @@ cobyla_delete(cobyla_context_t* ctx)
 }
 
 cobyla_status
-cobyla_restart(cobyla_context_t* ctx)
+cobyla_restart(cobyla_context* ctx)
 {
   if (ctx == NULL) {
     errno = EFAULT;
@@ -271,7 +271,7 @@ cobyla_restart(cobyla_context_t* ctx)
 }
 
 cobyla_status
-cobyla_get_status(const cobyla_context_t* ctx)
+cobyla_get_status(const cobyla_context* ctx)
 {
   if (ctx == NULL) {
     errno = EFAULT;
@@ -281,7 +281,7 @@ cobyla_get_status(const cobyla_context_t* ctx)
 }
 
 INTEGER
-cobyla_get_nevals(const cobyla_context_t* ctx)
+cobyla_get_nevals(const cobyla_context* ctx)
 {
   if (ctx == NULL) {
     errno = EFAULT;
@@ -291,7 +291,7 @@ cobyla_get_nevals(const cobyla_context_t* ctx)
 }
 
 REAL
-cobyla_get_rho(const cobyla_context_t* ctx)
+cobyla_get_rho(const cobyla_context* ctx)
 {
   if (ctx == NULL) {
     errno = EFAULT;
@@ -301,7 +301,7 @@ cobyla_get_rho(const cobyla_context_t* ctx)
 }
 
 REAL
-cobyla_get_last_f(const cobyla_context_t* ctx)
+cobyla_get_last_f(const cobyla_context* ctx)
 {
   if (ctx == NULL) {
     errno = EFAULT;
@@ -310,13 +310,13 @@ cobyla_get_last_f(const cobyla_context_t* ctx)
   return ctx->f;
 }
 
-/* Include this file with the macro _COBYLA_REVCOM defined to
+/* Include this file with the macro COBYLA_REVCOM_ defined to
    generate the code `newuoa_iterate` in place of `newuob`. */
-#define _COBYLA_REVCOM 1
+#define COBYLA_REVCOM_ 1
 #include __FILE__
-#undef _COBYLA_REVCOM
+#undef COBYLA_REVCOM_
 
-#endif /* _COBYLA_PART1 */
+#endif /* COBYLA_PART1_ */
 
 /* Define macros mimicking FORTRAN indexing. */
 #define      A(a1,a2)      a[a1 - 1 + n*(a2 - 1)]
@@ -332,7 +332,7 @@ cobyla_get_last_f(const cobyla_context_t* ctx)
 #define      W(a1)         w[a1 - 1]
 #define      X(a1)         x[a1 - 1]
 
-#ifdef _COBYLA_REVCOM
+#ifdef COBYLA_REVCOM_
 #  define RESTORE(var)  var = ctx->var
 #  define SAVE(var)     ctx->var = var
 #  define PRINT(o,n,nf,f,r,x) print_calcfc(o,n,nf,f,r,x)
@@ -340,9 +340,9 @@ cobyla_get_last_f(const cobyla_context_t* ctx)
 #  define PRINT(o,n,nf,f,r,x) print_calcfc(o,n,nf,(maximize?-(f):(f)),r,x)
 #endif
 
-#ifdef _COBYLA_REVCOM
+#ifdef COBYLA_REVCOM_
 cobyla_status
-cobyla_iterate(cobyla_context_t* ctx, REAL f, REAL x[], REAL c[])
+cobyla_iterate(cobyla_context* ctx, REAL f, REAL x[], REAL c[])
 #else
 cobyla_status
 cobyla_optimize(INTEGER n, INTEGER m,
@@ -369,7 +369,7 @@ cobyla_optimize(INTEGER n, INTEGER m,
   REAL* xs; /* rescaled variables or variables to print */
   INTEGER ibrnch, iflag, ifull, jdrop, nfvals;
   INTEGER i, j, k, l, mp, mpp, np, nbest;
-#ifdef _COBYLA_REVCOM
+#ifdef COBYLA_REVCOM_
   INTEGER n, m,  iprint, maxfun;
   REAL rhobeg, rhoend;
   INTEGER *iact;
@@ -378,7 +378,7 @@ cobyla_optimize(INTEGER n, INTEGER m,
 #endif
   cobyla_status status;
 
-#ifdef _COBYLA_REVCOM
+#ifdef COBYLA_REVCOM_
 
   /* Minimal checking and restore initial set of variables. */
   if (ctx == NULL) {
@@ -475,7 +475,7 @@ cobyla_optimize(INTEGER n, INTEGER m,
   np = n + 1;
   mp = m + 1;
   mpp = m + 2;
-#ifdef _COBYLA_REVCOM
+#ifdef COBYLA_REVCOM_
   if (nfvals == 0) {
     /* This is the first function evaluation.  Proceed with initialization. */
     status = COBYLA_INITIAL_ITERATE;
@@ -504,7 +504,7 @@ cobyla_optimize(INTEGER n, INTEGER m,
       fprintf(stdout, "\n   The initial value of RHO is%13.6E"
               "  and PARMU is set to zero.\n", (double)rho);
     }
-#ifdef _COBYLA_REVCOM
+#ifdef COBYLA_REVCOM_
   } else {
     /* This is not the first function evaluation.  Restore other local
        variables and jump to the place where function value is expected. */
@@ -531,7 +531,7 @@ cobyla_optimize(INTEGER n, INTEGER m,
             cobyla_reason(status));
     goto L_600;
   }
-#ifdef _COBYLA_REVCOM
+#ifdef COBYLA_REVCOM_
   if (status == COBYLA_INITIAL_ITERATE) {
     /* We already know the functiuon value. */
     status = COBYLA_ITERATE;
@@ -555,7 +555,7 @@ cobyla_optimize(INTEGER n, INTEGER m,
 
   /* Estimate the worst constraint RESMAX. */
   resmax = zero;
-#ifdef _COBYLA_REVCOM
+#ifdef COBYLA_REVCOM_
   for (k = 0; k < m; ++k) {
     temp = c[k];
     con[k] = temp;
@@ -980,7 +980,7 @@ cobyla_optimize(INTEGER n, INTEGER m,
     f = DATMAT(mp,np);
     resmax = DATMAT(mpp,np);
   }
-#ifndef _COBYLA_REVCOM
+#ifndef COBYLA_REVCOM_
   /* Scale the final variables, if scaling. */
   if (scl != NULL) {
     scale(x, n, scl, x);
@@ -990,7 +990,7 @@ cobyla_optimize(INTEGER n, INTEGER m,
     PRINT(stdout, n, nfvals, f, resmax, x);
   }
 
-#ifdef _COBYLA_REVCOM
+#ifdef COBYLA_REVCOM_
 
   /* Save local variables and return status. */
  save:
@@ -1037,8 +1037,8 @@ cobyla_optimize(INTEGER n, INTEGER m,
 #undef SAVE
 #undef PRINT
 
-#ifndef _COBYLA_PART2
-#define _COBYLA_PART2 1
+#ifndef COBYLA_PART2_
+#define COBYLA_PART2_ 1
 
 /*
  * This  subroutine  calculates  an  N-component  vector  DX  by  applying  the
@@ -1970,7 +1970,7 @@ testing_revcom(INTEGER n, INTEGER m, REAL rhobeg, REAL rhoend,
 {
   REAL f;
   REAL* c;
-  cobyla_context_t* ctx;
+  cobyla_context* ctx;
   cobyla_status status;
   const char* reason;
 
@@ -2021,4 +2021,4 @@ testing_revcom(INTEGER n, INTEGER m, REAL rhobeg, REAL rhoend,
 
 #endif /* TESTING */
 
-#endif /* _COBYLA_PART2 */
+#endif /* COBYLA_PART2_ */

@@ -51,9 +51,9 @@
 #  define TYPE     OPK_FLOAT
 #  define ABS(x)   fabsf(x)
 #  define SQRT(x)  sqrtf(x)
-#  define ALPHA    _alpha
-#  define BETA     _beta
-#  define GAMMA    _gamma
+#  define ALPHA    alpha_
+#  define BETA     beta_
+#  define GAMMA    gamma_
 #  define ZERO     0.0f
 #  define ONE      1.0f
 #  define FLOAT_CHOICE(a,b) a
@@ -70,24 +70,24 @@
 #  define FLOAT_CHOICE(a,b) b
 #endif
 
-typedef struct _simple_vector {
-  opk_vector_t base;  /* base type (must be the first member) */
+typedef struct {
+  opk_vector base;  /* base type (must be the first member) */
   REAL* data;
   void* client_data;
   void (*free_client_data)(void* client_data);
-} simple_vector_t;
+} simple_vector;
 
 /* Fetch the data part of a vector at a given address. */
-#define DATA(v) ((simple_vector_t*)(v))->data
+#define DATA(v) ((simple_vector*)(v))->data
 
-static opk_vector_t*
-create(opk_vspace_t* vspace)
+static opk_vector*
+create(opk_vspace* vspace)
 {
-  const size_t offset = ROUND_UP(sizeof(simple_vector_t), sizeof(REAL));
+  const size_t offset = ROUND_UP(sizeof(simple_vector), sizeof(REAL));
   size_t size = offset + vspace->size*sizeof(REAL);
-  opk_vector_t* v = opk_allocate_vector(vspace, size);
+  opk_vector* v = opk_allocate_vector(vspace, size);
   if (v != NULL) {
-    simple_vector_t* sv = (simple_vector_t*)v;
+    simple_vector* sv = (simple_vector*)v;
     sv->data = (REAL*)(((char*)v) + offset);
     sv->client_data = NULL;
     sv->free_client_data = NULL;
@@ -96,36 +96,36 @@ create(opk_vspace_t* vspace)
 }
 
 static void
-finalize(opk_vspace_t* vspace,
-         opk_vector_t* v)
+finalize(opk_vspace* vspace,
+         opk_vector* v)
 {
-  simple_vector_t* sv = (simple_vector_t*)v;
+  simple_vector* sv = (simple_vector*)v;
   if (sv->free_client_data != NULL) {
     sv->free_client_data(sv->client_data);
   }
 }
 
 static double
-peek(const opk_vspace_t* vspace,
-     const opk_vector_t* vect,
-     opk_index_t k)
+peek(const opk_vspace* vspace,
+     const opk_vector* vect,
+     opk_index k)
 {
   return DATA(vect)[k];
 }
 
 static void
-poke(const opk_vspace_t* vspace,
-     opk_vector_t* vect,
-     opk_index_t k, double value)
+poke(const opk_vspace* vspace,
+     opk_vector* vect,
+     opk_index k, double value)
 {
   DATA(vect)[k] = value;
 }
 
 static void
-import(const opk_vspace_t* space, opk_vector_t* dst,
-       const void* src, opk_type_t type)
+import(const opk_vspace* space, opk_vector* dst,
+       const void* src, opk_eltype type)
 {
-  opk_index_t i, n = space->size;
+  opk_index i, n = space->size;
   REAL* out = DATA(dst);
   if (type == OPK_FLOAT) {
     const float* inp = src;
@@ -141,10 +141,10 @@ import(const opk_vspace_t* space, opk_vector_t* dst,
 }
 
 static void
-export(const opk_vspace_t* space, void* dst, opk_type_t type,
-       const opk_vector_t* src)
+export(const opk_vspace* space, void* dst, opk_eltype type,
+       const opk_vector* src)
 {
-  opk_index_t i, n = space->size;
+  opk_index i, n = space->size;
   const REAL* inp = DATA(src);
   if (type == OPK_FLOAT) {
     float* out = dst;
@@ -160,10 +160,10 @@ export(const opk_vspace_t* space, void* dst, opk_type_t type,
 }
 
 static void
-fill(opk_vspace_t* vspace, opk_vector_t* vect, double alpha)
+fill(opk_vspace* vspace, opk_vector* vect, double alpha)
 {
   REAL* x = DATA(vect);
-  opk_index_t j, n = vspace->size;
+  opk_index j, n = vspace->size;
   if (alpha == 0.0) {
     memset(x, 0, n*sizeof(REAL));
   } else {
@@ -177,12 +177,12 @@ fill(opk_vspace_t* vspace, opk_vector_t* vect, double alpha)
 }
 
 static double
-norm1(opk_vspace_t* vspace,
-      const opk_vector_t* vx)
+norm1(opk_vspace* vspace,
+      const opk_vector* vx)
 {
   REAL result = ZERO;
   const REAL* x = DATA(vx);
-  opk_index_t j, n = vspace->size;
+  opk_index j, n = vspace->size;
   for (j = 0; j < n; ++j) {
     result += ABS(x[j]);
   }
@@ -190,12 +190,12 @@ norm1(opk_vspace_t* vspace,
 }
 
 static double
-norm2(opk_vspace_t* vspace,
-      const opk_vector_t* vx)
+norm2(opk_vspace* vspace,
+      const opk_vector* vx)
 {
   REAL result = ZERO;
   const REAL* x = DATA(vx);
-  opk_index_t j, n = vspace->size;
+  opk_index j, n = vspace->size;
   for (j = 0; j < n; ++j) {
     REAL xj = x[j];
     result += xj*xj;
@@ -204,12 +204,12 @@ norm2(opk_vspace_t* vspace,
 }
 
 static double
-norminf(opk_vspace_t* vspace,
-        const opk_vector_t* vx)
+norminf(opk_vspace* vspace,
+        const opk_vector* vx)
 {
   REAL result = ZERO;
   const REAL* x = DATA(vx);
-  opk_index_t j, n = vspace->size;
+  opk_index j, n = vspace->size;
   for (j = 0; j < n; ++j) {
     REAL axj = ABS(x[j]);
     if (axj > result) {
@@ -220,14 +220,14 @@ norminf(opk_vspace_t* vspace,
 }
 
 static double
-dot(opk_vspace_t* vspace,
-    const opk_vector_t* vx,
-    const opk_vector_t* vy)
+dot(opk_vspace* vspace,
+    const opk_vector* vx,
+    const opk_vector* vy)
 {
   REAL result = ZERO;
   const REAL* x = DATA(vx);
   const REAL* y = DATA(vy);
-  opk_index_t j, n = vspace->size;
+  opk_index j, n = vspace->size;
   for (j = 0; j < n; ++j) {
     result += x[j]*y[j];
   }
@@ -235,16 +235,16 @@ dot(opk_vspace_t* vspace,
 }
 
 static double
-dot3(opk_vspace_t* vspace,
-     const opk_vector_t* vw,
-     const opk_vector_t* vx,
-     const opk_vector_t* vy)
+dot3(opk_vspace* vspace,
+     const opk_vector* vw,
+     const opk_vector* vx,
+     const opk_vector* vy)
 {
   REAL result = ZERO;
   const REAL* w = DATA(vw);
   const REAL* x = DATA(vx);
   const REAL* y = DATA(vy);
-  opk_index_t j, n = vspace->size;
+  opk_index j, n = vspace->size;
   for (j = 0; j < n; ++j) {
     result += w[j]*x[j]*y[j];
   }
@@ -252,8 +252,8 @@ dot3(opk_vspace_t* vspace,
 }
 
 static void
-copy(opk_vspace_t* vspace,
-     opk_vector_t* vdst, const opk_vector_t* vsrc)
+copy(opk_vspace* vspace,
+     opk_vector* vdst, const opk_vector* vsrc)
 {
   REAL* dst = DATA(vdst);
   const REAL* src = DATA(vsrc);
@@ -263,13 +263,13 @@ copy(opk_vspace_t* vspace,
 }
 
 static void
-swap(opk_vspace_t* vspace,
-     opk_vector_t* vx, opk_vector_t* vy)
+swap(opk_vspace* vspace,
+     opk_vector* vx, opk_vector* vy)
 {
   REAL* x = DATA(vx);
   REAL* y = DATA(vy);
   if (x != y) {
-    opk_index_t j, n = vspace->size;
+    opk_index j, n = vspace->size;
     for (j = 0; j < n; ++j) {
       REAL t = x[j];
       x[j] = y[j];
@@ -279,13 +279,13 @@ swap(opk_vspace_t* vspace,
 }
 
 static void
-scale(opk_vspace_t* vspace, opk_vector_t* vdst,
-      double alpha, const opk_vector_t* vsrc)
+scale(opk_vspace* vspace, opk_vector* vdst,
+      double alpha, const opk_vector* vsrc)
 {
   /* Note: we already know that ALPHA is neither 0 nor 1. */
   REAL* dst = DATA(vdst);
   const REAL* src = DATA(vsrc);
-  opk_index_t j, n = vspace->size;
+  opk_index j, n = vspace->size;
 #if SINGLE_PRECISION
   REAL ALPHA = (REAL)alpha;
 #endif
@@ -295,28 +295,28 @@ scale(opk_vspace_t* vspace, opk_vector_t* vdst,
 }
 
 static void
-product(opk_vspace_t* vspace, opk_vector_t* vdst,
-        const opk_vector_t* vw, const opk_vector_t* vx)
+product(opk_vspace* vspace, opk_vector* vdst,
+        const opk_vector* vw, const opk_vector* vx)
 {
   REAL* dst = DATA(vdst);
   const REAL* w = DATA(vw);
   const REAL* x = DATA(vx);
-  opk_index_t j, n = vspace->size;
+  opk_index j, n = vspace->size;
   for (j = 0; j < n; ++j) {
     dst[j] = w[j]*x[j];
   }
 }
 
 static void
-axpby(opk_vspace_t* vspace, opk_vector_t* vdst,
-      double alpha, const opk_vector_t* vx,
-      double beta,  const opk_vector_t* vy)
+axpby(opk_vspace* vspace, opk_vector* vdst,
+      double alpha, const opk_vector* vx,
+      double beta,  const opk_vector* vy)
 {
   /* Note: we already know that neither ALPHA nor BETA is 0. */
   const REAL* x = DATA(vx);
   const REAL* y = DATA(vy);
   REAL* dst = DATA(vdst);
-  opk_index_t j, n = vspace->size;
+  opk_index j, n = vspace->size;
   if (alpha == 1.0) {
     if (beta == 1.0) {
       for (j = 0; j < n; ++j) {
@@ -375,17 +375,17 @@ axpby(opk_vspace_t* vspace, opk_vector_t* vdst,
 }
 
 static void
-axpbypcz(opk_vspace_t* vspace, opk_vector_t *vdst,
-         double alpha, const opk_vector_t* vx,
-         double beta,  const opk_vector_t* vy,
-         double gamma, const opk_vector_t* vz)
+axpbypcz(opk_vspace* vspace, opk_vector *vdst,
+         double alpha, const opk_vector* vx,
+         double beta,  const opk_vector* vy,
+         double gamma, const opk_vector* vz)
 {
   /* Note: we already know that neither ALPHA nor BETA nor GAMMA is 0. */
   const REAL* x = DATA(vx);
   const REAL* y = DATA(vy);
   const REAL* z = DATA(vz);
   REAL* dst = DATA(vdst);
-  opk_index_t j, n = vspace->size;
+  opk_index j, n = vspace->size;
 #if SINGLE_PRECISION
   REAL ALPHA = (REAL)alpha;
   REAL BETA  = (REAL)beta;
@@ -398,10 +398,10 @@ axpbypcz(opk_vspace_t* vspace, opk_vector_t *vdst,
 #define MIN(a,b) ((a) <= (b) ? (a) : (b))
 #define MAX(a,b) ((a) >= (b) ? (a) : (b))
 
-static opk_status_t
-boxprojvar(opk_vspace_t* space,
-           opk_vector_t* dstvec,
-           const opk_vector_t* srcvec,
+static opk_status
+boxprojvar(opk_vspace* space,
+           opk_vector* dstvec,
+           const opk_vector* srcvec,
            const void* lower,
            const void* upper,
            int bound)
@@ -411,7 +411,7 @@ boxprojvar(opk_vspace_t* space,
   const REAL* xl;
   const REAL* xu;
   REAL a, b, t;
-  opk_index_t i, n = space->size;
+  opk_index i, n = space->size;
 
 #define VALUE(addr) (*((double*)(addr)))
   switch (bound) {
@@ -503,11 +503,11 @@ boxprojvar(opk_vspace_t* space,
   return OPK_SUCCESS;
 }
 
-static opk_status_t
-boxprojdir(opk_vspace_t* space, opk_vector_t* dstvec,
-           const opk_vector_t* srcvec,
+static opk_status
+boxprojdir(opk_vspace* space, opk_vector* dstvec,
+           const opk_vector* srcvec,
            const void* lower, const void* upper, int bound,
-           const opk_vector_t* dirvec, int orient)
+           const opk_vector* dirvec, int orient)
 {
   REAL* dst = DATA(dstvec);
   const REAL* x = DATA(srcvec);
@@ -515,7 +515,7 @@ boxprojdir(opk_vspace_t* space, opk_vector_t* dstvec,
   const REAL* xl;
   const REAL* xu;
   REAL a, b;
-  opk_index_t i, n = space->size;
+  opk_index i, n = space->size;
 
 #define VALUE(addr)  (*((double*)(addr)))
 
@@ -606,11 +606,11 @@ boxprojdir(opk_vspace_t* space, opk_vector_t* dstvec,
   return OPK_SUCCESS;
 }
 
-static opk_status_t
-boxfreevar(opk_vspace_t* space, opk_vector_t* dstvec,
-           const opk_vector_t* srcvec,
+static opk_status
+boxfreevar(opk_vspace* space, opk_vector* dstvec,
+           const opk_vector* srcvec,
            const void* lower, const void* upper, int bound,
-           const opk_vector_t* dirvec, int orient)
+           const opk_vector* dirvec, int orient)
 {
   REAL* dst = DATA(dstvec);
   const REAL* x = DATA(srcvec);
@@ -618,7 +618,7 @@ boxfreevar(opk_vspace_t* space, opk_vector_t* dstvec,
   const REAL* xl;
   const REAL* xu;
   REAL a, b;
-  opk_index_t i, n = space->size;
+  opk_index i, n = space->size;
 
 #define VALUE(addr)    (*((double*)(addr)))
 
@@ -713,12 +713,12 @@ boxfreevar(opk_vspace_t* space, opk_vector_t* dstvec,
   return OPK_SUCCESS;
 }
 
-static opk_status_t
-boxsteplim(opk_vspace_t* space,
+static opk_status
+boxsteplim(opk_vspace* space,
            double* smin1, double* smin2, double* smax,
-           const opk_vector_t* xvec,
+           const opk_vector* xvec,
            const void* lower, const void* upper, int bound,
-           const opk_vector_t* dvec, int orient)
+           const opk_vector* dvec, int orient)
 {
   const REAL* x = DATA(xvec);
   const REAL* d = DATA(dvec);
@@ -727,7 +727,7 @@ boxsteplim(opk_vspace_t* space,
   const REAL inf = FLOAT_CHOICE(FLT_MAX, DBL_MAX);
   REAL a, b;
   REAL s, s1, s2, s3;
-  opk_index_t i, n;
+  opk_index i, n;
 
 #define VALUE(addr)    (*((double*)(addr)))
 
@@ -894,7 +894,7 @@ boxsteplim(opk_vspace_t* space,
 #  define NOUN "double"
 #endif
 
-static opk_vspace_operations_t operations = {
+static opk_vspace_operations operations = {
   "simple vector space for " NOUN " precision floating point values",
   NULL,
   create,
@@ -921,17 +921,17 @@ static opk_vspace_operations_t operations = {
   boxsteplim
 };
 
-opk_vspace_t*
-NEW_VECTOR_SPACE(opk_index_t size)
+opk_vspace*
+NEW_VECTOR_SPACE(opk_index size)
 {
   return opk_allocate_vector_space(&operations, size, 0);
 }
 
-opk_vector_t*
-WRAP_VECTOR(opk_vspace_t* vspace, REAL data[],
+opk_vector*
+WRAP_VECTOR(opk_vspace* vspace, REAL data[],
             void (*free_client_data)(void*), void* client_data)
 {
-  opk_vector_t* v;
+  opk_vector* v;
   if (vspace->ops != &operations) {
     errno = EINVAL;
     return NULL;
@@ -940,9 +940,9 @@ WRAP_VECTOR(opk_vspace_t* vspace, REAL data[],
     errno = EFAULT;
     return NULL;
   }
-  v = opk_allocate_vector(vspace, sizeof(simple_vector_t));
+  v = opk_allocate_vector(vspace, sizeof(simple_vector));
   if (v != NULL) {
-    simple_vector_t* sv = (simple_vector_t*)v;
+    simple_vector* sv = (simple_vector*)v;
     sv->data = data;
     sv->client_data = client_data;
     sv->free_client_data = free_client_data;
@@ -951,7 +951,7 @@ WRAP_VECTOR(opk_vspace_t* vspace, REAL data[],
 }
 
 REAL*
-GET_DATA(opk_vector_t* v)
+GET_DATA(opk_vector* v)
 {
   if (v == NULL) {
     errno = EFAULT;
@@ -961,11 +961,11 @@ GET_DATA(opk_vector_t* v)
     errno = EINVAL;
     return NULL;
   }
-  return ((simple_vector_t*)v)->data;
+  return ((simple_vector*)v)->data;
 }
 
 void*
-GET_CLIENT_DATA(opk_vector_t* v)
+GET_CLIENT_DATA(opk_vector* v)
 {
   if (v == NULL) {
     errno = EFAULT;
@@ -975,11 +975,11 @@ GET_CLIENT_DATA(opk_vector_t* v)
     errno = EINVAL;
     return NULL;
   }
-  return ((simple_vector_t*)v)->client_data;
+  return ((simple_vector*)v)->client_data;
 }
 
 opk_free_proc*
-GET_FREE_CLIENT_DATA(opk_vector_t* v)
+GET_FREE_CLIENT_DATA(opk_vector* v)
 {
   if (v == NULL) {
     errno = EFAULT;
@@ -989,15 +989,15 @@ GET_FREE_CLIENT_DATA(opk_vector_t* v)
     errno = EINVAL;
     return NULL;
   }
-  return ((simple_vector_t*)v)->free_client_data;
+  return ((simple_vector*)v)->free_client_data;
 }
 
 int
-REWRAP_VECTOR(opk_vector_t* v, REAL new_data[],
+REWRAP_VECTOR(opk_vector* v, REAL new_data[],
               void (*new_free_client_data)(void*),
               void* new_client_data)
 {
-  simple_vector_t* sv;
+  simple_vector* sv;
   void *old_client_data;
   void (*old_free_client_data)(void*);
 
@@ -1013,7 +1013,7 @@ REWRAP_VECTOR(opk_vector_t* v, REAL new_data[],
   }
 
   /* Get old members and make sure to not apply free_client_data again. */
-  sv = (simple_vector_t*)v;
+  sv = (simple_vector*)v;
   old_client_data = sv->client_data;
   old_free_client_data = sv->free_client_data;
   sv->client_data = NULL;

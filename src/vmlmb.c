@@ -107,11 +107,11 @@ static const double GATOL = 0.0;
 static const double DELTA   = 5e-2;
 static const double EPSILON = 0.0;
 #if 0 /* unused stuff */
-static const opk_bfgs_scaling_t SCALING = OPK_SCALING_OREN_SPEDICATO;
+static const opk_bfgs_scaling SCALING = OPK_SCALING_OREN_SPEDICATO;
 #endif
 
-struct _opk_vmlmb {
-  opk_object_t base;       /**< Base type (must be the first member). */
+struct opk_vmlmb_ {
+  opk_object base;       /**< Base type (must be the first member). */
   double delta;            /**< Relative size for a small step. */
   double epsilon;          /**< Threshold to accept descent direction. */
   double grtol;            /**< Relative threshold for the norm or the
@@ -129,40 +129,40 @@ struct _opk_vmlmb {
   double stpmin;           /**< Relative minimum step length. */
   double stpmax;           /**< Relative maximum step length. */
   double bsmin;            /**< Step size to the first encountered bound. */
-  opk_vspace_t* vspace;    /**< Variable space. */
-  opk_lnsrch_t* lnsrch;    /**< Line search method. */
-  opk_vector_t* x0;        /**< Variables at the start of the line search. */
-  opk_vector_t* g0;        /**< Gradient at x0. */
-  opk_vector_t* d;         /**< Anti-search direction; a iterate is computed
+  opk_vspace* vspace;    /**< Variable space. */
+  opk_lnsrch* lnsrch;    /**< Line search method. */
+  opk_vector* x0;        /**< Variables at the start of the line search. */
+  opk_vector* g0;        /**< Gradient at x0. */
+  opk_vector* d;         /**< Anti-search direction; a iterate is computed
                                 as: x1 = x0 - stp*d with stp > 0. */
-  opk_vector_t* w;         /**< Vector whose elements are set to 1 for free
+  opk_vector* w;         /**< Vector whose elements are set to 1 for free
                                 variables and 0 otherwise. */
-  opk_vector_t* gp;        /**< Work vector used to store the effective step
+  opk_vector* gp;        /**< Work vector used to store the effective step
                                 size and the projected gradient (for the BLMVM
                                 method). */
-  opk_convexset_t* box;    /**< Convex set implementing the box constraints (or
+  opk_convexset* box;    /**< Convex set implementing the box constraints (or
                             *   `NULL`). */
   int method;              /**< The method to use/emulate. */
-  opk_index_t evaluations; /**< Number of functions (and gradients)
+  opk_index evaluations; /**< Number of functions (and gradients)
                                 evaluations. */
-  opk_index_t iterations;  /**< Number of iterations (successful steps
+  opk_index iterations;  /**< Number of iterations (successful steps
                                 taken). */
-  opk_index_t restarts;    /**< Number of LBFGS recurrence restarts. */
-  opk_status_t status;     /**< Last error. */
-  opk_task_t task;         /**< Pending task. */
-  opk_bool_t save_memory;  /**< Save some memory? */
+  opk_index restarts;    /**< Number of LBFGS recurrence restarts. */
+  opk_status status;     /**< Last error. */
+  opk_task task;         /**< Pending task. */
+  opk_bool save_memory;  /**< Save some memory? */
 
   /* Limited memory BFGS approximation of the Hessian of the objective
      function. */
   double gamma;            /**< Scale factor to approximate inverse Hessian. */
-  opk_vector_t** s;        /**< Storage for variable differences. */
-  opk_vector_t** y;        /**< Storage for gradient differences. */
+  opk_vector** s;        /**< Storage for variable differences. */
+  opk_vector** y;        /**< Storage for gradient differences. */
   double* alpha;           /**< Workspace to save <d,s>/<s,y> */
   double* rho;             /**< Workspace to save 1/<s,y> */
-  opk_index_t m;           /**< Maximum number of memorized steps. */
-  opk_index_t mp;          /**< Actual number of memorized steps
+  opk_index m;           /**< Maximum number of memorized steps. */
+  opk_index mp;          /**< Actual number of memorized steps
                                 (0 <= mp <= m). */
-  opk_index_t updates;     /**< Number of BFGS updates since start. */
+  opk_index updates;     /**< Number of BFGS updates since start. */
 };
 
 static double
@@ -178,10 +178,10 @@ non_finite(double x)
 }
 
 static void
-finalize_vmlmb(opk_object_t* obj)
+finalize_vmlmb(opk_object* obj)
 {
-  opk_vmlmb_t* opt = (opk_vmlmb_t*)obj;
-  opk_index_t k;
+  opk_vmlmb* opt = (opk_vmlmb*)obj;
+  opk_index k;
 
   /* Drop references to all objects (neither opt->x0 nor opt->g0 which are weak
      references to specific vectors in opt->s and opt->y). */
@@ -212,38 +212,38 @@ finalize_vmlmb(opk_object_t* obj)
    inclusive range [0:mp] with mp the actual number of saved
    corrections.  At any moment, `0 ≤ mp ≤ min(m,updates)`; thus
    `updates - j ≥ 0`. */
-static opk_index_t
-slot(const opk_vmlmb_t* opt, opk_index_t j)
+static opk_index
+slot(const opk_vmlmb* opt, opk_index j)
 {
   return (opt->updates - j)%opt->m;
 }
 
-static opk_task_t
-success(opk_vmlmb_t* opt, opk_task_t task)
+static opk_task
+success(opk_vmlmb* opt, opk_task task)
 {
   opt->status = OPK_SUCCESS;
   opt->task = task;
   return task;
 }
 
-static opk_task_t
-failure(opk_vmlmb_t* opt, opk_status_t status)
+static opk_task
+failure(opk_vmlmb* opt, opk_status status)
 {
   opt->status = status;
   opt->task = OPK_TASK_ERROR;
   return opt->task;
 }
 
-opk_vmlmb_t*
-opk_new_vmlmb_optimizer(const opk_vmlmb_options_t* opts,
-                        opk_vspace_t* space,
-                        opk_lnsrch_t* lnsrch,
-                        opk_convexset_t* box)
+opk_vmlmb*
+opk_new_vmlmb_optimizer(const opk_vmlmb_options* opts,
+                        opk_vspace* space,
+                        opk_lnsrch* lnsrch,
+                        opk_convexset* box)
 {
-  opk_vmlmb_options_t options;
-  opk_vmlmb_t* opt;
+  opk_vmlmb_options options;
+  opk_vmlmb* opt;
   size_t s_offset, y_offset, alpha_offset, rho_offset, size;
-  opk_index_t k, m;
+  opk_index k, m;
 
   /* Check options. */
   if (opts == NULL) {
@@ -275,17 +275,17 @@ opk_new_vmlmb_optimizer(const opk_vmlmb_options_t* opts,
   }
 
   /* Allocate enough memory for the workspace and its arrays. */
-  s_offset = ROUND_UP(sizeof(opk_vmlmb_t), sizeof(opk_vector_t*));
-  y_offset = s_offset + m*sizeof(opk_vector_t*);
-  alpha_offset = ROUND_UP(y_offset + m*sizeof(opk_vector_t*), sizeof(double));
+  s_offset = ROUND_UP(sizeof(opk_vmlmb), sizeof(opk_vector*));
+  y_offset = s_offset + m*sizeof(opk_vector*);
+  alpha_offset = ROUND_UP(y_offset + m*sizeof(opk_vector*), sizeof(double));
   rho_offset = alpha_offset + m*sizeof(double);
   size = rho_offset + m*sizeof(double);
-  opt = (opk_vmlmb_t*)opk_allocate_object(finalize_vmlmb, size);
+  opt = (opk_vmlmb*)opk_allocate_object(finalize_vmlmb, size);
   if (opt == NULL) {
     return NULL;
   }
-  opt->s           = ADDRESS(opk_vector_t*, opt,     s_offset);
-  opt->y           = ADDRESS(opk_vector_t*, opt,     y_offset);
+  opt->s           = ADDRESS(opk_vector*, opt,     s_offset);
+  opt->y           = ADDRESS(opk_vector*, opt,     y_offset);
   opt->alpha       = ADDRESS(double,        opt, alpha_offset);
   opt->rho         = ADDRESS(double,        opt,   rho_offset);
   opt->m           = m;
@@ -367,8 +367,8 @@ opk_new_vmlmb_optimizer(const opk_vmlmb_options_t* opts,
   return NULL;
 }
 
-opk_task_t
-opk_start_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x)
+opk_task
+opk_start_vmlmb(opk_vmlmb* opt, opk_vector* x)
 {
   opt->iterations = 0;
   opt->evaluations = 0;
@@ -376,7 +376,7 @@ opk_start_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x)
   opt->updates = 0;
   opt->mp = 0;
   if (opt->box != NULL) {
-    opk_status_t status = opk_project_variables(x, x, opt->box);
+    opk_status status = opk_project_variables(x, x, opt->box);
     if (status != OPK_SUCCESS) {
       return failure(opt, status);
     }
@@ -401,12 +401,12 @@ opk_start_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x)
 
 /* Update L-BFGS approximation of the Hessian. */
 static void
-update(opk_vmlmb_t* opt,
-       const opk_vector_t* x,
-       const opk_vector_t* g)
+update(opk_vmlmb* opt,
+       const opk_vector* x,
+       const opk_vector* g)
 {
   double sty, yty;
-  opk_index_t k;
+  opk_index k;
 
   k = SLOT(0);
   AXPBY(S(k), 1, x, -1, opt->x0);
@@ -437,12 +437,12 @@ update(opk_vmlmb_t* opt,
 /* Apply the L-BFGS Strang's two-loop recursion to compute a search direction.
    Returned value indicates whether the operation was successful otherwise the
    direction is just the gradient (steepest ascent). */
-static opk_status_t
-apply(opk_vmlmb_t* opt, const opk_vector_t* g)
+static opk_status
+apply(opk_vmlmb* opt, const opk_vector* g)
 {
   double sty, yty;
-  opk_index_t j, k;
-  opk_status_t result;
+  opk_index j, k;
+  opk_status result;
 
   COPY(opt->d, g);
   result = OPK_NOT_POSITIVE_DEFINITE;
@@ -508,15 +508,15 @@ apply(opk_vmlmb_t* opt, const opk_vector_t* g)
   return result;
 }
 
-opk_task_t
-opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
-                  double f, opk_vector_t* g)
+opk_task
+opk_iterate_vmlmb(opk_vmlmb* opt, opk_vector* x,
+                  double f, opk_vector* g)
 {
   double dtg, gtest, stpmin, stpmax;
-  opk_index_t k;
-  opk_status_t status;
-  opk_lnsrch_task_t lnsrch_task;
-  opk_bool_t bounded;
+  opk_index k;
+  opk_status status;
+  opk_lnsrch_task lnsrch_task;
+  opk_bool bounded;
 
   if (opt == NULL) {
     return OPK_TASK_ERROR;
@@ -733,7 +733,7 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
   /* Compute a new trial point along the line search. */
   opk_vaxpby(x, 1, opt->x0, -opt->stp, opt->d);
   if (bounded && opt->stp > opt->bsmin) {
-    opk_status_t status = opk_project_variables(x, x, opt->box);
+    opk_status status = opk_project_variables(x, x, opt->box);
     if (status != OPK_SUCCESS) {
       return failure(opt, status);
     }
@@ -741,14 +741,14 @@ opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
   return success(opt, OPK_TASK_COMPUTE_FG);
 }
 
-opk_vmlmb_method_t
-opk_get_vmlmb_method(const opk_vmlmb_t* opt)
+opk_vmlmb_method
+opk_get_vmlmb_method(const opk_vmlmb* opt)
 {
   return opt->method;
 }
 
 const char*
-opk_get_vmlmb_method_name(const opk_vmlmb_t* opt)
+opk_get_vmlmb_method_name(const opk_vmlmb* opt)
 {
   switch (opt->method) {
   case OPK_LBFGS: return "VMLM/L-BFGS";
@@ -759,7 +759,7 @@ opk_get_vmlmb_method_name(const opk_vmlmb_t* opt)
 }
 
 size_t
-opk_get_vmlmb_description(char* buf, size_t size, const opk_vmlmb_t* opt)
+opk_get_vmlmb_description(char* buf, size_t size, const opk_vmlmb* opt)
 {
   char str[80];
 
@@ -783,20 +783,20 @@ opk_get_vmlmb_description(char* buf, size_t size, const opk_vmlmb_t* opt)
   return opk_copy_string(buf, size, str);
 }
 
-opk_task_t
-opk_get_vmlmb_task(const opk_vmlmb_t* opt)
+opk_task
+opk_get_vmlmb_task(const opk_vmlmb* opt)
 {
   return opt->task;
 }
 
-opk_status_t
-opk_get_vmlmb_status(const opk_vmlmb_t* opt)
+opk_status
+opk_get_vmlmb_status(const opk_vmlmb* opt)
 {
   return opt->status;
 }
 
 void
-_opk_set_vmlmb_status(opk_vmlmb_t* opt, opk_status_t status)
+opk__set_vmlmb_status(opk_vmlmb* opt, opk_status status)
 {
   opt->status = status;
   if (status != OPK_SUCCESS) {
@@ -804,56 +804,56 @@ _opk_set_vmlmb_status(opk_vmlmb_t* opt, opk_status_t status)
   }
 }
 
-opk_index_t
-opk_get_vmlmb_iterations(const opk_vmlmb_t* opt)
+opk_index
+opk_get_vmlmb_iterations(const opk_vmlmb* opt)
 {
   return opt->iterations;
 }
 
-opk_index_t
-opk_get_vmlmb_evaluations(const opk_vmlmb_t* opt)
+opk_index
+opk_get_vmlmb_evaluations(const opk_vmlmb* opt)
 {
   return opt->evaluations;
 }
 
-opk_index_t
-opk_get_vmlmb_restarts(const opk_vmlmb_t* opt)
+opk_index
+opk_get_vmlmb_restarts(const opk_vmlmb* opt)
 {
   return opt->restarts;
 }
 
 double
-opk_get_vmlmb_step(const opk_vmlmb_t* opt)
+opk_get_vmlmb_step(const opk_vmlmb* opt)
 {
   return (opt == NULL ? -1.0 : opt->stp);
 }
 
 double
-opk_get_vmlmb_gnorm(const opk_vmlmb_t* opt)
+opk_get_vmlmb_gnorm(const opk_vmlmb* opt)
 {
   return (opt == NULL ? -1.0 : opt->gnorm);
 }
 
-opk_index_t
-opk_get_vmlmb_mp(const opk_vmlmb_t* opt)
+opk_index
+opk_get_vmlmb_mp(const opk_vmlmb* opt)
 {
   return (opt == NULL ? 0 : opt->mp);
 }
 
-opk_vector_t*
-opk_get_vmlmb_s(const opk_vmlmb_t* opt, opk_index_t j)
+opk_vector*
+opk_get_vmlmb_s(const opk_vmlmb* opt, opk_index j)
 {
   return (0 <= j && opt != NULL && j <= opt->mp ? opt->s[slot(opt, j)] : NULL);
 }
 
-opk_vector_t*
-opk_get_vmlmb_y(const opk_vmlmb_t* opt, opk_index_t j)
+opk_vector*
+opk_get_vmlmb_y(const opk_vmlmb* opt, opk_index j)
 {
   return (0 <= j && opt != NULL && j <= opt->mp ? opt->y[slot(opt, j)] : NULL);
 }
 
 void
-opk_get_vmlmb_default_options(opk_vmlmb_options_t* opts)
+opk_get_vmlmb_default_options(opk_vmlmb_options* opts)
 {
   if (opts != NULL) {
     opts->delta = DELTA;
@@ -868,8 +868,8 @@ opk_get_vmlmb_default_options(opk_vmlmb_options_t* opts)
   }
 }
 
-opk_status_t
-opk_check_vmlmb_options(const opk_vmlmb_options_t* opts)
+opk_status
+opk_check_vmlmb_options(const opk_vmlmb_options* opts)
 {
   if (opts == NULL) {
     return OPK_ILLEGAL_ADDRESS;

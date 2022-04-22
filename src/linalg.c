@@ -31,8 +31,8 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef _OPK_LINALG_C
-#define _OPK_LINALG_C 1
+#ifndef OPK_LINALG_C_
+#define OPK_LINALG_C_ 1
 
 #include <string.h>
 #include <math.h>
@@ -144,7 +144,7 @@
 #include __FILE__
 
 
-#else /* _OPK_LINALG_C is defined -------------------------------------------*/
+#else /* OPK_LINALG_C_ is defined -------------------------------------------*/
 
 /*---[ Level 1 BLAS-like routines ]------------------------------------------*/
 
@@ -152,11 +152,11 @@
 
 #ifdef OPK_AMAX
 real_t
-OPK_AMAX(opk_index_t n, const real_t x[],
-         opk_index_t incx)
+OPK_AMAX(opk_index n, const real_t x[],
+         opk_index incx)
 {
   real_t a, b;
-  opk_index_t i, m;
+  opk_index i, m;
 
   a = OPK_REALCONST(0.0);
   if (n < 1 || incx < 1) {
@@ -184,12 +184,12 @@ OPK_AMAX(opk_index_t n, const real_t x[],
 
 #ifdef OPK_SWAP
 void
-OPK_SWAP(opk_index_t n,
-         real_t x[], opk_index_t incx,
-         real_t y[], opk_index_t incy)
+OPK_SWAP(opk_index n,
+         real_t x[], opk_index incx,
+         real_t y[], opk_index incy)
 {
   real_t t0, t1, t2, t3;
-  opk_index_t i, m, ix, iy;
+  opk_index i, m, ix, iy;
 
   if (n <= 0 || x == y) {
     return;
@@ -235,11 +235,11 @@ OPK_SWAP(opk_index_t n,
 
 #ifdef OPK_SCAL
 void
-OPK_SCAL(opk_index_t n, real_t a,
-         real_t x[], opk_index_t incx)
+OPK_SCAL(opk_index n, real_t a,
+         real_t x[], opk_index incx)
 {
   const real_t ZERO = OPK_REALCONST(0.0);
-  opk_index_t i, m;
+  opk_index i, m;
 
   if (n <= 0 || a == OPK_REALCONST(1.0)) {
     return;
@@ -282,11 +282,11 @@ OPK_SCAL(opk_index_t n, real_t a,
 
 #ifdef OPK_COPY
 void
-OPK_COPY(opk_index_t n,
-         const real_t x[], opk_index_t incx,
-         real_t y[], opk_index_t incy)
+OPK_COPY(opk_index n,
+         const real_t x[], opk_index incx,
+         real_t y[], opk_index incy)
 {
-  opk_index_t i, m, ix, iy;
+  opk_index i, m, ix, iy;
 
   if (n <= 0 || (incx == incy && x == y)) {
     return;
@@ -330,11 +330,11 @@ OPK_COPY(opk_index_t n,
 
 #ifdef OPK_AXPY
 void
-OPK_AXPY(opk_index_t n, real_t a,
-         const real_t x[], opk_index_t incx,
-         real_t y[], opk_index_t incy)
+OPK_AXPY(opk_index n, real_t a,
+         const real_t x[], opk_index incx,
+         real_t y[], opk_index incy)
 {
-  opk_index_t m, i, ix, iy;
+  opk_index m, i, ix, iy;
 
   if (n <= 0 || a == OPK_REALCONST(0.0)) {
     return;
@@ -438,12 +438,12 @@ OPK_AXPY(opk_index_t n, real_t a,
 
 #ifdef OPK_DOT
 real_t
-OPK_DOT(opk_index_t n,
-        const real_t x[], opk_index_t incx,
-        const real_t y[], opk_index_t incy)
+OPK_DOT(opk_index n,
+        const real_t x[], opk_index incx,
+        const real_t y[], opk_index incy)
 {
   real_t t0, t1, t2, t3;
-  opk_index_t m, i, ix, iy;
+  opk_index m, i, ix, iy;
 
   t0 = OPK_REALCONST(0.0);
   if (n <= 0) {
@@ -486,11 +486,11 @@ OPK_DOT(opk_index_t n,
 
 #ifdef OPK_ASUM
 real_t
-OPK_ASUM(opk_index_t n, const real_t x[],
-         opk_index_t incx)
+OPK_ASUM(opk_index n, const real_t x[],
+         opk_index incx)
 {
   real_t t0, t1, t2, t3;
-  opk_index_t i, m;
+  opk_index i, m;
 
   t0 = OPK_REALCONST(0.0);
   if (n < 1 || incx < 1) {
@@ -516,11 +516,11 @@ OPK_ASUM(opk_index_t n, const real_t x[],
 
 #ifdef OPK_SUM
 real_t
-OPK_SUM(opk_index_t n, const real_t x[],
-        opk_index_t incx)
+OPK_SUM(opk_index n, const real_t x[],
+        opk_index incx)
 {
   real_t t0, t1, t2, t3;
-  opk_index_t i, m;
+  opk_index i, m;
 
   t0 = OPK_REALCONST(0.0);
   if (n < 1 || incx < 1) {
@@ -546,13 +546,13 @@ OPK_SUM(opk_index_t n, const real_t x[],
 
 #ifdef OPK_NRM2
 real_t
-OPK_NRM2(opk_index_t n, const real_t x[],
-         opk_index_t incx)
+OPK_NRM2(opk_index n, const real_t x[],
+         opk_index incx)
 {
   const real_t ZERO = OPK_REALCONST(0.0);
   const real_t ONE = OPK_REALCONST(1.0);
   real_t a, b, s, t;
-  opk_index_t i, m;
+  opk_index i, m;
 
   if (n < 1 || incx < 1) {
     return ZERO;
@@ -602,12 +602,12 @@ OPK_NRM2(opk_index_t n, const real_t x[],
 /* IAMAX */
 
 #ifdef OPK_IAMAX
-opk_index_t
-OPK_IAMAX(opk_index_t n, const real_t x[],
-          opk_index_t incx)
+opk_index
+OPK_IAMAX(opk_index n, const real_t x[],
+          opk_index incx)
 {
   real_t t, amax;
-  opk_index_t i, ix, imax;
+  opk_index i, ix, imax;
 
   if (n < 1L || incx < 1L) return 0L;
   if (n == 1L) return 1L;
@@ -639,13 +639,13 @@ OPK_IAMAX(opk_index_t n, const real_t x[],
 #if 0 /* code below is intended to be smarter (and faster) but
          still need to be tested... */
 #ifdef OPK_IAMAX
-opk_index_t
-OPK_IAMAX(opk_index_t n,
+opk_index
+OPK_IAMAX(opk_index n,
           const real_t x[],
-          opk_index_t incx)
+          opk_index incx)
 {
   real_t a, b;
-  opk_index_t i, m, ia, ib;
+  opk_index i, m, ia, ib;
 
   if (n < 1L || incx < 1L) return 0L;
   if (n == 1L) return 1L;
@@ -692,10 +692,10 @@ OPK_IAMAX(opk_index_t n,
 
 #ifdef OPK_ZERO
 void
-OPK_ZERO(opk_index_t n, real_t x[], opk_index_t incx)
+OPK_ZERO(opk_index n, real_t x[], opk_index incx)
 {
   const real_t ZERO = OPK_REALCONST(0.0);
-  opk_index_t i, m;
+  opk_index i, m;
 
   if (n >= 1) {
     if (incx == 1) {
@@ -730,10 +730,10 @@ OPK_ZERO(opk_index_t n, real_t x[], opk_index_t incx)
  *     non-zero integer result, says K, means invalid K-th argument.
  */
 int
-OPK_GEMV(opk_blas_trans_t trans, opk_index_t m, opk_index_t n,
-         real_t alpha, const real_t a_[], opk_index_t lda,
-         const real_t x_[], opk_index_t incx, real_t beta,
-         real_t y_[], opk_index_t incy)
+OPK_GEMV(opk_blas_trans trans, opk_index m, opk_index n,
+         real_t alpha, const real_t a_[], opk_index lda,
+         const real_t x_[], opk_index incx, real_t beta,
+         real_t y_[], opk_index incy)
 {
   /* Define some macros to mimic FORTRAN indexing. */
 #undef y
@@ -747,7 +747,7 @@ OPK_GEMV(opk_blas_trans_t trans, opk_index_t m, opk_index_t n,
   const real_t ZERO = OPK_REALCONST(0.0);
   const real_t ONE  = OPK_REALCONST(1.0);
   real_t temp;
-  opk_index_t i, ix, iy, j, jx, jy, kx, ky, lenx, leny;
+  opk_index i, ix, iy, j, jx, jy, kx, ky, lenx, leny;
   int notrans;
 
   /* Check arguments and set LENX and LENY, the lengths
@@ -900,11 +900,11 @@ OPK_GEMV(opk_blas_trans_t trans, opk_index_t m, opk_index_t n,
  *     non-zero integer result, says K, means invalid K-th argument.
  */
 int
-OPK_TRMV(opk_blas_uplo_t uplo,
-         opk_blas_trans_t trans,
-         opk_blas_diag_t diag,
-         opk_index_t n, const real_t a_[], opk_index_t lda,
-         real_t x_[], opk_index_t incx)
+OPK_TRMV(opk_blas_uplo uplo,
+         opk_blas_trans trans,
+         opk_blas_diag diag,
+         opk_index n, const real_t a_[], opk_index lda,
+         real_t x_[], opk_index incx)
 {
   /* Define some macros to mimic FORTRAN indexing. */
 #undef x
@@ -915,7 +915,7 @@ OPK_TRMV(opk_blas_uplo_t uplo,
   /* Local constants and variables. */
   const real_t ZERO  = OPK_REALCONST(0.0);
   real_t temp;
-  opk_index_t i, ix, j, jx, kx;
+  opk_index i, ix, j, jx, kx;
   int nounit, notrans, upper;
 
   /* Check arguments. */
@@ -1092,11 +1092,11 @@ OPK_TRMV(opk_blas_uplo_t uplo,
  *    non-zero integer result K, means invalid K-th argument.
  */
 int
-OPK_TRSV(opk_blas_uplo_t uplo,
-         opk_blas_trans_t trans,
-         opk_blas_diag_t diag,
-         opk_index_t n, const real_t a_[], opk_index_t lda,
-         real_t x_[], opk_index_t incx)
+OPK_TRSV(opk_blas_uplo uplo,
+         opk_blas_trans trans,
+         opk_blas_diag diag,
+         opk_index n, const real_t a_[], opk_index lda,
+         real_t x_[], opk_index incx)
 {
   /* Define some macros to mimic FORTRAN indexing. */
 #undef x
@@ -1107,7 +1107,7 @@ OPK_TRSV(opk_blas_uplo_t uplo,
   /* Local constants and variables. */
   const real_t ZERO = OPK_REALCONST(0.0);
   real_t temp;
-  opk_index_t i, ix, j, jx, kx;
+  opk_index i, ix, j, jx, kx;
   int nounit, notrans, upper;
 
   /* Check arguments. */
@@ -1280,12 +1280,12 @@ OPK_TRSV(opk_blas_uplo_t uplo,
  *    non-zero integer result K, means invalid K-th argument.
  */
 int
-OPK_GEMM(opk_blas_trans_t transa,
-         opk_blas_trans_t transb,
-         opk_index_t m, opk_index_t n, opk_index_t k,
-         real_t alpha, const real_t a_[], opk_index_t lda,
-         const real_t b_[], opk_index_t ldb, real_t beta,
-         real_t c_[], opk_index_t ldc)
+OPK_GEMM(opk_blas_trans transa,
+         opk_blas_trans transb,
+         opk_index m, opk_index n, opk_index k,
+         real_t alpha, const real_t a_[], opk_index lda,
+         const real_t b_[], opk_index ldb, real_t beta,
+         real_t c_[], opk_index ldc)
 {
   /* Define some macros to mimic FORTRAN indexing. */
 #undef c
@@ -1299,7 +1299,7 @@ OPK_GEMM(opk_blas_trans_t transa,
   const real_t ZERO = OPK_REALCONST(0.0);
   const real_t ONE = OPK_REALCONST(1.0);
   real_t temp;
-  opk_index_t i, j, l, /* ncola,*/ nrowa, nrowb;
+  opk_index i, j, l, /* ncola,*/ nrowa, nrowb;
   int nota, notb;
 
   /* Test the input parameters.  Set NOTA and NOTB as true if A and B
@@ -1465,11 +1465,11 @@ OPK_GEMM(opk_blas_trans_t transa,
  *    non-zero integer result K, means invalid K-th argument.
  */
 int
-OPK_SYRK(opk_blas_uplo_t uplo,
-         opk_blas_trans_t trans,
-         opk_index_t n, opk_index_t k, real_t alpha,
-         const real_t a_[], opk_index_t lda,
-         real_t beta, real_t c_[], opk_index_t ldc)
+OPK_SYRK(opk_blas_uplo uplo,
+         opk_blas_trans trans,
+         opk_index n, opk_index k, real_t alpha,
+         const real_t a_[], opk_index lda,
+         real_t beta, real_t c_[], opk_index ldc)
 {
   /* Define some macros to mimic FORTRAN indexing. */
 #undef c
@@ -1481,7 +1481,7 @@ OPK_SYRK(opk_blas_uplo_t uplo,
   const real_t ZERO = OPK_REALCONST(0.0);
   const real_t ONE = OPK_REALCONST(1.0);
   real_t temp;
-  opk_index_t i, j, l, nrowa;
+  opk_index i, j, l, nrowa;
   int upper, notrans;
 
   /* Test the input parameters. */
@@ -1640,11 +1640,11 @@ OPK_SYRK(opk_blas_uplo_t uplo,
  *
  * -- C-version on 25 January 2006 by Eric Thiébaut (CRAL).
  */
-opk_index_t
-OPK_POTF2(opk_blas_uplo_t uplo,
-          opk_index_t n,
+opk_index
+OPK_POTF2(opk_blas_uplo uplo,
+          opk_index n,
           real_t a_[],
-          opk_index_t lda)
+          opk_index lda)
 {
   /* Define some macros to mimic FORTRAN indexing. */
   /* FIXME:*/
@@ -1656,7 +1656,7 @@ OPK_POTF2(opk_blas_uplo_t uplo,
   const real_t ZERO = OPK_REALCONST(0.0);
   const real_t ONE = OPK_REALCONST(1.0);
   real_t ajj;
-  opk_index_t j;
+  opk_index j;
 
   /* Test the input parameters. */
   if (n < 0) {
@@ -1729,4 +1729,4 @@ OPK_POTF2(opk_blas_uplo_t uplo,
 }
 #endif /* OPK_POTF2 */
 
-#endif /* _OPK_LINALG_C */
+#endif /* OPK_LINALG_C_ */

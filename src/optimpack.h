@@ -30,8 +30,8 @@
  *-----------------------------------------------------------------------------
  */
 
-#ifndef _OPTIMPACK_H
-#define _OPTIMPACK_H 1
+#ifndef OPTIMPACK_H_
+#define OPTIMPACK_H_ 1
 
 #include <stdio.h>
 #include <stddef.h>
@@ -83,7 +83,7 @@
  * OptimPack implements a simple object-oriented API with various object
  * classes.  The most basic reason of this choice is to correctly manage data
  * and structures which may be shared between different piece of code.  All
- * OptimPack objects inherit from @ref Objects::opk_object_t "opk_object_t"
+ * OptimPack objects inherit from @ref Objects::opk_object "opk_object"
  * whose instances maintain a reference count and take care of releasing
  * ressources when objects are no longer in use (understand \e referenced).
  * This memory management model is lightweight and very effective and but is
@@ -151,44 +151,44 @@
  * Macro `OPK_JOIN(a,b)` joins its two arguments, possibly after performing
  * macro expansion of `a` and `b`.
  */
-#define OPK_JOIN(a,b)                _OPK_JOIN2(a,b)
+#define OPK_JOIN(a,b)                OPK_JOIN2_(a,b)
 
-#define OPK_JOIN2(a,b)               _OPK_JOIN2(a,b)
-#define OPK_JOIN3(a,b,c)             _OPK_JOIN3(a,b,c)
-#define OPK_JOIN4(a,b,c,d)           _OPK_JOIN4(a,b,c,d)
-#define OPK_JOIN5(a,b,c,d,e)         _OPK_JOIN5(a,b,c,d,e)
-#define OPK_JOIN6(a,b,c,d,e,f)       _OPK_JOIN6(a,b,c,d,e,f)
-#define OPK_JOIN7(a,b,c,d,e,f,g)     _OPK_JOIN7(a,b,c,d,e,f,g)
-#define OPK_JOIN8(a,b,c,d,e,f,g,h)   _OPK_JOIN8(a,b,c,d,e,f,g,h)
-#define OPK_JOIN9(a,b,c,d,e,f,g,h,i) _OPK_JOIN9(a,b,c,d,e,f,g,h,i)
+#define OPK_JOIN2(a,b)               OPK_JOIN2_(a,b)
+#define OPK_JOIN3(a,b,c)             OPK_JOIN3_(a,b,c)
+#define OPK_JOIN4(a,b,c,d)           OPK_JOIN4_(a,b,c,d)
+#define OPK_JOIN5(a,b,c,d,e)         OPK_JOIN5_(a,b,c,d,e)
+#define OPK_JOIN6(a,b,c,d,e,f)       OPK_JOIN6_(a,b,c,d,e,f)
+#define OPK_JOIN7(a,b,c,d,e,f,g)     OPK_JOIN7_(a,b,c,d,e,f,g)
+#define OPK_JOIN8(a,b,c,d,e,f,g,h)   OPK_JOIN8_(a,b,c,d,e,f,g,h)
+#define OPK_JOIN9(a,b,c,d,e,f,g,h,i) OPK_JOIN9_(a,b,c,d,e,f,g,h,i)
 
 /**
  * Macro `OPK_STRINGIFY(x)` wraps its argument in "" (double quotation marks),
  * possibly after performing macro expansion of the argument.
  */
-#define OPK_STRINGIFY(x)  _OPK_STRINGIFY(x)
+#define OPK_STRINGIFY(x)  OPK_STRINGIFY_(x)
 
 /* Stringify/concatenate arguments without expansion. */
 #if defined(__STDC__) || defined(__cplusplus) || defined(c_plusplus)
-# define _OPK_STRINGIFY(x)             # x
-# define _OPK_JOIN2(a,b)               a##b
-# define _OPK_JOIN3(a,b,c)             a##b##c
-# define _OPK_JOIN4(a,b,c,d)           a##b##c##d
-# define _OPK_JOIN5(a,b,c,d,e)         a##b##c##d##e
-# define _OPK_JOIN6(a,b,c,d,e,f)       a##b##c##d##e##f
-# define _OPK_JOIN7(a,b,c,d,e,f,g)     a##b##c##d##e##f##g
-# define _OPK_JOIN8(a,b,c,d,e,f,g,h)   a##b##c##d##e##f##g##h
-# define _OPK_JOIN9(a,b,c,d,e,f,g,h,i) a##b##c##d##e##f##g##h##i
+# define OPK_STRINGIFY_(x)             # x
+# define OPK_JOIN2_(a,b)               a##b
+# define OPK_JOIN3_(a,b,c)             a##b##c
+# define OPK_JOIN4_(a,b,c,d)           a##b##c##d
+# define OPK_JOIN5_(a,b,c,d,e)         a##b##c##d##e
+# define OPK_JOIN6_(a,b,c,d,e,f)       a##b##c##d##e##f
+# define OPK_JOIN7_(a,b,c,d,e,f,g)     a##b##c##d##e##f##g
+# define OPK_JOIN8_(a,b,c,d,e,f,g,h)   a##b##c##d##e##f##g##h
+# define OPK_JOIN9_(a,b,c,d,e,f,g,h,i) a##b##c##d##e##f##g##h##i
 #else
-# define _OPK_STRINGIFY(x)             "x"
-# define _OPK_JOIN2(a,b)               a/**/b
-# define _OPK_JOIN3(a,b,c)             a/**/b/**/c
-# define _OPK_JOIN4(a,b,c,d)           a/**/b/**/c/**/d
-# define _OPK_JOIN5(a,b,c,d,e)         a/**/b/**/c/**/d/**/e
-# define _OPK_JOIN6(a,b,c,d,e,f)       a/**/b/**/c/**/d/**/e/**/f
-# define _OPK_JOIN7(a,b,c,d,e,f,g)     a/**/b/**/c/**/d/**/e/**/f/**/g
-# define _OPK_JOIN8(a,b,c,d,e,f,g,h)   a/**/b/**/c/**/d/**/e/**/f/**/g/**/h
-# define _OPK_JOIN9(a,b,c,d,e,f,g,h,i) a/**/b/**/c/**/d/**/e/**/f/**/g/**/h/**/i
+# define OPK_STRINGIFY_(x)             "x"
+# define OPK_JOIN2_(a,b)               a/**/b
+# define OPK_JOIN3_(a,b,c)             a/**/b/**/c
+# define OPK_JOIN4_(a,b,c,d)           a/**/b/**/c/**/d
+# define OPK_JOIN5_(a,b,c,d,e)         a/**/b/**/c/**/d/**/e
+# define OPK_JOIN6_(a,b,c,d,e,f)       a/**/b/**/c/**/d/**/e/**/f
+# define OPK_JOIN7_(a,b,c,d,e,f,g)     a/**/b/**/c/**/d/**/e/**/f/**/g
+# define OPK_JOIN8_(a,b,c,d,e,f,g,h)   a/**/b/**/c/**/d/**/e/**/f/**/g/**/h
+# define OPK_JOIN9_(a,b,c,d,e,f,g,h,i) a/**/b/**/c/**/d/**/e/**/f/**/g/**/h/**/i
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -283,45 +283,45 @@
 
 OPK_BEGIN_C_DECLS
 
-#define _OPK_STATUS_LIST                                                \
-  _OPK_STATUS( 0, OPK_SUCCESS, "Success")                               \
-  _OPK_STATUS( 1, OPK_INVALID_ARGUMENT, "Invalid argument")             \
-  _OPK_STATUS( 2, OPK_INSUFFICIENT_MEMORY, "Insufficient memory")       \
-  _OPK_STATUS( 3, OPK_ILLEGAL_ADDRESS, "Illegal address")               \
-  _OPK_STATUS( 4, OPK_NOT_IMPLEMENTED, "Not implemented")               \
-  _OPK_STATUS( 5, OPK_CORRUPTED_WORKSPACE, "Corrupted workspace")       \
-  _OPK_STATUS( 6, OPK_BAD_SPACE, "Bad variable space")                  \
-  _OPK_STATUS( 7, OPK_OUT_OF_BOUNDS_INDEX, "Out of bounds index")       \
-  _OPK_STATUS( 8, OPK_NOT_STARTED, "Line search not started")           \
-  _OPK_STATUS( 9, OPK_NOT_A_DESCENT, "Not a descent direction")         \
-  _OPK_STATUS(10, OPK_STEP_CHANGED, "Step changed")                     \
-  _OPK_STATUS(11, OPK_STEP_OUTSIDE_BRACKET, "Step outside bracket")     \
-  _OPK_STATUS(12, OPK_STPMIN_GT_STPMAX,                                 \
+#define OPK_STATUS_LIST_                                                \
+  OPK_STATUS_( 0, OPK_SUCCESS, "Success")                               \
+  OPK_STATUS_( 1, OPK_INVALID_ARGUMENT, "Invalid argument")             \
+  OPK_STATUS_( 2, OPK_INSUFFICIENT_MEMORY, "Insufficient memory")       \
+  OPK_STATUS_( 3, OPK_ILLEGAL_ADDRESS, "Illegal address")               \
+  OPK_STATUS_( 4, OPK_NOT_IMPLEMENTED, "Not implemented")               \
+  OPK_STATUS_( 5, OPK_CORRUPTED_WORKSPACE, "Corrupted workspace")       \
+  OPK_STATUS_( 6, OPK_BAD_SPACE, "Bad variable space")                  \
+  OPK_STATUS_( 7, OPK_OUT_OF_BOUNDS_INDEX, "Out of bounds index")       \
+  OPK_STATUS_( 8, OPK_NOT_STARTED, "Line search not started")           \
+  OPK_STATUS_( 9, OPK_NOT_A_DESCENT, "Not a descent direction")         \
+  OPK_STATUS_(10, OPK_STEP_CHANGED, "Step changed")                     \
+  OPK_STATUS_(11, OPK_STEP_OUTSIDE_BRACKET, "Step outside bracket")     \
+  OPK_STATUS_(12, OPK_STPMIN_GT_STPMAX,                                 \
                "Lower step bound larger than upper bound")              \
-  _OPK_STATUS(13, OPK_STPMIN_LT_ZERO,                                   \
+  OPK_STATUS_(13, OPK_STPMIN_LT_ZERO,                                   \
               "Minimal step length less than zero")                     \
-  _OPK_STATUS(14, OPK_STEP_LT_STPMIN, "Step lesser than lower bound")   \
-  _OPK_STATUS(15, OPK_STEP_GT_STPMAX, "Step greater than upper bound")  \
-  _OPK_STATUS(16, OPK_FTOL_TEST_SATISFIED,                              \
+  OPK_STATUS_(14, OPK_STEP_LT_STPMIN, "Step lesser than lower bound")   \
+  OPK_STATUS_(15, OPK_STEP_GT_STPMAX, "Step greater than upper bound")  \
+  OPK_STATUS_(16, OPK_FTOL_TEST_SATISFIED,                              \
               "Convergence within variable tolerance")                  \
-  _OPK_STATUS(17, OPK_GTOL_TEST_SATISFIED,                              \
+  OPK_STATUS_(17, OPK_GTOL_TEST_SATISFIED,                              \
                 "Convergence within function tolerance")                \
-  _OPK_STATUS(18, OPK_XTOL_TEST_SATISFIED,                              \
+  OPK_STATUS_(18, OPK_XTOL_TEST_SATISFIED,                              \
                 "Convergence within gradient tolerance")                \
-  _OPK_STATUS(19, OPK_STEP_EQ_STPMAX, "Step blocked at upper bound")    \
-  _OPK_STATUS(20, OPK_STEP_EQ_STPMIN, "Step blocked at lower bound")    \
-  _OPK_STATUS(21, OPK_ROUNDING_ERRORS_PREVENT_PROGRESS,                 \
+  OPK_STATUS_(19, OPK_STEP_EQ_STPMAX, "Step blocked at upper bound")    \
+  OPK_STATUS_(20, OPK_STEP_EQ_STPMIN, "Step blocked at lower bound")    \
+  OPK_STATUS_(21, OPK_ROUNDING_ERRORS_PREVENT_PROGRESS,                 \
               "Rounding errors prevent progress")                       \
-  _OPK_STATUS(22, OPK_NOT_POSITIVE_DEFINITE,                            \
+  OPK_STATUS_(22, OPK_NOT_POSITIVE_DEFINITE,                            \
               "Operator is not positive definite")                      \
-  _OPK_STATUS(23, OPK_BAD_PRECONDITIONER,                               \
+  OPK_STATUS_(23, OPK_BAD_PRECONDITIONER,                               \
               "Preconditioner is not positive definite")                \
-  _OPK_STATUS(24, OPK_INFEASIBLE_BOUNDS, "Box set is infeasible")       \
-  _OPK_STATUS(25, OPK_WOULD_BLOCK,                                      \
+  OPK_STATUS_(24, OPK_INFEASIBLE_BOUNDS, "Box set is infeasible")       \
+  OPK_STATUS_(25, OPK_WOULD_BLOCK,                                      \
               "Variables cannot be improved (would block)")             \
-  _OPK_STATUS(26, OPK_UNDEFINED_VALUE, "Undefined value")               \
-  _OPK_STATUS(27, OPK_TOO_MANY_EVALUATIONS, "Too many evaluations")     \
-  _OPK_STATUS(28, OPK_TOO_MANY_ITERATIONS, "Too many iterations")
+  OPK_STATUS_(26, OPK_UNDEFINED_VALUE, "Undefined value")               \
+  OPK_STATUS_(27, OPK_TOO_MANY_EVALUATIONS, "Too many evaluations")     \
+  OPK_STATUS_(28, OPK_TOO_MANY_ITERATIONS, "Too many iterations")
 
 
 /**
@@ -331,11 +331,11 @@ OPK_BEGIN_C_DECLS
  *  indicate a failure or a warning.
  */
 typedef enum {
-#define _OPK_STATUS(a,b,c) b = a,
-  _OPK_STATUS_LIST
-#undef _OPK_STATUS
+#define OPK_STATUS_(a,b,c) b = a,
+  OPK_STATUS_LIST_
+#undef OPK_STATUS_
   OPK_MAX_STATUS
-} opk_status_t;
+} opk_status;
 
 /**
  * Retrieve a textual description for a given status.
@@ -346,7 +346,7 @@ typedef enum {
  *         if the status does not correspond to any known status.
  */
 extern const char*
-opk_get_reason(opk_status_t status);
+opk_get_reason(opk_status status);
 
 /**
  * Retrieve OptimPack status from `errno`.
@@ -355,8 +355,7 @@ opk_get_reason(opk_status_t status);
  * routines which do not return a status (mostly the ones which create
  * objects).
  */
-extern opk_status_t
-opk_guess_status();
+extern opk_status opk_guess_status(void);
 
 /**
  * Copy a string.
@@ -383,7 +382,7 @@ opk_copy_string(char* dst, size_t size, const char* src);
  *
  * @return `OPK_SUCCESS` or `OPK_INVALID_ARGUMENT` if the name is unknown.
  */
-extern opk_status_t
+extern opk_status
 opk_get_integer_constant(const char* name, long* ptr);
 
 /*---------------------------------------------------------------------------*/
@@ -392,21 +391,21 @@ opk_get_integer_constant(const char* name, long* ptr);
 /**
  * Integer data type used for array indices in OptimPack.
  */
-typedef ptrdiff_t opk_index_t;
+typedef ptrdiff_t opk_index;
 
 /**
  * Possible boolean (logical) values.
  */
-typedef enum opk_bool {
+typedef enum {
   OPK_FALSE = 0,
   OPK_TRUE  = 1
-} opk_bool_t;
+} opk_bool;
 
 /** Type of the variables in a conventional array. */
-typedef enum _opk_type {
+typedef enum {
   OPK_FLOAT, /**< Variables are single precision floating point numbers. */
   OPK_DOUBLE /**< Variables are double precision floating point numbers. */
-} opk_type_t;
+} opk_eltype;
 
 /*---------------------------------------------------------------------------*/
 /* BASIC OBJECTS */
@@ -427,7 +426,7 @@ typedef enum _opk_type {
 /**
  * Opaque basic object type.
  */
-typedef struct _opk_object opk_object_t;
+typedef struct opk_object_ opk_object;
 
 /**
  * Hold a reference on an object.
@@ -444,8 +443,8 @@ typedef struct _opk_object opk_object_t;
  *
  * @return Its argument (with one more reference if not NULL).
  */
-extern opk_object_t*
-opk_hold_object(opk_object_t* obj);
+extern opk_object*
+opk_hold_object(opk_object* obj);
 
 /**
  * Drop a reference on an object.
@@ -459,7 +458,7 @@ opk_hold_object(opk_object_t* obj);
  * @param obj - The object to release (can be `NULL`).
  */
 extern void
-opk_drop_object(opk_object_t* obj);
+opk_drop_object(opk_object* obj);
 
 /**
  * Get the number of references on an object.
@@ -470,36 +469,36 @@ opk_drop_object(opk_object_t* obj);
  *         is `NULL`, the result is zero; otherwise, the result is greater of
  *         equal one.
  */
-extern opk_index_t
-opk_get_object_references(opk_object_t* obj);
+extern opk_index
+opk_get_object_references(opk_object* obj);
 
 /**
  * Macro to set a reference on an object whatever its type.  Compared to the
  * function `opk_hold_object()`, this macro casts its argument to be an
- * `opk_object_t` pointer.  The result is the argument cast as a basic object
+ * `opk_object` pointer.  The result is the argument cast as a basic object
  * pointer.
  */
-#define OPK_HOLD(obj)       opk_hold_object((opk_object_t*)(obj))
+#define OPK_HOLD(obj)       opk_hold_object((opk_object*)(obj))
 
 /**
  * Macro to drop an object whatever its type.  Compared to the function
- * `opk_drop_object()`, this macro casts its argument to be an `opk_object_t`
+ * `opk_drop_object()`, this macro casts its argument to be an `opk_object`
  * pointer.
  */
-#define OPK_DROP(obj)       opk_drop_object((opk_object_t*)(obj))
+#define OPK_DROP(obj)       opk_drop_object((opk_object*)(obj))
 
 /**
  * Macro to query the number of references on an object whatever its type.
  * Compared to the function `opk_get_object_references()`, this macro casts its
- * argument to be a `opk_object_t` pointer.
+ * argument to be a `opk_object` pointer.
  */
-#define OPK_REFS(obj)       opk_get_object_references((opk_object_t*)(obj))
+#define OPK_REFS(obj)       opk_get_object_references((opk_object*)(obj))
 
-#define OPK_HOLD_VSPACE(vsp)     ((opk_vspace_t*)OPK_HOLD(vsp))
-#define OPK_HOLD_VECTOR(vec)     ((opk_vector_t*)OPK_HOLD(vec))
-#define OPK_HOLD_LNSRCH(lns)     ((opk_lnsrch_t*)OPK_HOLD(lns))
-#define OPK_HOLD_OPERATOR(op)    ((opk_operator_t*)OPK_HOLD(op))
-#define OPK_HOLD_CONVEXSET(set)  ((opk_convexset_t*)OPK_HOLD(set))
+#define OPK_HOLD_VSPACE(vsp)     ((opk_vspace*)OPK_HOLD(vsp))
+#define OPK_HOLD_VECTOR(vec)     ((opk_vector*)OPK_HOLD(vec))
+#define OPK_HOLD_LNSRCH(lns)     ((opk_lnsrch*)OPK_HOLD(lns))
+#define OPK_HOLD_OPERATOR(op)    ((opk_operator*)OPK_HOLD(op))
+#define OPK_HOLD_CONVEXSET(set)  ((opk_convexset*)OPK_HOLD(set))
 
 /** @} */
 
@@ -511,11 +510,11 @@ opk_get_object_references(opk_object_t* obj);
  * @{
  */
 
-/** Opaque vector type.  This sub-type inherits from `opk_object_t`. */
-typedef struct _opk_vector opk_vector_t;
+/** Opaque vector type.  This sub-type inherits from `opk_object`. */
+typedef struct opk_vector_ opk_vector;
 
-/** Opaque vector space type.  This sub-type inherits from `opk_object_t`. */
-typedef struct _opk_vspace opk_vspace_t;
+/** Opaque vector space type.  This sub-type inherits from `opk_object`. */
+typedef struct opk_vspace_ opk_vspace;
 
 /** Prototype of function to release client data. */
 typedef void opk_free_proc(void*);
@@ -537,8 +536,8 @@ typedef void opk_free_proc(void*);
  *
  * @return A new vector space or `NULL` in case of errors.
  */
-extern opk_vspace_t*
-opk_new_simple_double_vector_space(opk_index_t size);
+extern opk_vspace*
+opk_new_simple_double_vector_space(opk_index size);
 
 /**
  * Wrap an existing array into a simple vector.
@@ -557,14 +556,14 @@ opk_new_simple_double_vector_space(opk_index_t size);
  * A typical usage is:
  * ~~~~~~~~~~{.c}
  * #define N 1000
- * opk_vspace_t* vspace = opk_new_simple_double_vector_space(N);
+ * opk_vspace* vspace = opk_new_simple_double_vector_space(N);
  *
  * double heap_array[N];
- * opk_vector_t* v1 = opk_wrap_simple_double_vector(vspace, heap_array,
+ * opk_vector* v1 = opk_wrap_simple_double_vector(vspace, heap_array,
  *                                                  NULL, NULL);
  *
  * double* dynamic_array = (double*)malloc(N*sizeof(double));
- * opk_vector_t* v2 = opk_wrap_simple_double_vector(vspace, dynamic_array,
+ * opk_vector* v2 = opk_wrap_simple_double_vector(vspace, dynamic_array,
  *                                                  free, dynamic_array);
  * ~~~~~~~~~~
  *
@@ -575,11 +574,11 @@ opk_new_simple_double_vector_space(opk_index_t size);
  * In the above example, the `client_data` and the `data` are the same but the
  * possible distinction is needed to allow for using of various kind of
  * objects which contain an array of values that can be wrapped into a
- * vector.  For objects of type `object_t`, we can do something like:
+ * vector.  For objects of type `object_type`, we can do something like:
  * ~~~~~~~~~~{.c}
- * object_t* obj = ...;
- * opk_vspace_t* vspace = opk_new_simple_double_vector_space(get_number(obj));
- * opk_vector_t* v = opk_wrap_simple_double_vector(vspace, get_data(obj),
+ * object_type* obj = ...;
+ * opk_vspace* vspace = opk_new_simple_double_vector_space(get_number(obj));
+ * opk_vector* v = opk_wrap_simple_double_vector(vspace, get_data(obj),
  *                                                 delete_object,
  *                                                 (void*)obj);
  * ~~~~~~~~~~
@@ -599,19 +598,19 @@ opk_new_simple_double_vector_space(opk_index_t size);
  *
  * @return A new vector of `vspace`, `NULL` in case of error.
  */
-extern opk_vector_t*
-opk_wrap_simple_double_vector(opk_vspace_t* vspace, double data[],
+extern opk_vector*
+opk_wrap_simple_double_vector(opk_vspace* vspace, double data[],
                               void (*free_client_data)(void*),
                               void* client_data);
 
 extern double*
-opk_get_simple_double_vector_data(opk_vector_t* v);
+opk_get_simple_double_vector_data(opk_vector* v);
 
 extern void*
-opk_get_simple_double_vector_client_data(opk_vector_t* v);
+opk_get_simple_double_vector_client_data(opk_vector* v);
 
 extern opk_free_proc*
-opk_get_simple_double_vector_free_client_data(opk_vector_t* v);
+opk_get_simple_double_vector_free_client_data(opk_vector* v);
 
 /**
  * Re-wrap an array into an existing simple vector.
@@ -639,7 +638,7 @@ opk_get_simple_double_vector_free_client_data(opk_vector_t* v);
  *         `EINVAL` if `vect` is not a vector of the correct kind.
  */
 extern int
-opk_rewrap_simple_double_vector(opk_vector_t* vect, double new_data[],
+opk_rewrap_simple_double_vector(opk_vector* vect, double new_data[],
                                 void (*new_free_client_data)(void*),
                                 void* new_client_data);
 
@@ -648,31 +647,31 @@ opk_rewrap_simple_double_vector(opk_vector_t* vect, double new_data[],
  *
  * See `opk_new_simple_double_vector_space()` for a description.
  */
-extern opk_vspace_t*
-opk_new_simple_float_vector_space(opk_index_t size);
+extern opk_vspace*
+opk_new_simple_float_vector_space(opk_index size);
 
 /**
  * Wrap an existing array into a simple vector.
  *
  * See `opk_wrap_simple_double_vector()` for a description.
  */
-extern opk_vector_t*
-opk_wrap_simple_float_vector(opk_vspace_t* vspace, float data[],
+extern opk_vector*
+opk_wrap_simple_float_vector(opk_vspace* vspace, float data[],
                              void (*free_client_data)(void*),
                              void* client_data);
 
 
 extern float*
-opk_get_simple_float_vector_data(opk_vector_t* v);
+opk_get_simple_float_vector_data(opk_vector* v);
 
 extern void*
-opk_get_simple_float_vector_client_data(opk_vector_t* v);
+opk_get_simple_float_vector_client_data(opk_vector* v);
 
 extern opk_free_proc*
-opk_get_simple_float_vector_free_client_data(opk_vector_t* v);
+opk_get_simple_float_vector_free_client_data(opk_vector* v);
 
 extern int
-opk_rewrap_simple_float_vector(opk_vector_t* v, float new_data[],
+opk_rewrap_simple_float_vector(opk_vector* v, float new_data[],
                                void (*new_free_client_data)(void*),
                                void* new_client_data);
 
@@ -688,8 +687,8 @@ opk_rewrap_simple_float_vector(opk_vector_t* v, float new_data[],
  *
  * @return A new vector of the vector space; `NULL` in case of error.
  */
-extern opk_vector_t*
-opk_vcreate(opk_vspace_t* vspace);
+extern opk_vector*
+opk_vcreate(opk_vspace* vspace);
 
 /**
  * Print vector contents.
@@ -700,8 +699,8 @@ opk_vcreate(opk_vspace_t* vspace);
  *                used if this parameter is not strictly positive.
  */
 extern void
-opk_vprint(FILE* file, const char* name, const opk_vector_t* vect,
-           opk_index_t nmax);
+opk_vprint(FILE* file, const char* name, const opk_vector* vect,
+           opk_index nmax);
 
 /**
  * Fetch a specific vector component.
@@ -716,8 +715,8 @@ opk_vprint(FILE* file, const char* name, const opk_vector_t* vect,
  *
  * @return A standard status.
  */
-extern opk_status_t
-opk_vpeek(const opk_vector_t* vect, opk_index_t k, double* ptr);
+extern opk_status
+opk_vpeek(const opk_vector* vect, opk_index k, double* ptr);
 
 /**
  * Set the value of a specific vector component.
@@ -732,8 +731,8 @@ opk_vpeek(const opk_vector_t* vect, opk_index_t k, double* ptr);
  *
  * @return A standard status.
  */
-extern opk_status_t
-opk_vpoke(opk_vector_t* vect, opk_index_t k, double value);
+extern opk_status
+opk_vpoke(opk_vector* vect, opk_index k, double value);
 
 /**
  * Copy the values of a conventional array into a vector.
@@ -746,8 +745,8 @@ opk_vpoke(opk_vector_t* vect, opk_index_t k, double value);
  * @return A standard status.  The number of elements of the source must match
  *         those of the destination.
  */
-extern opk_status_t
-opk_vimport(opk_vector_t* dst, const void* src, opk_type_t type, opk_index_t n);
+extern opk_status
+opk_vimport(opk_vector* dst, const void* src, opk_eltype type, opk_index n);
 
 /**
  * Copy the values of a vector into a conventional array.
@@ -760,8 +759,8 @@ opk_vimport(opk_vector_t* dst, const void* src, opk_type_t type, opk_index_t n);
  * @return A standard status.  The number of elements of the source must match
  *         those of the destination.
  */
-opk_status_t
-opk_vexport(void* dst, opk_type_t type, opk_index_t n, const opk_vector_t* src);
+opk_status
+opk_vexport(void* dst, opk_eltype type, opk_index n, const opk_vector* src);
 
 /**
  * Fill a vector with zeros.
@@ -771,7 +770,7 @@ opk_vexport(void* dst, opk_type_t type, opk_index_t n, const opk_vector_t* src);
  * @param vect - The vector to fill.
  */
 extern void
-opk_vzero(opk_vector_t* vect);
+opk_vzero(opk_vector* vect);
 
 /**
  * Fill a vector with a given value.
@@ -782,7 +781,7 @@ opk_vzero(opk_vector_t* vect);
  * @param alpha - The value.
  */
 extern void
-opk_vfill(opk_vector_t* vect, double alpha);
+opk_vfill(opk_vector* vect, double alpha);
 
 /**
  * Copy vector contents.
@@ -794,7 +793,7 @@ opk_vfill(opk_vector_t* vect, double alpha);
  * @param src - The source vector.
  */
 extern void
-opk_vcopy(opk_vector_t* dst, const opk_vector_t* src);
+opk_vcopy(opk_vector* dst, const opk_vector* src);
 
 /**
  * Scale a vector by a scalar.
@@ -810,8 +809,8 @@ opk_vcopy(opk_vector_t* dst, const opk_vector_t* src);
  * @param src   - The source vector.
  */
 extern void
-opk_vscale(opk_vector_t* dst,
-           double alpha, const opk_vector_t* src);
+opk_vscale(opk_vector* dst,
+           double alpha, const opk_vector* src);
 
 /**
  * Exchange vector contents.
@@ -823,7 +822,7 @@ opk_vscale(opk_vector_t* dst,
  * @param y - Another vector.
  */
 extern void
-opk_vswap(opk_vector_t* x, opk_vector_t* y);
+opk_vswap(opk_vector* x, opk_vector* y);
 
 /**
  * Compute the inner product of two vectors.
@@ -838,7 +837,7 @@ opk_vswap(opk_vector_t* x, opk_vector_t* y);
  *         of their elements.
  */
 extern double
-opk_vdot(const opk_vector_t* x, const opk_vector_t* y);
+opk_vdot(const opk_vector* x, const opk_vector* y);
 
 /**
  * Compute the inner product of three vectors.
@@ -854,7 +853,7 @@ opk_vdot(const opk_vector_t* x, const opk_vector_t* y);
  *         vectors.
  */
 extern double
-opk_vdot3(const opk_vector_t* w, const opk_vector_t* x, const opk_vector_t* y);
+opk_vdot3(const opk_vector* w, const opk_vector* x, const opk_vector* y);
 
 /**
  * Compute the L2 norm of a vector.
@@ -868,7 +867,7 @@ opk_vdot3(const opk_vector_t* w, const opk_vector_t* x, const opk_vector_t* y);
  *         of its squared elements.
  */
 extern double
-opk_vnorm2(const opk_vector_t* v);
+opk_vnorm2(const opk_vector* v);
 
 /**
  * Compute the L1 norm of a vector.
@@ -881,7 +880,7 @@ opk_vnorm2(const opk_vector_t* v);
  *         its elements.
  */
 extern double
-opk_vnorm1(const opk_vector_t* v);
+opk_vnorm1(const opk_vector* v);
 
 /**
  * Compute the infinite norm of a vector.
@@ -894,7 +893,7 @@ opk_vnorm1(const opk_vector_t* v);
  *         of its elements.
  */
 extern double
-opk_vnorminf(const opk_vector_t* v);
+opk_vnorminf(const opk_vector* v);
 
 /**
  * Compute the elementwise product of two vectors.
@@ -906,9 +905,9 @@ opk_vnorminf(const opk_vector_t* v);
  * @param y     - Another vector.
  */
 extern void
-opk_vproduct(opk_vector_t* dst,
-             const opk_vector_t* x,
-             const opk_vector_t* y);
+opk_vproduct(opk_vector* dst,
+             const opk_vector* x,
+             const opk_vector* y);
 
 /**
  * Compute the linear combination of two vectors.
@@ -924,9 +923,9 @@ opk_vproduct(opk_vector_t* dst,
  * @param y     - Another vector.
  */
 extern void
-opk_vaxpby(opk_vector_t* dst,
-           double alpha, const opk_vector_t* x,
-           double beta,  const opk_vector_t* y);
+opk_vaxpby(opk_vector* dst,
+           double alpha, const opk_vector* x,
+           double beta,  const opk_vector* y);
 
 /**
  * Compute the linear combination of three vectors.
@@ -945,10 +944,10 @@ opk_vaxpby(opk_vector_t* dst,
  * @param z     - Yet another vector.
  */
 extern void
-opk_vaxpbypcz(opk_vector_t* dst,
-              double alpha, const opk_vector_t* x,
-              double beta,  const opk_vector_t* y,
-              double gamma, const opk_vector_t* z);
+opk_vaxpbypcz(opk_vector* dst,
+              double alpha, const opk_vector* x,
+              double beta,  const opk_vector* y,
+              double gamma, const opk_vector* z);
 
 /** @} */
 
@@ -960,20 +959,20 @@ opk_vaxpbypcz(opk_vector_t* dst,
  * @{
  */
 
-/** Opaque operator type.  This sub-type inherits from `opk_object_t`. */
-typedef struct _opk_operator opk_operator_t;
+/** Opaque operator type.  This sub-type inherits from `opk_object`. */
+typedef struct opk_operator_ opk_operator;
 
-extern opk_status_t
-opk_apply_direct(opk_operator_t* op, opk_vector_t* dst,
-                 const opk_vector_t* src);
+extern opk_status
+opk_apply_direct(opk_operator* op, opk_vector* dst,
+                 const opk_vector* src);
 
-extern opk_status_t
-opk_apply_adjoint(opk_operator_t* op, opk_vector_t* dst,
-                  const opk_vector_t* src);
+extern opk_status
+opk_apply_adjoint(opk_operator* op, opk_vector* dst,
+                  const opk_vector* src);
 
-extern opk_status_t
-opk_apply_inverse(opk_operator_t* op, opk_vector_t* dst,
-                  const opk_vector_t* src);
+extern opk_status
+opk_apply_inverse(opk_operator* op, opk_vector* dst,
+                  const opk_vector* src);
 
 /** @} */
 
@@ -1032,7 +1031,7 @@ opk_error(const char* reason);
  * @brief Code returned by the reverse communication version of optimzation
  * algorithms.
  */
-typedef enum opk_task {
+typedef enum {
   OPK_TASK_ERROR       = -1, /**< An error has ocurred. */
   OPK_TASK_START       =  0, /**< Caller must call `start` method. */
   OPK_TASK_COMPUTE_FG  =  1, /**< Caller must compute f(x) and g(x). */
@@ -1040,7 +1039,7 @@ typedef enum opk_task {
   OPK_TASK_FINAL_X     =  3, /**< Algorithm has converged, solution is
                               **  available. */
   OPK_TASK_WARNING     =  4  /**< Algorithm terminated with a warning. */
-} opk_task_t;
+} opk_task;
 
 /** @} */
 
@@ -1067,8 +1066,8 @@ typedef enum opk_task {
  * with respect to `alpha > 0` and where `f(x)` is the objective function.
  */
 
-/** Opaque line search type.  This sub-type inherits from `opk_object_t`. */
-typedef struct _opk_lnsrch opk_lnsrch_t;
+/** Opaque line search type.  This sub-type inherits from `opk_object`. */
+typedef struct opk_lnsrch_ opk_lnsrch;
 
 /**
  * Create a Moré and Thuente cubic line search.
@@ -1103,7 +1102,7 @@ typedef struct _opk_lnsrch opk_lnsrch_t;
  *
  * @return  A line search object.
  */
-extern opk_lnsrch_t*
+extern opk_lnsrch*
 opk_lnsrch_new_csrch(double ftol, double gtol, double xtol);
 
 /**
@@ -1117,7 +1116,7 @@ opk_lnsrch_new_csrch(double ftol, double gtol, double xtol);
  *
  * @return  A line search object.
  */
-extern opk_lnsrch_t*
+extern opk_lnsrch*
 opk_lnsrch_new_backtrack(double ftol, double amin);
 
 /**
@@ -1147,8 +1146,8 @@ opk_lnsrch_new_backtrack(double ftol, double amin);
  *
  * @return A new line search object.
  */
-extern opk_lnsrch_t*
-opk_lnsrch_new_nonmonotone(opk_index_t m, double ftol,
+extern opk_lnsrch*
+opk_lnsrch_new_nonmonotone(opk_index m, double ftol,
                            double sigma1, double sigma2);
 
 /**
@@ -1159,12 +1158,12 @@ opk_lnsrch_new_nonmonotone(opk_index_t m, double ftol,
  * or warning, {@link opk_lnsrch_get_status} can be used to query more
  * information.
  */
-typedef enum opk_lnsrch_task {
+typedef enum {
   OPK_LNSRCH_ERROR       = -1, /**< An error occurred. */
   OPK_LNSRCH_SEARCH      =  0, /**< Line search in progress. */
   OPK_LNSRCH_CONVERGENCE =  1, /**< Line search has converged. */
   OPK_LNSRCH_WARNING     =  2  /**< Line search terminated with warnings. */
-} opk_lnsrch_task_t;
+} opk_lnsrch_task;
 
 /**
  * Start a new line search.
@@ -1184,7 +1183,7 @@ typedef enum opk_lnsrch_task {
  *         A different value indicates an error.
  */
 extern int
-opk_lnsrch_start(opk_lnsrch_t* ls, double f0, double df0,
+opk_lnsrch_start(opk_lnsrch* ls, double f0, double df0,
                  double stp1, double stpmin, double stpmax);
 
 /**
@@ -1204,7 +1203,7 @@ opk_lnsrch_start(opk_lnsrch_t* ls, double f0, double df0,
  * line search has converged or cannot make any more progresses.
  */
 extern int
-opk_lnsrch_iterate(opk_lnsrch_t* ls, double* stp_ptr,
+opk_lnsrch_iterate(opk_lnsrch* ls, double* stp_ptr,
                    double f, double df);
 
 /**
@@ -1215,7 +1214,7 @@ opk_lnsrch_iterate(opk_lnsrch_t* ls, double* stp_ptr,
  * @return Returned value should be >= 0; -1 is returned in case of error.
  */
 extern double
-opk_lnsrch_get_step(const opk_lnsrch_t* ls);
+opk_lnsrch_get_step(const opk_lnsrch* ls);
 
 /**
  * Get current line search pending task.
@@ -1227,8 +1226,8 @@ opk_lnsrch_get_step(const opk_lnsrch_t* ls);
  *
  * @return The current line search pending task.
  */
-extern opk_lnsrch_task_t
-opk_lnsrch_get_task(const opk_lnsrch_t* ls);
+extern opk_lnsrch_task
+opk_lnsrch_get_task(const opk_lnsrch* ls);
 
 /**
  * Get current line search status.
@@ -1237,8 +1236,8 @@ opk_lnsrch_get_task(const opk_lnsrch_t* ls);
  *
  * @return The current line search status.
  */
-extern opk_status_t
-opk_lnsrch_get_status(const opk_lnsrch_t* ls);
+extern opk_status
+opk_lnsrch_get_status(const opk_lnsrch* ls);
 
 /**
  * Check whether line search has errors.
@@ -1247,8 +1246,8 @@ opk_lnsrch_get_status(const opk_lnsrch_t* ls);
  *
  * @return A boolean value, true if there are any errors.
  */
-extern opk_bool_t
-opk_lnsrch_has_errors(const opk_lnsrch_t* ls);
+extern opk_bool
+opk_lnsrch_has_errors(const opk_lnsrch* ls);
 
 /**
  * Check whether line search has warnings.
@@ -1257,8 +1256,8 @@ opk_lnsrch_has_errors(const opk_lnsrch_t* ls);
  *
  * @return A boolean value, true if there are any warnings.
  */
-extern opk_bool_t
-opk_lnsrch_has_warnings(const opk_lnsrch_t* ls);
+extern opk_bool
+opk_lnsrch_has_warnings(const opk_lnsrch* ls);
 
 /**
  * Check whether line search has converged.
@@ -1267,8 +1266,8 @@ opk_lnsrch_has_warnings(const opk_lnsrch_t* ls);
  *
  * @return A boolean value, true if line search has converged.
  */
-extern opk_bool_t
-opk_lnsrch_converged(const opk_lnsrch_t* ls);
+extern opk_bool
+opk_lnsrch_converged(const opk_lnsrch* ls);
 
 /**
  * Check whether line search has finished.
@@ -1280,8 +1279,8 @@ opk_lnsrch_converged(const opk_lnsrch_t* ls);
  *
  * @return A boolean value, true if line search has finished.
  */
-extern opk_bool_t
-opk_lnsrch_finished(const opk_lnsrch_t* ls);
+extern opk_bool
+opk_lnsrch_finished(const opk_lnsrch* ls);
 
 /**
  * Check whether line search requires the directional derivative.
@@ -1307,15 +1306,15 @@ opk_lnsrch_finished(const opk_lnsrch_t* ls);
  * @return A boolean value, true if line search makes use of the directional
  *         derivative.
  */
-extern opk_bool_t
-opk_lnsrch_use_deriv(const opk_lnsrch_t* ls);
+extern opk_bool
+opk_lnsrch_use_deriv(const opk_lnsrch* ls);
 
 /** Moré & Thuente method to perform a cubic safeguarded step. */
-extern opk_status_t
+extern opk_status
 opk_cstep(double *stx_ptr, double *fx_ptr, double *dx_ptr,
           double *sty_ptr, double *fy_ptr, double *dy_ptr,
           double *stp_ptr, double  fp,     double  dp,
-          opk_bool_t *brackt, double stpmin, double stpmax);
+          opk_bool *brackt, double stpmin, double stpmax);
 
 /** @} */
 
@@ -1328,7 +1327,7 @@ opk_cstep(double *stx_ptr, double *fx_ptr, double *dx_ptr,
  */
 
 /** Opaque type for non-linear conjugate gradient optimizers. */
-typedef struct _opk_nlcg opk_nlcg_t;
+typedef struct opk_nlcg_ opk_nlcg;
 
 /**
  * Structure used to specify the settings of a NLCG optimizer.
@@ -1351,7 +1350,7 @@ typedef struct _opk_nlcg opk_nlcg_t;
  * 0 <= stpmin < stpmax
  * ~~~~~
  */
-typedef struct _opk_nlcg_options {
+typedef struct {
   double          delta; /**< Relative size for a small step. */
   double        epsilon; /**< Threshold to accept descent direction. */
   double          grtol; /**< Relative threshold for the norm or the gradient
@@ -1364,8 +1363,8 @@ typedef struct _opk_nlcg_options {
   double           fmin; /**< Minimal function value if provided. */
   unsigned int    flags; /**< A bitwise combination of the non-linear conjugate
                               gradient update method and options. */
-  opk_bool_t fmin_given; /**< Minimal function value is provided? */
-} opk_nlcg_options_t;
+  opk_bool fmin_given; /**< Minimal function value is provided? */
+} opk_nlcg_options;
 
 /* Rules to compute the search direction in NLCG: */
 #define OPK_NLCG_FLETCHER_REEVES        1
@@ -1401,7 +1400,7 @@ typedef struct _opk_nlcg_options {
  * @param opts - The address of the structure where to store the parameters.
  */
 extern void
-opk_get_nlcg_default_options(opk_nlcg_options_t* opts);
+opk_get_nlcg_default_options(opk_nlcg_options* opts);
 
 /**
  * Check nonlinear conjugate gradient optimizer parameters.
@@ -1410,8 +1409,8 @@ opk_get_nlcg_default_options(opk_nlcg_options_t* opts);
  *
  * @return A standard status.
  */
-extern opk_status_t
-opk_check_nlcg_options(const opk_nlcg_options_t* opts);
+extern opk_status
+opk_check_nlcg_options(const opk_nlcg_options* opts);
 
 /**
  * Create a new optimizer instance for non-linear conjugate gradient method.
@@ -1431,17 +1430,17 @@ opk_check_nlcg_options(const opk_nlcg_options_t* opts);
  *         or EINVAL if one of the arguments is invalid or EFAULT if vspace is
  *         NULL.
  */
-extern opk_nlcg_t*
-opk_new_nlcg_optimizer(const opk_nlcg_options_t* opts,
-                       opk_vspace_t* vspace,
-                       opk_lnsrch_t* lnsrch);
+extern opk_nlcg*
+opk_new_nlcg_optimizer(const opk_nlcg_options* opts,
+                       opk_vspace* vspace,
+                       opk_lnsrch* lnsrch);
 
-extern opk_task_t
-opk_start_nlcg(opk_nlcg_t* opt, opk_vector_t* x);
+extern opk_task
+opk_start_nlcg(opk_nlcg* opt, opk_vector* x);
 
-extern opk_task_t
-opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x,
-                 double f, opk_vector_t* g);
+extern opk_task
+opk_iterate_nlcg(opk_nlcg* opt, opk_vector* x,
+                 double f, opk_vector* g);
 
 /**
  * Get the current step length.
@@ -1455,28 +1454,28 @@ opk_iterate_nlcg(opk_nlcg_t* opt, opk_vector_t* x,
  * @see opk_get_nlcg_stpmax(), opk_set_nlcg_stpmin_and_stpmax().
  */
 extern double
-opk_get_nlcg_step(const opk_nlcg_t* opt);
+opk_get_nlcg_step(const opk_nlcg* opt);
 
 extern double
-opk_get_nlcg_gnorm(const opk_nlcg_t* opt);
+opk_get_nlcg_gnorm(const opk_nlcg* opt);
 
-extern opk_index_t
-opk_get_nlcg_evaluations(const opk_nlcg_t* opt);
+extern opk_index
+opk_get_nlcg_evaluations(const opk_nlcg* opt);
 
-extern opk_index_t
-opk_get_nlcg_iterations(const opk_nlcg_t* opt);
+extern opk_index
+opk_get_nlcg_iterations(const opk_nlcg* opt);
 
-extern opk_index_t
-opk_get_nlcg_restarts(const opk_nlcg_t* opt);
+extern opk_index
+opk_get_nlcg_restarts(const opk_nlcg* opt);
 
-extern opk_task_t
-opk_get_nlcg_task(const opk_nlcg_t* opt);
+extern opk_task
+opk_get_nlcg_task(const opk_nlcg* opt);
 
-extern opk_status_t
-opk_get_nlcg_status(const opk_nlcg_t* opt);
+extern opk_status
+opk_get_nlcg_status(const opk_nlcg* opt);
 
 extern size_t
-opk_get_nlcg_name(char* buf, size_t size, const opk_nlcg_t* opt);
+opk_get_nlcg_name(char* buf, size_t size, const opk_nlcg* opt);
 
 /**
  * Get description of nonlinear conjugate gradient method.
@@ -1489,10 +1488,10 @@ opk_get_nlcg_name(char* buf, size_t size, const opk_nlcg_t* opt);
  *         (including the terminating '\0' character).
  */
 extern size_t
-opk_get_nlcg_description(char* buf, size_t size, const opk_nlcg_t* opt);
+opk_get_nlcg_description(char* buf, size_t size, const opk_nlcg* opt);
 
 extern double
-opk_get_nlcg_beta(const opk_nlcg_t* opt);
+opk_get_nlcg_beta(const opk_nlcg* opt);
 
 /** @} */
 
@@ -1505,7 +1504,7 @@ opk_get_nlcg_beta(const opk_nlcg_t* opt);
  */
 
 /** Opaque structure to represent an instance of a convex set. */
-typedef struct _opk_convexset opk_convexset_t;
+typedef struct opk_convexset_ opk_convexset;
 
 /**
  * Type of bounds.
@@ -1527,7 +1526,7 @@ typedef struct _opk_convexset opk_convexset_t;
  * is in use or `OPK_BOUND_VOLATILE_FLOAT` or `OPK_BOUND_VOLATILE_DOUBLE`
  * otherwise.
  */
-typedef enum opk_bound_type {
+typedef enum {
   OPK_BOUND_NONE            = 0, /**< No-bound (associated value must be
                                   **  `NULL`). */
   OPK_BOUND_SCALAR_FLOAT    = 1, /**< Scalar bound (associated value is the
@@ -1547,8 +1546,8 @@ typedef enum opk_bound_type {
                                   **  double's (associated value is the address
                                   **  of the array). */
   OPK_BOUND_VECTOR          = 7  /**< Vector bound (associated value is the
-                                  **  address of an `opk_vector_t`). */
-} opk_bound_type_t;
+                                  **  address of an `opk_vector`). */
+} opk_bound_type;
 
 /**
  * Project the variables to the feasible set.
@@ -1569,10 +1568,10 @@ typedef enum opk_bound_type {
  *         and bounds belongs to the same space, `OPK_NOT_IMPLEMENTED` if
  *         this functionality is not implemented.
  */
-extern opk_status_t
-opk_project_variables(opk_vector_t* dst,
-                      const opk_vector_t* x,
-                      const opk_convexset_t* set);
+extern opk_status
+opk_project_variables(opk_vector* dst,
+                      const opk_vector* x,
+                      const opk_convexset* set);
 
 /**
  * Check whether the projection of the variables is implemented.
@@ -1582,8 +1581,8 @@ opk_project_variables(opk_vector_t* dst,
  * @return A boolean value, true if the projection of the variables is
  *         implemented by `set`.
  */
-extern opk_bool_t
-opk_can_project_variables(const opk_convexset_t* set);
+extern opk_bool
+opk_can_project_variables(const opk_convexset* set);
 
 /**
  * Orientation of a search direction.
@@ -1599,10 +1598,10 @@ opk_can_project_variables(const opk_convexset_t* set);
  *     x[i] - alpha*d[i]
  * ~~~~~~~~~~
  */
-typedef enum opk_orientation {
+typedef enum {
   OPK_ASCENT  = -1, /**< Ascent search direction. */
   OPK_DESCENT =  1  /**< Descent search direction. */
-} opk_orientation_t;
+} opk_orientation;
 
 /**
  * Project a direction.
@@ -1631,12 +1630,12 @@ typedef enum opk_orientation {
  *         and bounds belongs to the same space, `OPK_NOT_IMPLEMENTED` if
  *         this functionality is not implemented.
  */
-extern opk_status_t
-opk_project_direction(opk_vector_t* dst,
-                      const opk_vector_t* x,
-                      const opk_convexset_t* set,
-                      const opk_vector_t* d,
-                      opk_orientation_t orient);
+extern opk_status
+opk_project_direction(opk_vector* dst,
+                      const opk_vector* x,
+                      const opk_convexset* set,
+                      const opk_vector* d,
+                      opk_orientation orient);
 
 /**
  * Check whether projection of the search direction is implemented.
@@ -1646,8 +1645,8 @@ opk_project_direction(opk_vector_t* dst,
  * @return A boolean value, true if projection of the search direction is
  *         implemented by `set`.
  */
-extern opk_bool_t
-opk_can_project_directions(const opk_convexset_t* set);
+extern opk_bool
+opk_can_project_directions(const opk_convexset* set);
 
 /**
  * Find the non-binding constraints.
@@ -1668,12 +1667,12 @@ opk_can_project_directions(const opk_convexset_t* set);
  *         and bounds belongs to the same space, `OPK_NOT_IMPLEMENTED` if
  *         this functionality is not implemented.
  */
-extern opk_status_t
-opk_get_free_variables(opk_vector_t* dst,
-                       const opk_vector_t* x,
-                       const opk_convexset_t* set,
-                       const opk_vector_t* d,
-                       opk_orientation_t orient);
+extern opk_status
+opk_get_free_variables(opk_vector* dst,
+                       const opk_vector* x,
+                       const opk_convexset* set,
+                       const opk_vector* d,
+                       opk_orientation orient);
 
 /**
  * Check whether determining the free variables is implemented.
@@ -1683,8 +1682,8 @@ opk_get_free_variables(opk_vector_t* dst,
  * @return A boolean value, true if determining the free variables is
  *         implemented by `set`.
  */
-extern opk_bool_t
-opk_can_get_free_variables(const opk_convexset_t* set);
+extern opk_bool
+opk_can_get_free_variables(const opk_convexset* set);
 
 /**
  * Find the limits of the step size.
@@ -1725,12 +1724,12 @@ opk_can_get_free_variables(const opk_convexset_t* set);
  *         and bounds belongs to the same space, `OPK_NOT_IMPLEMENTED` if
  *         this functionality is not implemented.
  */
-extern opk_status_t
+extern opk_status
 opk_get_step_limits(double* smin1, double* smin2, double *smax,
-                    const opk_vector_t* x,
-                    const opk_convexset_t* set,
-                    const opk_vector_t* d,
-                    opk_orientation_t orient);
+                    const opk_vector* x,
+                    const opk_convexset* set,
+                    const opk_vector* d,
+                    opk_orientation orient);
 
 /**
  * Check whether determining the step limits is implemented.
@@ -1740,8 +1739,8 @@ opk_get_step_limits(double* smin1, double* smin2, double *smax,
  * @return A boolean value, true if determining the step limits is implemented
  *         by `set`.
  */
-extern opk_bool_t
-opk_can_get_step_limits(const opk_convexset_t* set);
+extern opk_bool
+opk_can_get_step_limits(const opk_convexset* set);
 
 /**
  * Create a new box set.
@@ -1759,10 +1758,10 @@ opk_can_get_step_limits(const opk_convexset_t* set);
  *         variable `errno` can be used to figure out the reason of the
  *         failure).
  */
-extern opk_convexset_t*
-opk_new_boxset(opk_vspace_t* space,
-               opk_bound_type_t lower_type, void* lower,
-               opk_bound_type_t upper_type, void* upper);
+extern opk_convexset*
+opk_new_boxset(opk_vspace* space,
+               opk_bound_type lower_type, void* lower,
+               opk_bound_type upper_type, void* upper);
 
 /** @} */
 
@@ -1779,19 +1778,19 @@ opk_new_boxset(opk_vspace_t* space,
  */
 
 /** Opaque type for a variable metric optimizer. */
-typedef struct _opk_vmlmb opk_vmlmb_t;
+typedef struct opk_vmlmb_ opk_vmlmb;
 
 /** Rules for scaling the inverse Hessian approximation. */
-typedef enum opk_bfgs_scaling {
+typedef enum {
   OPK_SCALING_NONE             = 0, /**< No-scaling. */
   OPK_SCALING_OREN_SPEDICATO   = 1, /**< Scaling by:
                                      **  {@code gamma = (s'.y)/(y'.y)} */
   OPK_SCALING_BARZILAI_BORWEIN = 2  /**< Scaling by:
                                      **  {@code gamma = (s'.s)/(s'.y)} */
-} opk_bfgs_scaling_t;
+} opk_bfgs_scaling;
 
 /** Structure used to store the settings of a VMLMB optimizer. */
-typedef struct _opk_vmlmb_options {
+typedef struct {
   double           delta; /**< Relative size for a small step. */
   double         epsilon; /**< Threshold to accept descent direction. */
   double           grtol; /**< Relative threshold for the norm or the projected
@@ -1801,10 +1800,10 @@ typedef struct _opk_vmlmb_options {
                                gradient for convergence. */
   double          stpmin; /**< Relative minimum step length. */
   double          stpmax; /**< Relative maximum step length. */
-  opk_index_t        mem; /**< Maximum number of memorized steps. */
-  opk_bool_t       blmvm; /**< Emulate Benson & Moré BLMVM method? */
-  opk_bool_t save_memory; /**< Save some memory? */
-} opk_vmlmb_options_t;
+  opk_index        mem; /**< Maximum number of memorized steps. */
+  opk_bool       blmvm; /**< Emulate Benson & Moré BLMVM method? */
+  opk_bool save_memory; /**< Save some memory? */
+} opk_vmlmb_options;
 
 /**
  * Query default VMLMB optimizer parameters.
@@ -1812,7 +1811,7 @@ typedef struct _opk_vmlmb_options {
  * @param opts - The address of the structure where to store the parameters.
  */
 extern void
-opk_get_vmlmb_default_options(opk_vmlmb_options_t* opts);
+opk_get_vmlmb_default_options(opk_vmlmb_options* opts);
 
 /**
  * Check VMLMB optimizer parameters.
@@ -1821,8 +1820,8 @@ opk_get_vmlmb_default_options(opk_vmlmb_options_t* opts);
  *
  * @return A standard status.
  */
-extern opk_status_t
-opk_check_vmlmb_options(const opk_vmlmb_options_t* opts);
+extern opk_status
+opk_check_vmlmb_options(const opk_vmlmb_options* opts);
 
 /**
  * Create a reverse communication optimizer implementing a limited memory
@@ -1844,32 +1843,31 @@ opk_check_vmlmb_options(const opk_vmlmb_options_t* opts);
  *         or EINVAL if one of the arguments is invalid or EFAULT if vspace is
  *         NULL.
  */
-extern opk_vmlmb_t*
-opk_new_vmlmb_optimizer(const opk_vmlmb_options_t* opts,
-                        opk_vspace_t* space,
-                        opk_lnsrch_t* lnsrch,
-                        opk_convexset_t* box);
+extern opk_vmlmb*
+opk_new_vmlmb_optimizer(const opk_vmlmb_options* opts,
+                        opk_vspace* space,
+                        opk_lnsrch* lnsrch,
+                        opk_convexset* box);
 
 /** The variants implemented by VMLMB. */
-typedef enum opk_vmlmb_method { OPK_LBFGS, OPK_VMLMB, OPK_BLMVM } opk_vmlmb_method_t;
-extern opk_vmlmb_method_t
-opk_get_vmlmb_method(const opk_vmlmb_t* opt);
+typedef enum { OPK_LBFGS, OPK_VMLMB, OPK_BLMVM } opk_vmlmb_method;
+extern opk_vmlmb_method opk_get_vmlmb_method(const opk_vmlmb* opt);
 
 extern const char*
-opk_get_vmlmb_method_name(const opk_vmlmb_t* opt);
+opk_get_vmlmb_method_name(const opk_vmlmb* opt);
 
-extern opk_task_t
-opk_start_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x);
+extern opk_task
+opk_start_vmlmb(opk_vmlmb* opt, opk_vector* x);
 
-extern opk_task_t
-opk_iterate_vmlmb(opk_vmlmb_t* opt, opk_vector_t* x,
-                  double f, opk_vector_t* g);
+extern opk_task
+opk_iterate_vmlmb(opk_vmlmb* opt, opk_vector* x,
+                  double f, opk_vector* g);
 
-extern opk_task_t
-opk_get_vmlmb_task(const opk_vmlmb_t* opt);
+extern opk_task
+opk_get_vmlmb_task(const opk_vmlmb* opt);
 
-extern opk_status_t
-opk_get_vmlmb_status(const opk_vmlmb_t* opt);
+extern opk_status
+opk_get_vmlmb_status(const opk_vmlmb* opt);
 
 /**
  * Get description of algorithm implemented by VMLMB.
@@ -1882,22 +1880,22 @@ opk_get_vmlmb_status(const opk_vmlmb_t* opt);
  *         (including the terminating '\0' character).
  */
 extern size_t
-opk_get_vmlmb_description(char* buf, size_t size, const opk_vmlmb_t* opt);
+opk_get_vmlmb_description(char* buf, size_t size, const opk_vmlmb* opt);
 
-extern opk_index_t
-opk_get_vmlmb_evaluations(const opk_vmlmb_t* opt);
+extern opk_index
+opk_get_vmlmb_evaluations(const opk_vmlmb* opt);
 
-extern opk_index_t
-opk_get_vmlmb_iterations(const opk_vmlmb_t* opt);
+extern opk_index
+opk_get_vmlmb_iterations(const opk_vmlmb* opt);
 
-extern opk_index_t
-opk_get_vmlmb_restarts(const opk_vmlmb_t* opt);
-
-extern double
-opk_get_vmlmb_step(const opk_vmlmb_t* opt);
+extern opk_index
+opk_get_vmlmb_restarts(const opk_vmlmb* opt);
 
 extern double
-opk_get_vmlmb_gnorm(const opk_vmlmb_t* opt);
+opk_get_vmlmb_step(const opk_vmlmb* opt);
+
+extern double
+opk_get_vmlmb_gnorm(const opk_vmlmb* opt);
 
 /**
  * Get actual number of memorized steps.
@@ -1907,8 +1905,8 @@ opk_get_vmlmb_gnorm(const opk_vmlmb_t* opt);
  * @return The actual number of memorized steps which is in the range `[0,m]`,
  *         with `m` the maximum number of memorized steps.
  */
-extern opk_index_t
-opk_get_vmlmb_mp(const opk_vmlmb_t* opt);
+extern opk_index
+opk_get_vmlmb_mp(const opk_vmlmb* opt);
 
 /**
  * Get a given memorized variable change.
@@ -1942,8 +1940,8 @@ opk_get_vmlmb_mp(const opk_vmlmb_t* opt);
  *
  * @see opk_get_vmlmb_y, opk_get_vmlmb_mb.
  */
-extern opk_vector_t*
-opk_get_vmlmb_s(const opk_vmlmb_t* opt, opk_index_t j);
+extern opk_vector*
+opk_get_vmlmb_s(const opk_vmlmb* opt, opk_index j);
 
 /**
  * Get a given memorized gradient change.
@@ -1959,8 +1957,8 @@ opk_get_vmlmb_s(const opk_vmlmb_t* opt, opk_index_t j);
  *
  * @see opk_get_vmlmb_s, opk_get_vmlmb_mb.
  */
-extern opk_vector_t*
-opk_get_vmlmb_y(const opk_vmlmb_t* opt, opk_index_t j);
+extern opk_vector*
+opk_get_vmlmb_y(const opk_vmlmb* opt, opk_index j);
 
 /** @} */
 
@@ -1973,14 +1971,14 @@ opk_get_vmlmb_y(const opk_vmlmb_t* opt, opk_index_t j);
  */
 
 /** Limited memory optimization algorithm. */
-typedef enum opk_algorithm {
+typedef enum {
   OPK_ALGORITHM_NLCG, /**< Nonlinear conjugate gradient. */
   OPK_ALGORITHM_VMLMB /**< Limited memory variable metric (possibly with
                        *   bounds). */
-} opk_algorithm_t;
+} opk_algorithm;
 
 /** Opaque structure for limited memory optimizer. */
-typedef struct _opk_optimizer opk_optimizer_t;
+typedef struct opk_optimizer_ opk_optimizer;
 
 /**
  * Create a reverse communication optimizer implementing a limited memory
@@ -2007,7 +2005,7 @@ typedef struct _opk_optimizer opk_optimizer_t;
  * double fx;
  * float x[n];
  * float gx[n];
- * opk_optimizer_t* opt = opk_new_optimizer(OPK_ALGORITHM_VMLMB,
+ * opk_optimizer* opt = opk_new_optimizer(OPK_ALGORITHM_VMLMB,
  *                                          NULL, type, n,
  *                                          OPK_BOUND_NONE, NULL,
  *                                          OPK_BOUND_NONE, NULL,
@@ -2060,12 +2058,12 @@ typedef struct _opk_optimizer opk_optimizer_t;
  *         or `EFAULT` if the bounds are unexpectedly `NULL`.
  *
  */
-extern opk_optimizer_t *
-opk_new_optimizer(opk_algorithm_t algorithm, const void* opts,
-                  opk_type_t type, opk_index_t n,
-                  opk_bound_type_t lower_type, void* lower,
-                  opk_bound_type_t upper_type, void* upper,
-                  opk_lnsrch_t* lnschr);
+extern opk_optimizer *
+opk_new_optimizer(opk_algorithm algorithm, const void* opts,
+                  opk_eltype type, opk_index n,
+                  opk_bound_type lower_type, void* lower,
+                  opk_bound_type upper_type, void* upper,
+                  opk_lnsrch* lnschr);
 
 /**
  * Destroy a reverse communication optimizer implementing a limited memory
@@ -2078,7 +2076,7 @@ opk_new_optimizer(opk_algorithm_t algorithm, const void* opts,
  * @param opt - An optimizer created by {@link #opk_new_optimizer}.
  */
 extern void
-opk_destroy_optimizer(opk_optimizer_t *opt);
+opk_destroy_optimizer(opk_optimizer *opt);
 
 /**
  * Start the optimization with given initial variables.
@@ -2091,8 +2089,8 @@ opk_destroy_optimizer(opk_optimizer_t *opt);
  * @return An integer indicating the next thing to do for the caller.
  *         Unless an error occured, it should be {@link OPK_TASK_COMPUTE_FG}.
  */
-extern opk_task_t
-opk_start(opk_optimizer_t *opt, void* x);
+extern opk_task
+opk_start(opk_optimizer *opt, void* x);
 
 /**
  * Proceed with next optimization step.
@@ -2110,8 +2108,8 @@ opk_start(opk_optimizer_t *opt, void* x);
  *
  * @return An integer indicating the next thing to do for the caller.
  */
-extern opk_task_t
-opk_iterate(opk_optimizer_t *opt, void* x, double f, void* g);
+extern opk_task
+opk_iterate(opk_optimizer *opt, void* x, double f, void* g);
 
 /**
  * Get the current pending task.
@@ -2120,8 +2118,8 @@ opk_iterate(opk_optimizer_t *opt, void* x, double f, void* g);
  *
  * @return The current pending task.
  */
-extern opk_task_t
-opk_get_task(const opk_optimizer_t* opt);
+extern opk_task
+opk_get_task(const opk_optimizer* opt);
 
 /**
  * Get the current optimizer status.
@@ -2133,29 +2131,29 @@ opk_get_task(const opk_optimizer_t* opt);
  *
  * @return The current optimizer status.
  */
-extern opk_status_t
-opk_get_status(const opk_optimizer_t* opt);
+extern opk_status
+opk_get_status(const opk_optimizer* opt);
 
-extern opk_index_t
-opk_get_evaluations(const opk_optimizer_t* opt);
+extern opk_index
+opk_get_evaluations(const opk_optimizer* opt);
 
-extern opk_index_t
-opk_get_iterations(const opk_optimizer_t* opt);
+extern opk_index
+opk_get_iterations(const opk_optimizer* opt);
 
-extern opk_index_t
-opk_get_restarts(const opk_optimizer_t* opt);
-
-extern size_t
-opk_get_name(char* buf, size_t size, const opk_optimizer_t* opt);
+extern opk_index
+opk_get_restarts(const opk_optimizer* opt);
 
 extern size_t
-opk_get_description(char* buf, size_t size, const opk_optimizer_t* opt);
+opk_get_name(char* buf, size_t size, const opk_optimizer* opt);
+
+extern size_t
+opk_get_description(char* buf, size_t size, const opk_optimizer* opt);
 
 extern double
-opk_get_step(const opk_optimizer_t* opt);
+opk_get_step(const opk_optimizer* opt);
 
 extern double
-opk_get_gnorm(const opk_optimizer_t* opt);
+opk_get_gnorm(const opk_optimizer* opt);
 
 /** @} */
 
@@ -2177,7 +2175,7 @@ opk_get_gnorm(const opk_optimizer_t* opt);
 #define OPK_FMIN_SMOOTH        4
 
 /* Values returned by the opk_fmin_next routine. */
-typedef enum opk_fmin_task {
+typedef enum {
   OPK_FMIN_ERROR       = -1,
   OPK_FMIN_START       =  0,
   OPK_FMIN_FX          =  1,
@@ -2403,10 +2401,10 @@ opk_fmin_with_context(double (*f)(void *data, double x),
  *    returned by the function.
  */
 extern int
-opk_dgqt(opk_index_t n, double a[], opk_index_t lda, const double b[],
+opk_dgqt(opk_index n, double a[], opk_index lda, const double b[],
          double delta, double rtol, double atol,
-         opk_index_t itmax, double *par_ptr, double *f_ptr,
-         double x[], opk_index_t *iter_ptr, double z[],
+         opk_index itmax, double *par_ptr, double *f_ptr,
+         double x[], opk_index *iter_ptr, double z[],
          double wa1[], double wa2[]);
 
 /**
@@ -2435,10 +2433,10 @@ opk_dgqt(opk_index_t n, double a[], opk_index_t lda, const double b[],
  *    returned by the function.
  */
 extern
-int opk_sgqt(opk_index_t n, float a[], opk_index_t lda, const float b[],
+int opk_sgqt(opk_index n, float a[], opk_index lda, const float b[],
              float delta, float rtol, float atol,
-             opk_index_t itmax, float *par_ptr, float *f_ptr,
-             float x[], opk_index_t *iter_ptr, float z[],
+             opk_index itmax, float *par_ptr, float *f_ptr,
+             float x[], opk_index *iter_ptr, float z[],
              float wa1[], float wa2[]);
 
 /**
@@ -2487,7 +2485,7 @@ int opk_sgqt(opk_index_t n, float a[], opk_index_t lda, const float b[],
  *    `svmin` is the value returned by the function.
  */
 extern double
-opk_destsv(opk_index_t n, const double r[], opk_index_t ldr, double z[]);
+opk_destsv(opk_index n, const double r[], opk_index ldr, double z[]);
 
 /**
  * Computes smallest singular value and corresponding vector from an upper
@@ -2501,10 +2499,10 @@ opk_destsv(opk_index_t n, const double r[], opk_index_t ldr, double z[]);
  *  * Level 1 BLAS: `opk_sasum`, `opk_saxpy`, `opk_snrm2`, `opk_sscal`.
  */
 extern float
-opk_sestsv(opk_index_t n, const float r[], opk_index_t ldr, float z[]);
+opk_sestsv(opk_index n, const float r[], opk_index ldr, float z[]);
 
 /** @} */
 
 OPK_END_C_DECLS
 
-#endif /* _OPTIMPACK_H */
+#endif /* OPTIMPACK_H_ */
