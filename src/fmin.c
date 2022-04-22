@@ -76,17 +76,15 @@ static const double FMIN_BETA  = 6.18033988749894848204586834365638E-1;
 #endif
 static const double FMIN_GAMMA = 1.61803398874989484820458683436564E+0;
 
-typedef struct _opk_fmin_context opk_fmin_context_t;
-
-struct _opk_fmin_context {
+typedef struct _opk_fmin_context {
   double a, b, u, fu, v, fv, w, fw, x;
   double prec;
   long nevals;
   const char *msg;
   unsigned int flags;
-  unsigned int status;
+  opk_fmin_task status;
   int stage;
-};
+} opk_fmin_context_t;
 
 /* DOCUMENT FMIN_EPSILON  = the smallest positive floating point x such
                             that 1 + x is numerically not equal to 1.

@@ -70,13 +70,12 @@
 #  define FLOAT_CHOICE(a,b) b
 #endif
 
-typedef struct _simple_vector simple_vector_t;
-struct _simple_vector {
+typedef struct _simple_vector {
   opk_vector_t base;  /* base type (must be the first member) */
   REAL* data;
   void* client_data;
   void (*free_client_data)(void* client_data);
-};
+} simple_vector_t;
 
 /* Fetch the data part of a vector at a given address. */
 #define DATA(v) ((simple_vector_t*)(v))->data

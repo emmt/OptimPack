@@ -395,15 +395,15 @@ opk_get_integer_constant(const char* name, long* ptr);
 typedef ptrdiff_t opk_index_t;
 
 /**
- * Data type for boolean (logical) values.
+ * Possible boolean (logical) values.
  */
-typedef int opk_bool_t;
-
-#define OPK_TRUE  1
-#define OPK_FALSE 0
+typedef enum opk_bool {
+  OPK_FALSE = 0,
+  OPK_TRUE  = 1
+} opk_bool_t;
 
 /** Type of the variables in a conventional array. */
-typedef enum {
+typedef enum _opk_type {
   OPK_FLOAT, /**< Variables are single precision floating point numbers. */
   OPK_DOUBLE /**< Variables are double precision floating point numbers. */
 } opk_type_t;
@@ -1032,13 +1032,13 @@ opk_error(const char* reason);
  * @brief Code returned by the reverse communication version of optimzation
  * algorithms.
  */
-typedef enum {
+typedef enum opk_task {
   OPK_TASK_ERROR       = -1, /**< An error has ocurred. */
   OPK_TASK_START       =  0, /**< Caller must call `start` method. */
   OPK_TASK_COMPUTE_FG  =  1, /**< Caller must compute f(x) and g(x). */
   OPK_TASK_NEW_X       =  2, /**< A new iterate is available. */
   OPK_TASK_FINAL_X     =  3, /**< Algorithm has converged, solution is
-                                  available. */
+                              **  available. */
   OPK_TASK_WARNING     =  4  /**< Algorithm terminated with a warning. */
 } opk_task_t;
 
@@ -1159,7 +1159,7 @@ opk_lnsrch_new_nonmonotone(opk_index_t m, double ftol,
  * or warning, {@link opk_lnsrch_get_status} can be used to query more
  * information.
  */
-typedef enum {
+typedef enum opk_lnsrch_task {
   OPK_LNSRCH_ERROR       = -1, /**< An error occurred. */
   OPK_LNSRCH_SEARCH      =  0, /**< Line search in progress. */
   OPK_LNSRCH_CONVERGENCE =  1, /**< Line search has converged. */
@@ -1315,7 +1315,7 @@ extern opk_status_t
 opk_cstep(double *stx_ptr, double *fx_ptr, double *dx_ptr,
           double *sty_ptr, double *fy_ptr, double *dy_ptr,
           double *stp_ptr, double  fp,     double  dp,
-          int *brackt, double stpmin, double stpmax);
+          opk_bool_t *brackt, double stpmin, double stpmax);
 
 /** @} */
 
@@ -1527,27 +1527,27 @@ typedef struct _opk_convexset opk_convexset_t;
  * is in use or `OPK_BOUND_VOLATILE_FLOAT` or `OPK_BOUND_VOLATILE_DOUBLE`
  * otherwise.
  */
-typedef enum {
+typedef enum opk_bound_type {
   OPK_BOUND_NONE            = 0, /**< No-bound (associated value must be
-                                  *   `NULL`). */
+                                  **  `NULL`). */
   OPK_BOUND_SCALAR_FLOAT    = 1, /**< Scalar bound (associated value is the
-                                  *   address of a float). */
+                                  **  address of a float). */
   OPK_BOUND_SCALAR_DOUBLE   = 2, /**< Scalar bound (associated value is the
-                                  *   address of a double). */
+                                  **  address of a double). */
   OPK_BOUND_STATIC_FLOAT    = 3, /**< Bounds are stored in a static array of
-                                  *   float's (associated value is the address
-                                  *   of the array). */
+                                  **  float's (associated value is the address
+                                  **  of the array). */
   OPK_BOUND_STATIC_DOUBLE   = 4, /**< Bounds are stored in a static array of
-                                  *   double's (associated value is the address
-                                  *   of the array). */
+                                  **  double's (associated value is the address
+                                  **  of the array). */
   OPK_BOUND_VOLATILE_FLOAT  = 5, /**< Bounds are stored in a volatile array of
-                                  *   floats's (associated value is the address
-                                  *   of the array). */
+                                  **  floats's (associated value is the address
+                                  **  of the array). */
   OPK_BOUND_VOLATILE_DOUBLE = 6, /**< Bounds are stored in a volatile array of
-                                  *   double's (associated value is the address
-                                  *   of the array). */
+                                  **  double's (associated value is the address
+                                  **  of the array). */
   OPK_BOUND_VECTOR          = 7  /**< Vector bound (associated value is the
-                                  *   address of an `opk_vector_t`). */
+                                  **  address of an `opk_vector_t`). */
 } opk_bound_type_t;
 
 /**
@@ -1599,7 +1599,7 @@ opk_can_project_variables(const opk_convexset_t* set);
  *     x[i] - alpha*d[i]
  * ~~~~~~~~~~
  */
-typedef enum {
+typedef enum opk_orientation {
   OPK_ASCENT  = -1, /**< Ascent search direction. */
   OPK_DESCENT =  1  /**< Descent search direction. */
 } opk_orientation_t;
@@ -1782,12 +1782,12 @@ opk_new_boxset(opk_vspace_t* space,
 typedef struct _opk_vmlmb opk_vmlmb_t;
 
 /** Rules for scaling the inverse Hessian approximation. */
-typedef enum {
+typedef enum opk_bfgs_scaling {
   OPK_SCALING_NONE             = 0, /**< No-scaling. */
   OPK_SCALING_OREN_SPEDICATO   = 1, /**< Scaling by:
-                                         {@code gamma = (s'.y)/(y'.y)} */
+                                     **  {@code gamma = (s'.y)/(y'.y)} */
   OPK_SCALING_BARZILAI_BORWEIN = 2  /**< Scaling by:
-                                         {@code gamma = (s'.s)/(s'.y)} */
+                                     **  {@code gamma = (s'.s)/(s'.y)} */
 } opk_bfgs_scaling_t;
 
 /** Structure used to store the settings of a VMLMB optimizer. */
@@ -1851,7 +1851,7 @@ opk_new_vmlmb_optimizer(const opk_vmlmb_options_t* opts,
                         opk_convexset_t* box);
 
 /** The variants implemented by VMLMB. */
-typedef enum { OPK_LBFGS, OPK_VMLMB, OPK_BLMVM } opk_vmlmb_method_t;
+typedef enum opk_vmlmb_method { OPK_LBFGS, OPK_VMLMB, OPK_BLMVM } opk_vmlmb_method_t;
 extern opk_vmlmb_method_t
 opk_get_vmlmb_method(const opk_vmlmb_t* opt);
 
@@ -1973,7 +1973,7 @@ opk_get_vmlmb_y(const opk_vmlmb_t* opt, opk_index_t j);
  */
 
 /** Limited memory optimization algorithm. */
-typedef enum {
+typedef enum opk_algorithm {
   OPK_ALGORITHM_NLCG, /**< Nonlinear conjugate gradient. */
   OPK_ALGORITHM_VMLMB /**< Limited memory variable metric (possibly with
                        *   bounds). */
@@ -2177,79 +2177,73 @@ opk_get_gnorm(const opk_optimizer_t* opt);
 #define OPK_FMIN_SMOOTH        4
 
 /* Values returned by the opk_fmin_next routine. */
-#define OPK_FMIN_ERROR         (-1)
-#define OPK_FMIN_START           0
-#define OPK_FMIN_FX              1
-#define OPK_FMIN_NEWX            2
-#define OPK_FMIN_CONVERGENCE     3
+typedef enum opk_fmin_task {
+  OPK_FMIN_ERROR       = -1,
+  OPK_FMIN_START       =  0,
+  OPK_FMIN_FX          =  1,
+  OPK_FMIN_NEWX        =  2,
+  OPK_FMIN_CONVERGENCE =  3,
+} opk_fmin_task;
 
-/*
- * Function: opk_fmin
+/**
+ * @brief Search for the minimum of a function.
  *
- *   Search for the minimum of a function.
+ * This function searches for the minimum `xmin` of the univariate function
+ * `f(x)`.
  *
+ * The algorithm requires an initial interval `(a,b)`.  If the bit
+ * `OPK_FMIN_BOUNDED_BY_A` is set in `flags`, then the value `a` is a strict
+ * bound for the search.  Similarly, if the bit `OPK_FMIN_BOUNDED_BY_B` is set
+ * in `flags`, then the value `b` is a strict bound for the search.  If `a`
+ * and/or `b` are not exclusive bounds, their values are tried first by the
+ * algorithm.
  *
- * Description:
+ * If the bit `OPK_FMIN_SMOOTH` is set in `flags`, then the function is assumed
+ * to be smooth and Brent's algorithm [1] is used to find the minimum;
+ * otherwise, the golden section method is used.
  *
- *   This function searches for the minimum _xmin_ of the univariate
- *   function f(_x_).
+ * The result is stored into array `out` as follows
  *
- *   The algorithm requires an initial interval (_a_, _b_).  If the bit
- *   <OPK_FMIN_BOUNDED_BY_A> is set in _flags_, then the value _a_ is a strict
- *   bound for the search.  Similarly, if the bit <OPK_FMIN_BOUNDED_BY_B> is
- *   set in _flags_, then the value _b_ is a strict bound for the search.  If
- *   _a_ and/or _b_ are not exclusive bounds, their values are tried first by
- *   the algorithm.
+ * - `out[0]` is the approximative solution `xmin`
+ * - `out[1]` is the lower bound `xlo` of the final interval
+ * - `out[2]` is the upper bound `xhi` of the final interval
+ * - `out[3]` is `f(xmin)`
+ * - `out[4]` is `f(xlo)`
+ * - `out[5]` is `f(xhi)`
+ * - `out[6]` is the number of function evaluations
  *
- *   If the bit <OPK_FMIN_SMOOTH> is set in _flags_, then the function is
- *   assumed to be smooth and Brent's algorithm [1] is used to find the
- *   minimum; otherwise, the golden section method is used.
+ * Depending whether the input interval has exclusive bounds, the minimum
+ * number of function evaluations is between 1 and 3 whatever is the value of
+ * `maxeval`.  If the minimum has not been bracketted, the result is:
  *
- *   The result is stored into array _out_ as follows
+ * - `out[0:2] = {u, v, w}` and
+ * - `out[3:5] = {f(u), f(v), f(w)}`
  *
- *    - out[0] = the approximative solution _xmin_
- *    - out[1] = the lower bound _xlo_of the final interval
- *    - out[2] = the upper bound _xhi_ of the final interval
- *    - out[3] = f(_xmin_)
- *    - out[4] = f(_xlo_)
- *    - out[5] = f(_xhi_)
- *    - out[6] = the number of function evaluations
+ * with `u`, `v`, and `w` the 3 last positions tried by the algorithm (in no
+ * particular order).
  *
- *   Depending whether the input interval has exclusive bounds, the minimum
- *   number of function evaluations is between 1 and 3 whatever is the value of
- *   _maxeval_.  If the minimum has not been bracketted, the result is:
+ * @param f        The function to minimize.
+ * @param a        The first point of the initial interval.
+ * @param b        The other point of the initial interval.
+ * @param flags    A bitwise combination of flags (see description).
+ * @param maxeval  If non-negative, the maximum number of function evaluations;
+ *                 otherwise, no limits.
+ * @param prec     The relative precision: the algorithm stop when the
+ *                 uncertainty is less or equal `prec` times the magnitude of
+ *                 the solution.  If `prec` is strictly negative, then a
+ *                 default precision of `sqrt(epsilon)` is used with `epsilon`
+ *                 the machine relative precision.
+ * @param out      A 7-element array to store the result.
  *
- *    - out[0:2] = {_u_, _v_, _w_} and
- *    - out[3:5] = {f(_u_), f(_v_), f(_w_)}
- *
- *   with {_u_, _v_, _w_} the 3 last positions tried by the algorithm (in no
- *   particular order).
- *
- * Parameters:
- *   f       - The function to minimize.
- *   a       - The first point of the initial interval.
- *   b       - The other point of the initial interval.
- *   flags   - A bitwise combination of flags (see description).
- *   maxeval - If non-negative, the maximum number of function evaluations;
- *             otherwise, no limits.
- *   prec    - The relative precision: the algorithm stop when the uncertainty
- *             is less or equal _prec_ times the magnitude of the solution.
- *             If _prec_ is strictly negative, then a default precision of
- *             sqrt(_epsilon_) is used with _epsilon_ the machine relative
- *             precision.
- *   out     - A 7-element array to store the result.
- *
- * Returns:
- *    0 on convergence, 1 if too many iterations but minimum was bracketted, 2
- *    if too many iterations but minimum was *not* bracketted, and -1 on error
- *    (invalid input arguments).
+ * @return 0 on convergence, 1 if too many iterations but minimum was
+ *         bracketted, 2 if too many iterations but minimum was *not*
+ *         bracketted, and -1 on error (invalid input arguments).
  *
  * References:
- *    [1] Brent, R.P. 1973, "Algorithms for Minimization without Derivatives"
- *        (Englewood Cliffs, NJ: Prentice-Hall), Chapter 5.
+ * [1] Brent, R.P. 1973, "Algorithms for Minimization without Derivatives"
+ *     (Englewood Cliffs, NJ: Prentice-Hall), Chapter 5.
  *
- * See Also:
- *    <opk_fmin_with_context>.
+ * @see opk_fmin_with_context().
  */
 extern int
 opk_fmin(double (*f)(double x), double a, double b,
@@ -2257,35 +2251,29 @@ opk_fmin(double (*f)(double x), double a, double b,
          double out[7]);
 
 
-/*
- * Function: opk_fmin_with_context
+/**
+ * @brief Search for the minimum of a function.
  *
- *   Search for the minimum of a function.
+ * This function is identical to opk_fmin() except that the user-defined
+ * function is called as `f(data,x)` to evaluate the function at `x`.  The
+ * `data` argument is simply passed to the user-defined function and may be
+ * used to store any parameters (but the variable value) needed by the
+ * function.
  *
- * Description:
- *
- *   This function is identical to <opk_fmin> except that the user-defined
- *   function is called as f(_data_, _x_) to evaluate the funtion at _x_.
- *   The _data_ argument is simply passed to the user-defined function and may
- *   be used to store any parameters (but the variable value) needed by the
- *   function.
- *
- * Parameters:
- *   f         - The function to minimize.
- *   a         - The first point of the initial interval.
- *   b         - The other point of the initial interval.
- *   flags     - A bitwise combination of flags.
- *   maxeval   - If non-negative, the maximum number of function
- *               evaluations; otherwise no limits.
- *   prec      - The relative precision.
- *   out       - A 7-element array to store the result.
- *   data      - Anything needed by the user-defined function.
+ * @param f        The function to minimize.
+ * @param a        The first point of the initial interval.
+ * @param b        The other point of the initial interval.
+ * @param flags    A bitwise combination of flags.
+ * @param maxeval  If non-negative, the maximum number of function
+ *                 evaluations; otherwise no limits.
+ * @param prec     The relative precision.
+ * @param out      A 7-element array to store the result.
+ * @param data     Anything needed by the user-defined function.
  *
  * Returns:
  *   Same value as <spf_fmin>.
  *
- * See Also:
- *   <opk_fmin>.
+ * @see opk_fmin().
  */
 extern int
 opk_fmin_with_context(double (*f)(void *data, double x),

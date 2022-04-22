@@ -241,12 +241,11 @@ opk_lnsrch_use_deriv(const opk_lnsrch_t* ls)
 /* ARMIJO (BACKTRACKING) LINE SEARCH */
 
 /* Sub-type for Armijo line search. */
-typedef struct _backtrack_lnsrch backtrack_lnsrch_t;
-struct _backtrack_lnsrch {
+typedef struct _backtrack_lnsrch {
   opk_lnsrch_t base; /* Base type (must be the first member). */
   double ftol;
   double amin;
-};
+} backtrack_lnsrch_t;
 
 static opk_lnsrch_task_t
 backtrack_start(opk_lnsrch_t* ls)
@@ -326,8 +325,7 @@ opk_lnsrch_new_backtrack(double ftol, double amin)
 /* NONMONOTONE LINE SEARCH */
 
 /* Sub-type for nonmonotone line search. */
-typedef struct _nonmonotone_lnsrch nonmonotone_lnsrch_t;
-struct _nonmonotone_lnsrch {
+typedef struct _nonmonotone_lnsrch {
   opk_lnsrch_t base; /**< Base type (must be the first member). */
   double sigma1;     /**< Lower steplength bound to trigger bisection. */
   double sigma2;     /**< Upper steplength relative bound to trigger bisection. */
@@ -336,7 +334,7 @@ struct _nonmonotone_lnsrch {
   double* fsav;      /**< Function values for M last accepted steps. */
   opk_index_t m;     /**< Number of previous steps to remember. */
   opk_index_t mp;    /**< Number of steps since starting. */
-};
+} nonmonotone_lnsrch_t;
 
 static opk_lnsrch_task_t
 nonmonotone_start(opk_lnsrch_t* ls)
@@ -452,8 +450,7 @@ opk_lnsrch_new_nonmonotone(opk_index_t m, double ftol,
 /* MORÉ AND THUENTE CUBIC LINE SEARCH */
 
 /* Sub-type for Moré and Thuente cubic line search. */
-typedef struct _csrch_lnsrch csrch_lnsrch_t;
-struct _csrch_lnsrch {
+typedef struct _csrch_lnsrch {
   opk_lnsrch_t base; /* Base type (must be the first member). */
 
   /* Convergence parameters. */
@@ -481,7 +478,7 @@ struct _csrch_lnsrch {
 
   /* The algorithm has two different stages. */
   int stage;
-};
+} csrch_lnsrch_t;
 
 static csrch_lnsrch_t*
 csrch_get_workspace(opk_lnsrch_t* ls);
@@ -917,7 +914,7 @@ opk_status_t
 opk_cstep(double* stx_ptr, double* fx_ptr, double* dx_ptr,
           double* sty_ptr, double* fy_ptr, double* dy_ptr,
           double* stp_ptr, double  fp,     double  dp,
-          int* brackt_ptr, double stpmin, double stpmax)
+          opk_bool_t* brackt_ptr, double stpmin, double stpmax)
 {
   /* Get values of input/output variables. */
   double stx = *stx_ptr, fx = *fx_ptr, dx = *dx_ptr;
