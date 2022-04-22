@@ -9,8 +9,8 @@ AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([foreign -Wall -Werror dist-bzip2])
 
 # Checks for programs.
-AM_PROG_CC_C_O
 AM_PROG_AR
+AC_PROG_CC_C99
 
 # Turn on all warnings for gcc.  (Options -Wall -Werror in AM_INIT_AUTOMAKE
 # have no effects.)
@@ -20,7 +20,7 @@ if test "$GCC" = "yes"; then
 fi
 
 # Use `libtool` for compiling libraries.
-LT_INIT
+LT_INIT([shared])
 
 # Checks for libraries.
 
