@@ -31,6 +31,7 @@ libopk_la_SOURCES = \
     linalg-common.h \
     linalg-single.h \
     linalg-double.h
+
 libopk_la_LDFLAGS = -version-info 3:0:0
 libcobyla_la_SOURCES = optimpack.h cobyla.c cobyla.h
 libcobyla_la_LDFLAGS = -version-info 2:0:0
@@ -39,3 +40,22 @@ libbobyqa_la_LDFLAGS = -version-info 2:0:0
 libnewuoa_la_SOURCES = optimpack.h newuoa.c newuoa.h
 libnewuoa_la_LDFLAGS = -version-info 2:0:0
 # (See doc/NOTES.md for the rationale of libtool version numbers.)
+
+noinst_PROGRAMS = $(TESTS)
+
+TESTS = \
+    bobyqa-test \
+    cobyla-test \
+    newuoa-test
+
+bobyqa_test_SOURCES = bobyqa-test.c
+bobyqa_test__CPPFLAGS = -I$(srcdir)
+bobyqa_test_LDADD = -lm
+
+cobyla_test_SOURCES = cobyla-test.c
+cobyla_test__CPPFLAGS = -I$(srcdir)
+cobyla_test_LDADD = -lm
+
+newuoa_test_SOURCES = newuoa-test.c
+newuoa_test__CPPFLAGS = -I$(srcdir)
+newuoa_test_LDADD = -lm
