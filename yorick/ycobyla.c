@@ -59,7 +59,7 @@ static void ycobyla_extract(void*, char*);
 typedef struct _ycobyla_object ycobyla_object_t;
 struct _ycobyla_object {
   long n, m;
-  cobyla_context_t* ctx;
+  cobyla_context* ctx;
 };
 
 y_userobj_t ycobyla_type = {

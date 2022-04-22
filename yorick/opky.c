@@ -201,12 +201,12 @@ drop_value(value_t* v)
 typedef struct _yopt_instance yopt_instance_t;
 
 struct _yopt_instance {
-  opk_optimizer_t* optimizer;
+  opk_optimizer* optimizer;
   value_t lower;
   value_t upper;
   long dims[Y_DIMSIZE];
   long size;
-  opk_algorithm_t algorithm;
+  opk_algorithm algorithm;
   int single;
 };
 
@@ -398,7 +398,7 @@ get_array(int iarg, const yopt_instance_t* opt)
 
 static void
 get_bound(int iarg, yopt_instance_t* opt, value_t* val,
-          opk_bound_type_t* type_ptr, void** addr_ptr)
+          opk_bound_type* type_ptr, void** addr_ptr)
 {
   int type = yarg_typeid(iarg);
   if (type <= Y_DOUBLE) {
@@ -583,7 +583,7 @@ void Y_opk_get_constant(int argc)
 
 void Y_opk_nlcg(int argc)
 {
-  opk_nlcg_options_t options;
+  opk_nlcg_options options;
   yopt_instance_t* opt;
   long size = -1;
   long dims[Y_DIMSIZE];
@@ -650,15 +650,15 @@ void Y_opk_nlcg(int argc)
 static void
 new_vmlmb(int argc, int blmvm)
 {
-  opk_vmlmb_options_t options;
+  opk_vmlmb_options options;
   yopt_instance_t* opt;
   long size = -1;
   long dims[Y_DIMSIZE];
   int iarg, single = FALSE;
   int lower_iarg = -1;
   int upper_iarg = -1;
-  opk_bound_type_t lower_type = OPK_BOUND_NONE;
-  opk_bound_type_t upper_type = OPK_BOUND_NONE;
+  opk_bound_type lower_type = OPK_BOUND_NONE;
+  opk_bound_type upper_type = OPK_BOUND_NONE;
   void* lower_addr = NULL;
   void* upper_addr = NULL;
 
@@ -761,7 +761,7 @@ void Y_opk_start(int argc)
 {
   yopt_instance_t* opt;
   void* x;
-  opk_task_t task;
+  opk_task task;
 
   if (argc != 2) y_error("expecting exactly 2 arguments");
   opt = get_opt_instance(1);
@@ -776,7 +776,7 @@ void Y_opk_iterate(int argc)
   double f;
   void* x;
   void* g;
-  opk_task_t task;
+  opk_task task;
 
   if (argc != 4) y_error("expecting exactly 4 arguments");
   opt = get_opt_instance(3);

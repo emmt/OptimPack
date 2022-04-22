@@ -59,7 +59,7 @@ static void ynewuoa_extract(void*, char*);
 typedef struct _ynewuoa_object ynewuoa_object_t;
 struct _ynewuoa_object {
   long n, npt;
-  newuoa_context_t* ctx;
+  newuoa_context* ctx;
 };
 
 y_userobj_t ynewuoa_type = {
