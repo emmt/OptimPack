@@ -15,6 +15,8 @@ This describe the most important (user visible) changes in **OptimPack**.
 
 - Initialization of some local variables has been improved to avoid warnings.
 
+- Code compile with GCC and CLang and with flags `-O3 -Wall -Wpedantic -Wall -Werror`.
+
 
 ## Version 3.2.0 (22/04/2022)
 
