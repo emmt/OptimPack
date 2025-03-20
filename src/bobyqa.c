@@ -1,18 +1,17 @@
 /*
  * bobyqa.c -
  *
- * Implementation of Mike Powell's BOBYQA algorithm for minimizing a function
- * of many variables.  The method is "derivatives free" (only the function
- * values are needed) and accounts for bound constraints on the variables.  The
- * algorithm is described in:
+ * C implementation of Mike Powell's BOBYQA algorithm for minimizing a function of many
+ * variables. The method is "derivatives free" (only the function values are needed) and
+ * accounts for bound constraints on the variables. The algorithm is described in:
  *
- *   M.J.D. Powell, "The BOBYQA Algorithm for Bound Constrained Optimization
- *   Without Derivatives."  Technical report, Department of Applied Mathematics
- *   and Theoretical Physics, University of Cambridge (2009).
+ *     M.J.D. Powell, "The BOBYQA Algorithm for Bound Constrained Optimization Without
+ *     Derivatives." Technical report, Department of Applied Mathematics and Theoretical
+ *     Physics, University of Cambridge (2009).
  *
- * The present code is based on the original FORTRAN version written by Mike
- * Powell who kindly provides his code on demand (at mjdp@cam.ac.uk) and has
- * been converted to C by É. Thiébaut.
+ * The present code is based on the original FORTRAN version written by Mike Powell who
+ * kindly provides his code on demand (at mjdp@cam.ac.uk) and has been converted to C by
+ * É. Thiébaut.
  *
  * Copyright (c) 2009, Mike Powell (FORTRAN version).
  * Copyright (c) 2015, Éric Thiébaut (C version).
@@ -74,45 +73,45 @@
 #define MAX(a,b) ((a) >= (b) ? (a) : (b))
 #define MIN(a,b) ((a) <= (b) ? (a) : (b))
 
-/* Macro `HOW_MANY(a,b)` yields the minimal number of chunks with `b` elements
-   needed to store `a` elements.  Both `a` and `b` must be integers. */
+/* Macro `HOW_MANY(a,b)` yields the minimal number of chunks with `b` elements needed to
+   store `a` elements. Both `a` and `b` must be integers. */
 #define HOW_MANY(a,b)  ((((b) - 1) + (a))/(b))
 
-/* Macro `ROUND_UP(a,b)` yields the integer `a` rounded up to a multiple of
-   integer `b`. */
+/* Macro `ROUND_UP(a,b)` yields the integer `a` rounded up to a multiple of integer
+   `b`. */
 #define ROUND_UP(a,b)  (HOW_MANY(a,b)*(b))
 
-/* Macro `ADDRESS(type,base,offset)` yields a `type*` address at `offset` (in
-   bytes) from `base` address. */
+/* Macro `ADDRESS(type,base,offset)` yields a `type*` address at `offset` (in bytes) from
+   `base` address. */
 #define ADDRESS(type, base, offset) ((type*)((char*)(base) + (offset)))
 
-/* Macro `OFFSET(type, field)` yields the offset (in bytes) of member `field`
-   in structure/class `type`. */
+/* Macro `OFFSET(type, field)` yields the offset (in bytes) of member `field` in
+   structure/class `type`. */
 #ifdef offsetof
 #  define OFFSET(type, field)  offsetof(type, field)
 #else
 #  define OFFSET(type, field)  ((char*)&((type*)0)->field - (char*)0)
 #endif
 
-/*---------------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------------------*/
 /* DECLARATIONS OF PRIVATE FUNCTIONS */
 
 /* The following context and macros are to deal with scaling of variables and
    minimizing/maximizing the objective function. */
 typedef struct {
-  bobyqa_objfun* objfun; /* objective function */
-  void*          data;   /* client data for the objective function */
-  const REAL*    scl;    /* scaling factors */
-  REAL*          ws;     /* temporary workspace */
-  REAL           sgn;    /* sign: +1 for minimize, -1 for maximize */
-  INTEGER        n;      /* number of variables */
+    bobyqa_objfun* objfun; /* objective function */
+    void*          data;   /* client data for the objective function */
+    const REAL*    scl;    /* scaling factors */
+    REAL*          ws;     /* temporary workspace */
+    REAL           sgn;    /* sign: +1 for minimize, -1 for maximize */
+    INTEGER        n;      /* number of variables */
 } context;
 
-#define GET_VARIABLES(ctx, x) ((ctx)->scl == NULL ? (x) : \
+#define GET_VARIABLES(ctx, x) ((ctx)->scl == NULL ? (x) :               \
                                scale((ctx)->ws, (ctx)->n, (ctx)->scl, (x)))
 
 #define CALL_OBJFUN(ctx, x)   ((ctx)->objfun((ctx)->n, GET_VARIABLES(ctx, x), \
-                                           (ctx)->data)*(ctx)->sgn)
+                                             (ctx)->data)*(ctx)->sgn)
 
 #define WORK_SIZE(n, npt)     (((npt) + 5)*((npt) + (n)) + 3*(n)*((n) + 5)/2)
 
@@ -124,85 +123,72 @@ static void
 print_x(FILE* output, const context* ctx, const REAL x[], const REAL dx[]);
 
 static bobyqa_status
-bobyqb(const INTEGER n, const INTEGER npt, const context* ctx,
-       REAL* x, const REAL* xl, const REAL* xu,
-       const REAL rhobeg, const REAL rhoend,
-       const INTEGER iprint, const INTEGER maxfun,
-       REAL* xbase, REAL* xpt, REAL* fval, REAL* xopt,
-       REAL* gopt, REAL* hq, REAL* pq, REAL* bmat, REAL* zmat,
-       const INTEGER ndim, REAL* sl, REAL* su, REAL* xnew,
-       REAL* xalt, REAL* d, REAL* vlag, REAL* w);
+bobyqb(const INTEGER n, const INTEGER npt, const context* ctx, REAL* x, const REAL* xl,
+       const REAL* xu, const REAL rhobeg, const REAL rhoend, const INTEGER iprint,
+       const INTEGER maxfun, REAL* xbase, REAL* xpt, REAL* fval, REAL* xopt, REAL* gopt,
+       REAL* hq, REAL* pq, REAL* bmat, REAL* zmat, const INTEGER ndim, REAL* sl, REAL* su,
+       REAL* xnew, REAL* xalt, REAL* d, REAL* vlag, REAL* w);
 
 static void
-altmov(const INTEGER n, const INTEGER npt, REAL xpt[],
-       REAL* xopt, REAL* bmat, REAL* zmat, const INTEGER ndim,
-       REAL* sl, REAL* su, const INTEGER kopt, const INTEGER knew,
-       const REAL adelt, REAL* xnew, REAL* xalt, REAL* alpha,
-       REAL* cauchy, REAL* glag, REAL* hcol, REAL* w);
+altmov(const INTEGER n, const INTEGER npt, REAL xpt[], REAL* xopt, REAL* bmat, REAL* zmat,
+       const INTEGER ndim, REAL* sl, REAL* su, const INTEGER kopt, const INTEGER knew,
+       const REAL adelt, REAL* xnew, REAL* xalt, REAL* alpha, REAL* cauchy, REAL* glag,
+       REAL* hcol, REAL* w);
 
 static void
-prelim(const INTEGER n, const INTEGER npt, const context* ctx,
-       REAL* x, const REAL* xl, const REAL* xu,
-       const REAL rhobeg, const INTEGER iprint,
-       const INTEGER maxfun, REAL* xbase, REAL* xpt, REAL* fval,
-       REAL* gopt, REAL* hq, REAL* pq, REAL* bmat,
-       REAL* zmat, const INTEGER ndim, REAL* sl, REAL* su,
-       INTEGER* nf, INTEGER* kopt);
+prelim(const INTEGER n, const INTEGER npt, const context* ctx, REAL* x, const REAL* xl,
+       const REAL* xu, const REAL rhobeg, const INTEGER iprint, const INTEGER maxfun,
+       REAL* xbase, REAL* xpt, REAL* fval, REAL* gopt, REAL* hq, REAL* pq, REAL* bmat,
+       REAL* zmat, const INTEGER ndim, REAL* sl, REAL* su, INTEGER* nf, INTEGER* kopt);
 
 static void
-trsbox(const INTEGER n, const INTEGER npt, REAL* xpt,
-       REAL* xopt, REAL* gopt, REAL* hq, REAL* pq,
-       REAL* sl, REAL* su, const REAL delta, REAL* xnew,
-       REAL* d, REAL* gnew, REAL* xbdi, REAL* s,
-       REAL* hs, REAL* hred, REAL* dsq, REAL* crvmin);
+trsbox(const INTEGER n, const INTEGER npt, REAL* xpt, REAL* xopt, REAL* gopt, REAL* hq,
+       REAL* pq, REAL* sl, REAL* su, const REAL delta, REAL* xnew, REAL* d, REAL* gnew,
+       REAL* xbdi, REAL* s, REAL* hs, REAL* hred, REAL* dsq, REAL* crvmin);
 
 static void
-rescue(const INTEGER n, const INTEGER npt, const context* ctx,
-       const REAL* xl, const REAL* xu,
-       const INTEGER iprint, const INTEGER maxfun,
-       REAL* xbase, REAL* xpt, REAL* fval, REAL* xopt,
-       REAL* gopt, REAL* hq, REAL* pq, REAL* bmat, REAL* zmat,
-       const INTEGER ndim, REAL* sl, REAL* su, INTEGER* nf,
-       const REAL delta, INTEGER* kopt, REAL* vlag, REAL* ptsaux,
-       REAL* ptsid, REAL* w);
+rescue(const INTEGER n, const INTEGER npt, const context* ctx, const REAL* xl,
+       const REAL* xu, const INTEGER iprint, const INTEGER maxfun, REAL* xbase, REAL* xpt,
+       REAL* fval, REAL* xopt, REAL* gopt, REAL* hq, REAL* pq, REAL* bmat, REAL* zmat,
+       const INTEGER ndim, REAL* sl, REAL* su, INTEGER* nf, const REAL delta,
+       INTEGER* kopt, REAL* vlag, REAL* ptsaux, REAL* ptsid, REAL* w);
 
 static void
-update(const INTEGER n, const INTEGER npt, REAL* bmat,
-       REAL* zmat, const INTEGER ndim, REAL* vlag, const REAL beta,
-       const REAL denom, const INTEGER knew, REAL* w);
+update(const INTEGER n, const INTEGER npt, REAL* bmat, REAL* zmat, const INTEGER ndim,
+       REAL* vlag, const REAL beta, const REAL denom, const INTEGER knew, REAL* w);
 
 static REAL*
 scale(REAL* dst, INTEGER n, const REAL* scl, const REAL* src)
 {
-  INTEGER i;
+    INTEGER i;
 
-  for (i = 0; i < n; ++i) {
-    dst[i] = scl[i]*src[i];
-  }
-  return dst;
+    for (i = 0; i < n; ++i) {
+        dst[i] = scl[i]*src[i];
+    }
+    return dst;
 }
 
-/* `clamp(x,lo,hi)` returns the value in the range `[lo,hi]` which is the
-   closest to `x`.  It is assumed that 'lo <= hi` holds.  */
+/* `clamp(x,lo,hi)` returns the value in the range `[lo,hi]` which is the closest to `x`.
+   It is assumed that 'lo <= hi` holds. */
 static REAL
 clamp(REAL x, REAL lo, REAL hi)
 {
-  return (x >= hi ? hi : (x <= lo ? lo : x));
+    return (x >= hi ? hi : (x <= lo ? lo : x));
 }
 
 static REAL
 min(REAL a, REAL b)
 {
-   return (a <= b ? a : b);
+    return (a <= b ? a : b);
 }
 
 static REAL
 max(REAL a, REAL b)
 {
-   return (a >= b ? a : b);
+    return (a >= b ? a : b);
 }
 
-/*---------------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------------------*/
 /* TESTING */
 
 static REAL
@@ -213,16 +199,16 @@ objfun_test(const INTEGER n, const REAL* x, void* data);
 int
 main(int argc, char* argv[])
 {
-  bobyqa_test();
-  return 0;
+    bobyqa_test();
+    return 0;
 }
 
 #ifdef FORTRAN_NAME
 int
 FORTRAN_NAME(calfun,CALFUN)(const INTEGER* n, REAL* x, REAL* f)
 {
-  *f = objfun_test(*n, x, NULL);
-  return 0;
+    *f = objfun_test(*n, x, NULL);
+    return 0;
 }
 #endif /* FORTRAN_NAME */
 
@@ -231,92 +217,92 @@ FORTRAN_NAME(calfun,CALFUN)(const INTEGER* n, REAL* x, REAL* f)
 void
 bobyqa_test(void)
 {
-  /* Constants. */
-  const REAL twopi = 2.0*M_PI;
+    /* Constants. */
+    const REAL twopi = 2.0*M_PI;
 
-  /* Local variables. */
-  REAL bdl, bdu, rhobeg, rhoend, temp;
-  REAL w[500000], x[100], xl[100], xu[100];
-  INTEGER i, iprint, j, jcase, m, maxfun;
+    /* Local variables. */
+    REAL bdl, bdu, rhobeg, rhoend, temp;
+    REAL w[500000], x[100], xl[100], xu[100];
+    INTEGER i, iprint, j, jcase, m, maxfun;
 
-  bdl = -1.0;
-  bdu =  1.0;
-  iprint = 2;
-  maxfun = 500000;
-  rhobeg = 0.1;
-  rhoend = 1e-6;
-  for (m = 5; m <= 10; m += m) {
-    REAL q = twopi/(REAL)m;
-    INTEGER n = 2*m;
-    LOOP(i,n) {
-      xl[i - 1] = bdl;
-      xu[i - 1] = bdu;
+    bdl = -1.0;
+    bdu =  1.0;
+    iprint = 2;
+    maxfun = 500000;
+    rhobeg = 0.1;
+    rhoend = 1e-6;
+    for (m = 5; m <= 10; m += m) {
+        REAL q = twopi/(REAL)m;
+        INTEGER n = 2*m;
+        LOOP(i,n) {
+            xl[i - 1] = bdl;
+            xu[i - 1] = bdu;
+        }
+        for (jcase = 1; jcase <= 2; ++jcase) {
+            INTEGER npt = n + 6;
+            if (jcase == 2) {
+                npt = 2*n + 1;
+            }
+            fprintf(OUTPUT,
+                    "\n\n     2D output with M =%4ld,  N =%4ld  and  NPT =%4ld\n",
+                    (long)m, (long)n, (long)npt);
+            LOOP(j,m) {
+                temp = ((REAL)j)*q;
+                x[2*j - 2] = COS(temp);
+                x[2*j - 1] = SIN(temp);
+            }
+            bobyqa(n, npt, objfun_test, NULL, x, xl, xu, rhobeg, rhoend,
+                   iprint, maxfun, w);
+        }
     }
-    for (jcase = 1; jcase <= 2; ++jcase) {
-      INTEGER npt = n + 6;
-      if (jcase == 2) {
-        npt = 2*n + 1;
-      }
-      fprintf(OUTPUT,
-              "\n\n     2D output with M =%4ld,  N =%4ld  and  NPT =%4ld\n",
-              (long)m, (long)n, (long)npt);
-      LOOP(j,m) {
-        temp = ((REAL)j)*q;
-        x[2*j - 2] = COS(temp);
-        x[2*j - 1] = SIN(temp);
-      }
-      bobyqa(n, npt, objfun_test, NULL, x, xl, xu, rhobeg, rhoend,
-             iprint, maxfun, w);
-    }
-  }
 }
 
 static REAL
 objfun_test(const INTEGER n, const REAL* x, void* data)
 {
-  INTEGER i;
-  REAL f, temp, tempa, tempb;
+    INTEGER i;
+    REAL f, temp, tempa, tempb;
 
-  f = 0.0;
-  for (i = 4; i <= n; i += 2) {
-    INTEGER j, j1 = i - 2;
-    for (j = 2; j <= j1; j += 2) {
-      tempa = x[i - 2] - x[j - 2];
-      tempb = x[i - 1] - x[j - 1];
-      temp = max(tempa*tempa + tempb*tempb, 1e-6);
-      f += 1.0/SQRT(temp);
+    f = 0.0;
+    for (i = 4; i <= n; i += 2) {
+        INTEGER j, j1 = i - 2;
+        for (j = 2; j <= j1; j += 2) {
+            tempa = x[i - 2] - x[j - 2];
+            tempb = x[i - 1] - x[j - 1];
+            temp = max(tempa*tempa + tempb*tempb, 1e-6);
+            f += 1.0/SQRT(temp);
+        }
     }
-  }
-  return f;
+    return f;
 }
 
-/*---------------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------------------*/
 /* BOBYQA DRIVER ROUTINES */
 
 const char* bobyqa_reason(bobyqa_status status)
 {
-  switch (status) {
-  case BOBYQA_SUCCESS:
-    return "algorithm converged";
-  case BOBYQA_BAD_NVARS:
-    return "bad number of variables";
-  case BOBYQA_BAD_NPT:
-    return "NPT is not in the required interval";
-  case BOBYQA_BAD_RHO_RANGE:
-    return "bad trust region radius parameters";
-  case BOBYQA_BAD_SCALING:
-    return "bad scaling factor(s)";
-  case BOBYQA_TOO_CLOSE:
-    return "insufficient space between the bounds";
-  case BOBYQA_ROUNDING_ERRORS:
-    return "too much cancellation in a denominator";
-  case BOBYQA_TOO_MANY_EVALUATIONS:
-    return "too many function evaluations";
-  case BOBYQA_STEP_FAILED:
-    return "trust region step has failed to reduce quadratic approximation";
-  default:
-    return "unknown BOBYQA status";
-  }
+    switch (status) {
+    case BOBYQA_SUCCESS:
+        return "algorithm converged";
+    case BOBYQA_BAD_NVARS:
+        return "bad number of variables";
+    case BOBYQA_BAD_NPT:
+        return "NPT is not in the required interval";
+    case BOBYQA_BAD_RHO_RANGE:
+        return "bad trust region radius parameters";
+    case BOBYQA_BAD_SCALING:
+        return "bad scaling factor(s)";
+    case BOBYQA_TOO_CLOSE:
+        return "insufficient space between the bounds";
+    case BOBYQA_ROUNDING_ERRORS:
+        return "too much cancellation in a denominator";
+    case BOBYQA_TOO_MANY_EVALUATIONS:
+        return "too many function evaluations";
+    case BOBYQA_STEP_FAILED:
+        return "trust region step has failed to reduce quadratic approximation";
+    default:
+        return "unknown BOBYQA status";
+    }
 }
 
 bobyqa_status bobyqa(
@@ -326,8 +312,8 @@ bobyqa_status bobyqa(
     const REAL rhobeg, const REAL rhoend,
     const INTEGER iprint, const INTEGER maxfun, REAL* w)
 {
-  return bobyqa_optimize(n, npt, FALSE, objfun, data, x, xl, xu, NULL,
-                         rhobeg, rhoend, iprint, maxfun, w);
+    return bobyqa_optimize(n, npt, FALSE, objfun, data, x, xl, xu, NULL,
+                           rhobeg, rhoend, iprint, maxfun, w);
 }
 
 bobyqa_status bobyqa_optimize(
@@ -337,157 +323,156 @@ bobyqa_status bobyqa_optimize(
     const REAL rhobeg, const REAL rhoend,
     const INTEGER iprint, const INTEGER maxfun, REAL* w)
 {
-  /* Constants. */
-  const REAL zero = FLT(0.0);
-  const REAL one = FLT(1.0);
+    /* Constants. */
+    const REAL zero = FLT(0.0);
+    const REAL one = FLT(1.0);
 
-  /* Local variables. */
-  REAL temp;
-  INTEGER ibmat, id, ifv, igo, ihq, ipq, isl, isu, ivl, iw, ixa, ixb, ixn,
-    ixo, ixp, izmat, j, jsl, jsu, ndim, np;
-  context ctx;
-  bobyqa_status status;
+    /* Local variables. */
+    REAL temp;
+    INTEGER ibmat, id, ifv, igo, ihq, ipq, isl, isu, ivl, iw, ixa, ixb, ixn,
+        ixo, ixp, izmat, j, jsl, jsu, ndim, np;
+    context ctx;
+    bobyqa_status status;
 
-  /* Check arguments. */
-  if (n < 2) {
-    if (iprint > 0) {
-      print_error("there must be at least 2 variables");
-    }
-    return BOBYQA_BAD_NVARS;
-  }
-  np = n + 1;
-  if (npt < n + 2 || npt > (n + 2)*np/2) {
-    if (iprint > 0) {
-      print_error("NPT is not in the required interval");
-    }
-    return BOBYQA_BAD_NPT;
-  }
-  if (rhoend <= zero || rhoend > rhobeg) {
-    return BOBYQA_BAD_RHO_RANGE;
-  }
-
-  /* Initialize context. */
-  ctx.objfun = objfun;
-  ctx.data = data;
-  ctx.scl = NULL;
-  ctx.ws = NULL;
-  ctx.sgn = (maximize ? FLT(-1.0) : FLT(1.0));
-  ctx.n = n;
-
-  /* Decide whether scaling is needed. */
-  if (scl != NULL) {
-    LOGICAL scaling = FALSE;
-    for (j = 0; j < n; ++j) {
-      REAL s = scl[j];
-      if (s != one) {
-        if (s - s != zero || s <= zero) {
-          return BOBYQA_BAD_SCALING;
+    /* Check arguments. */
+    if (n < 2) {
+        if (iprint > 0) {
+            print_error("there must be at least 2 variables");
         }
-        scaling = TRUE;
-      }
+        return BOBYQA_BAD_NVARS;
     }
-    if (scaling) {
-      /* If scaling, divide the initial variables and the bounds by the scaling
-         factors. */
-      REAL* tmpx  = w + WORK_SIZE(n, npt);
-      REAL* tmpxl = tmpx + n;
-      REAL* tmpxu = tmpxl + n;
-      for (j = 0; j < n; ++j) {
-        REAL s = one/scl[j];
-        x[j] *= s;
-        tmpxl[j] = s*xl[j];
-        tmpxu[j] = s*xu[j];
-      }
-      ctx.scl = scl;
-      ctx.ws = tmpx;
-      xl = tmpxl;
-      xu = tmpxu;
+    np = n + 1;
+    if (npt < n + 2 || npt > (n + 2)*np/2) {
+        if (iprint > 0) {
+            print_error("NPT is not in the required interval");
+        }
+        return BOBYQA_BAD_NPT;
     }
-  }
-
-  /* Partition the working space array, so that different parts of it can
-     be treated separately during the calculation of BOBYQB.  The partition
-     requires the first (NPT+2)*(NPT+N)+3*N*(N+5)/2 elements of W plus the
-     space that is taken by the last array in the argument list of
-     BOBYQB. */
-  ndim = npt + n;
-  ixb = 0; /* indexes start at 0 in C */
-  ixp = ixb + n;
-  ifv = ixp + n*npt;
-  ixo = ifv + npt;
-  igo = ixo + n;
-  ihq = igo + n;
-  ipq = ihq + n*np/2;
-  ibmat = ipq + npt;
-  izmat = ibmat + ndim*n;
-  isl = izmat + npt*(npt - np);
-  isu = isl + n;
-  ixn = isu + n;
-  ixa = ixn + n;
-  id = ixa + n;
-  ivl = id + n;
-  iw = ivl + ndim;
-
-  /* Return if there is insufficient space between the bounds.  Modify the
-     initial X if necessary in order to avoid conflicts between the bounds and
-     the construction of the first quadratic model.  The lower and upper bounds
-     on moves from the updated X are set now, in the ISL and ISU partitions of
-     W, in order to provide useful and exact information about components of X
-     that become within distance RHOBEG from their bounds. */
-  for (j = 0; j < n; ++j) {
-    temp = xu[j] - xl[j];
-    if (temp < rhobeg + rhobeg) {
-      if (iprint > 0) {
-        print_error("one of the differences XU(I)-XL(I) is less than 2*RHOBEG");
-      }
-      return BOBYQA_TOO_CLOSE;
+    if (rhoend <= zero || rhoend > rhobeg) {
+        return BOBYQA_BAD_RHO_RANGE;
     }
-    jsl = isl + j;
-    jsu = jsl + n;
-    w[jsl] = xl[j] - x[j];
-    w[jsu] = xu[j] - x[j];
-    if (w[jsl] >= -rhobeg) {
-      if (w[jsl] >= zero) {
-        x[j] = xl[j];
-        w[jsl] = zero;
-        w[jsu] = temp;
-      } else {
-        x[j] = xl[j] + rhobeg;
-        w[jsl] = -rhobeg;
-        w[jsu] = max(xu[j] - x[j], rhobeg);
-      }
-    } else if (w[jsu] <= rhobeg) {
-      if (w[jsu] <= zero) {
-        x[j] = xu[j];
-        w[jsl] = -temp;
-        w[jsu] = zero;
-      } else {
-        x[j] = xu[j] - rhobeg;
-        w[jsl] = min(xl[j] - x[j], -rhobeg);
-        w[jsu] = rhobeg;
-      }
+
+    /* Initialize context. */
+    ctx.objfun = objfun;
+    ctx.data = data;
+    ctx.scl = NULL;
+    ctx.ws = NULL;
+    ctx.sgn = (maximize ? FLT(-1.0) : FLT(1.0));
+    ctx.n = n;
+
+    /* Decide whether scaling is needed. */
+    if (scl != NULL) {
+        LOGICAL scaling = FALSE;
+        for (j = 0; j < n; ++j) {
+            REAL s = scl[j];
+            if (s != one) {
+                if (s - s != zero || s <= zero) {
+                    return BOBYQA_BAD_SCALING;
+                }
+                scaling = TRUE;
+            }
+        }
+        if (scaling) {
+            /* If scaling, divide the initial variables and the bounds by the scaling
+               factors. */
+            REAL* tmpx  = w + WORK_SIZE(n, npt);
+            REAL* tmpxl = tmpx + n;
+            REAL* tmpxu = tmpxl + n;
+            for (j = 0; j < n; ++j) {
+                REAL s = one/scl[j];
+                x[j] *= s;
+                tmpxl[j] = s*xl[j];
+                tmpxu[j] = s*xu[j];
+            }
+            ctx.scl = scl;
+            ctx.ws = tmpx;
+            xl = tmpxl;
+            xu = tmpxu;
+        }
     }
-  }
 
-  /* Make the call of BOBYQB. */
-  status = bobyqb(n, npt, &ctx, x, xl, xu,
-                  rhobeg, rhoend, iprint, maxfun,
-                  &w[ixb], &w[ixp], &w[ifv], &w[ixo], &w[igo],
-                  &w[ihq], &w[ipq], &w[ibmat], &w[izmat],
-                  ndim, &w[isl], &w[isu], &w[ixn], &w[ixa],
-                  &w[id], &w[ivl], &w[iw]);
+    /* Partition the working space array, so that different parts of it can be treated
+       separately during the calculation of BOBYQB. The partition requires the first
+       (NPT+2)*(NPT+N)+3*N*(N+5)/2 elements of W plus the space that is taken by the last
+       array in the argument list of BOBYQB. */
+    ndim = npt + n;
+    ixb = 0; /* indexes start at 0 in C */
+    ixp = ixb + n;
+    ifv = ixp + n*npt;
+    ixo = ifv + npt;
+    igo = ixo + n;
+    ihq = igo + n;
+    ipq = ihq + n*np/2;
+    ibmat = ipq + npt;
+    izmat = ibmat + ndim*n;
+    isl = izmat + npt*(npt - np);
+    isu = isl + n;
+    ixn = isu + n;
+    ixa = ixn + n;
+    id = ixa + n;
+    ivl = id + n;
+    iw = ivl + ndim;
 
-  /* Scale the final variables, if scaling. */
-  if (ctx.scl != NULL) {
-    scale(x, n, ctx.scl, x);
-  }
+    /* Return if there is insufficient space between the bounds. Modify the initial X if
+       necessary in order to avoid conflicts between the bounds and the construction of
+       the first quadratic model. The lower and upper bounds on moves from the updated X
+       are set now, in the ISL and ISU partitions of W, in order to provide useful and
+       exact information about components of X that become within distance RHOBEG from
+       their bounds. */
+    for (j = 0; j < n; ++j) {
+        temp = xu[j] - xl[j];
+        if (temp < rhobeg + rhobeg) {
+            if (iprint > 0) {
+                print_error("one of the differences XU(I)-XL(I) is less than 2*RHOBEG");
+            }
+            return BOBYQA_TOO_CLOSE;
+        }
+        jsl = isl + j;
+        jsu = jsl + n;
+        w[jsl] = xl[j] - x[j];
+        w[jsu] = xu[j] - x[j];
+        if (w[jsl] >= -rhobeg) {
+            if (w[jsl] >= zero) {
+                x[j] = xl[j];
+                w[jsl] = zero;
+                w[jsu] = temp;
+            } else {
+                x[j] = xl[j] + rhobeg;
+                w[jsl] = -rhobeg;
+                w[jsu] = max(xu[j] - x[j], rhobeg);
+            }
+        } else if (w[jsu] <= rhobeg) {
+            if (w[jsu] <= zero) {
+                x[j] = xu[j];
+                w[jsl] = -temp;
+                w[jsu] = zero;
+            } else {
+                x[j] = xu[j] - rhobeg;
+                w[jsl] = min(xl[j] - x[j], -rhobeg);
+                w[jsu] = rhobeg;
+            }
+        }
+    }
 
-  /* Return status. */
-  w[0] *= ctx.sgn;
-  return status;
+    /* Make the call of BOBYQB. */
+    status = bobyqb(n, npt, &ctx, x, xl, xu,
+                    rhobeg, rhoend, iprint, maxfun,
+                    &w[ixb], &w[ixp], &w[ifv], &w[ixo], &w[igo],
+                    &w[ihq], &w[ipq], &w[ibmat], &w[izmat],
+                    ndim, &w[isl], &w[isu], &w[ixn], &w[ixa],
+                    &w[id], &w[ivl], &w[iw]);
+
+    /* Scale the final variables, if scaling. */
+    if (ctx.scl != NULL) {
+        scale(x, n, ctx.scl, x);
+    }
+
+    /* Return status. */
+    w[0] *= ctx.sgn;
+    return status;
 }
 
-/*---------------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------------------*/
 /* FORTRAN SUPPORT */
 
 #ifdef FORTRAN_NAME
@@ -495,9 +480,9 @@ bobyqa_status bobyqa_optimize(
 REAL
 bobyqa_calfun_wrapper(const INTEGER n, const REAL* x, void* data)
 {
-  REAL f;
-  FORTRAN_NAME(calfun,CALFUN)(&n, (REAL*)x, &f);
-  return f;
+    REAL f;
+    FORTRAN_NAME(calfun,CALFUN)(&n, (REAL*)x, &f);
+    return f;
 }
 
 int
@@ -507,24 +492,24 @@ FORTRAN_NAME(bobyqa,BOBYQA)(const INTEGER* n, const INTEGER* npt,
                             const INTEGER* iprint, const INTEGER* maxfun,
                             REAL* w)
 {
-  bobyqa(*n, *npt, bobyqa_calfun_wrapper, NULL, x, xl, xu,
-         *rhobeg, *rhoend, *iprint, *maxfun, w);
-  return 0;
+    bobyqa(*n, *npt, bobyqa_calfun_wrapper, NULL, x, xl, xu,
+           *rhobeg, *rhoend, *iprint, *maxfun, w);
+    return 0;
 }
 
 #endif /* FORTRAN_NAME */
 
-/*---------------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------------------*/
 /* BOBYQA SUBROUTINES */
 
-/* The arguments N, NPT, X, XL, XU, RHOBEG, RHOEND, IPRINT and MAXFUN are
-   identical to the corresponding arguments in SUBROUTINE BOBYQA.
+/* The arguments N, NPT, X, XL, XU, RHOBEG, RHOEND, IPRINT and MAXFUN are identical to the
+   corresponding arguments in SUBROUTINE BOBYQA.
 
-   XBASE holds a shift of origin that should reduce the contributions from
-   rounding errors to values of the model and Lagrange functions.
+   XBASE holds a shift of origin that should reduce the contributions from rounding errors
+   to values of the model and Lagrange functions.
 
-   XPT is a two-dimensional array that holds the coordinates of the
-   interpolation points relative to XBASE.
+   XPT is a two-dimensional array that holds the coordinates of the interpolation points
+   relative to XBASE.
 
    FVAL holds the values of F at the interpolation points.
 
@@ -534,35 +519,34 @@ FORTRAN_NAME(bobyqa,BOBYQA)(const INTEGER* n, const INTEGER* npt,
 
    HQ holds the explicit second derivatives of the quadratic model.
 
-   PQ contains the parameters of the implicit second derivatives of the
-   quadratic model.
+   PQ contains the parameters of the implicit second derivatives of the quadratic model.
 
    BMAT holds the last N columns of H.
 
    ZMAT holds the factorization of the leading NPT by NPT submatrix of H, this
-   factorization being ZMAT times ZMAT^T, which provides both the correct rank
-   and positive semi-definiteness.
+   factorization being ZMAT times ZMAT^T, which provides both the correct rank and
+   positive semi-definiteness.
 
    NDIM is the first dimension of BMAT and has the value NPT+N.
 
-   SL and SU hold the differences XL-XBASE and XU-XBASE, respectively.  All the
-   components of every XOPT are going to satisfy the bounds SL(I) <= XOPT(I) <=
-   SU(I), with appropriate equalities when XOPT is on a constraint boundary.
+   SL and SU hold the differences XL-XBASE and XU-XBASE, respectively. All the components
+   of every XOPT are going to satisfy the bounds SL(I) <= XOPT(I) <= SU(I), with
+   appropriate equalities when XOPT is on a constraint boundary.
 
-   XNEW is chosen by SUBROUTINE TRSBOX or ALTMOV.  Usually XBASE+XNEW is the
-   vector of variables for the next call of OBJFUN.  XNEW also satisfies the SL
-   and SU constraints in the way that has just been mentioned.
+   XNEW is chosen by SUBROUTINE TRSBOX or ALTMOV. Usually XBASE+XNEW is the vector of
+   variables for the next call of OBJFUN. XNEW also satisfies the SL and SU constraints in
+   the way that has just been mentioned.
 
-   XALT is an alternative to XNEW, chosen by ALTMOV, that may replace XNEW in
-   order to increase the denominator in the updating of UPDATE.
+   XALT is an alternative to XNEW, chosen by ALTMOV, that may replace XNEW in order to
+   increase the denominator in the updating of UPDATE.
 
    D is reserved for a trial step from XOPT, which is usually XNEW-XOPT.
 
-   VLAG contains the values of the Lagrange functions at a new point X.  They
-   are part of a product that requires VLAG to be of length NDIM.
+   VLAG contains the values of the Lagrange functions at a new point X. They are part of a
+   product that requires VLAG to be of length NDIM.
 
-   W is a one-dimensional array that is used for working space.  Its length
-   must be at least 3*NDIM = 3*(NPT+N). */
+   W is a one-dimensional array that is used for working space. Its length must be at
+   least 3*NDIM = 3*(NPT+N). */
 
 static bobyqa_status
 bobyqb(const INTEGER n, const INTEGER npt, const context* ctx,
@@ -574,786 +558,781 @@ bobyqb(const INTEGER n, const INTEGER npt, const context* ctx,
        const INTEGER ndim, REAL* sl, REAL* su, REAL* xnew,
        REAL* xalt, REAL* d, REAL* vlag, REAL* w)
 {
-  /* Constants. */
-  const REAL half = 0.5;
-  const REAL one = 1.0;
-  const REAL ten = 10.0;
-  const REAL tenth = 0.1;
-  const REAL two = 2.0;
-  const REAL zero = 0.0;
+    /* Constants. */
+    const REAL half = 0.5;
+    const REAL one = 1.0;
+    const REAL ten = 10.0;
+    const REAL tenth = 0.1;
+    const REAL two = 2.0;
+    const REAL zero = 0.0;
 
-  /* Local variables. */
-  REAL adelt, alpha, bdtol, beta, biglsq, bsum, cauchy, crvmin,
-    curv, delsq, delta, denom, densav, diff, diffa, diffb, diffc,
-    dist, distsq, dnorm, dsq, dx, errbig, f, fopt, frhosq, fsave,
-    gisq, gqsq, pqold, ratio, rho, scaden, vquad, xoptsq;
-  INTEGER i, ih, itest, j, jj, k, kbase, knew, kopt, ksav, nf,
-    nfsav, nh, np, nptm, nresc, ntrits;
-  bobyqa_status status = BOBYQA_SUCCESS;
-  const char* reason = NULL;
+    /* Local variables. */
+    REAL adelt, alpha, bdtol, beta, biglsq, bsum, cauchy, crvmin,
+        curv, delsq, delta, denom, densav, diff, diffa, diffb, diffc,
+        dist, distsq, dnorm, dsq, dx, errbig, f, fopt, frhosq, fsave,
+        gisq, gqsq, pqold, ratio, rho, scaden, vquad, xoptsq;
+    INTEGER i, ih, itest, j, jj, k, kbase, knew, kopt, ksav, nf,
+        nfsav, nh, np, nptm, nresc, ntrits;
+    bobyqa_status status = BOBYQA_SUCCESS;
+    const char* reason = NULL;
 
-  /* Parameter adjustments to comply with FORTRAN indexing. */
-  x     -= 1;
-  xl    -= 1;
-  xu    -= 1;
-  xbase -= 1;
-  xpt   -= 1 + npt;
-  fval  -= 1;
-  xopt  -= 1;
-  gopt  -= 1;
-  hq    -= 1;
-  pq    -= 1;
-  bmat  -= 1 + ndim;
-  zmat  -= 1 + npt;
-  sl    -= 1;
-  su    -= 1;
-  xnew  -= 1;
-  xalt  -= 1;
-  d     -= 1;
-  vlag  -= 1;
-  w     -= 1;
+    /* Parameter adjustments to comply with FORTRAN indexing. */
+    x     -= 1;
+    xl    -= 1;
+    xu    -= 1;
+    xbase -= 1;
+    xpt   -= 1 + npt;
+    fval  -= 1;
+    xopt  -= 1;
+    gopt  -= 1;
+    hq    -= 1;
+    pq    -= 1;
+    bmat  -= 1 + ndim;
+    zmat  -= 1 + npt;
+    sl    -= 1;
+    su    -= 1;
+    xnew  -= 1;
+    xalt  -= 1;
+    d     -= 1;
+    vlag  -= 1;
+    w     -= 1;
 #define XPT(a1,a2) xpt[(a2)*npt + a1]
 #define BMAT(a1,a2) bmat[(a2)*ndim + a1]
 #define ZMAT(a1,a2) zmat[(a2)*npt + a1]
 
-  /* Set uninitialized variables to avoid compiler warnings. */
-  adelt = zero;
-  alpha = zero;
-  cauchy = zero;
-  denom = zero;
-  diff = zero;
-  diffc = zero;
-  f = zero;
-  knew = 0;
+    /* Set uninitialized variables to avoid compiler warnings. */
+    adelt = zero;
+    alpha = zero;
+    cauchy = zero;
+    denom = zero;
+    diff = zero;
+    diffc = zero;
+    f = zero;
+    knew = 0;
 
-  /* Set some constants. */
-  np = n + 1;
-  nptm = npt - np;
-  nh = n*np/2;
+    /* Set some constants. */
+    np = n + 1;
+    nptm = npt - np;
+    nh = n*np/2;
 
-  /* The call of PRELIM sets the elements of XBASE, XPT, FVAL, GOPT, HQ, PQ,
-     BMAT and ZMAT for the first iteration, with the corresponding values of of
-     NF and KOPT, which are the number of calls of OBJFUN so far and the index
-     of the interpolation point at the trust region centre.  Then the initial
-     XOPT is set too.  The branch to label 720 occurs if MAXFUN is less than
-     NPT.  GOPT will be updated if KOPT is different from KBASE. */
-  prelim(n, npt, ctx, &x[1], &xl[1], &xu[1], rhobeg, iprint,
-         maxfun, &xbase[1], &XPT(1,1), &fval[1], &gopt[1], &hq[1], &pq[1],
-         &BMAT(1,1), &ZMAT(1,1), ndim, &sl[1], &su[1], &nf, &kopt);
-  xoptsq = zero;
-  LOOP(i,n) {
-    xopt[i] = XPT(kopt,i);
-    xoptsq += xopt[i]*xopt[i];
-  }
-  fsave = fval[1];
-  if (nf < npt) {
-    goto too_many_evaluations;
-  }
-  kbase = 1;
-
-  /* Complete the settings that are required for the iterative procedure. */
-  rho = rhobeg;
-  delta = rho;
-  nresc = nf;
-  ntrits = 0;
-  diffa = zero;
-  diffb = zero;
-  itest = 0;
-  nfsav = nf;
-
-  /* Update GOPT if necessary before the first iteration and after each
-     call of RESCUE that makes a call of OBJFUN. */
- L20:
-  if (kopt != kbase) {
-    ih = 0;
-    LOOP(j,n) {
-      LOOP(i,j) {
-        ++ih;
-        if (i < j) {
-          gopt[j] += hq[ih]*xopt[i];
-        }
-        gopt[i] += hq[ih]*xopt[j];
-      }
-    }
-    if (nf > npt) {
-      LOOP(k,npt) {
-        REAL temp = zero;
-        LOOP(j,n) {
-          temp += XPT(k,j)*xopt[j];
-        }
-        temp *= pq[k];
-        LOOP(i,n) {
-          gopt[i] += temp*XPT(k,i);
-        }
-      }
-    }
-  }
-
-  /* Generate the next point in the trust region that provides a small value
-     of the quadratic model subject to the constraints on the variables.
-     The integer NTRITS is set to the number "trust region" iterations that
-     have occurred since the last "alternative" iteration.  If the length
-     of XNEW-XOPT is less than HALF*RHO, however, then there is a branch to
-     label 650 or 680 with NTRITS=-1, instead of calculating F at XNEW. */
- L60:
-  trsbox(n, npt, &XPT(1,1), &xopt[1], &gopt[1], &hq[1], &pq[1],
-         &sl[1], &su[1], delta, &xnew[1], &d[1], &w[1], &w[np],
-         &w[np + n], &w[np + 2*n], &w[np + n*3], &dsq, &crvmin);
-  dnorm = SQRT(dsq);
-  dnorm = min(dnorm,delta);
-  if (dnorm < half*rho) {
-    distsq = FLT(100.0)*rho*rho;
-    ntrits = -1;
-    if (nf <= nfsav + 2) {
-      goto L650;
-    }
-
-    /* The following choice between labels 650 and 680 depends on whether or
-       not our work with the current RHO seems to be complete.  Either RHO is
-       decreased or termination occurs if the errors in the quadratic model at
-       the last three interpolation points compare favourably with predictions
-       of likely improvements to the model within distance HALF*RHO of XOPT. */
-    errbig = max(max(diffa, diffb), diffc);
-    frhosq = rho*FLT(0.125)*rho;
-    if (crvmin > zero && errbig > frhosq*crvmin) {
-      goto L650;
-    }
-    bdtol = errbig/rho;
-    LOOP(j,n) {
-      REAL bdtest = (xnew[j] == su[j] ? -w[j] :
-                     (xnew[j] == sl[j] ? w[j] : bdtol));
-      if (bdtest < bdtol) {
-        curv = hq[(j + j*j)/2];
-        LOOP(k,npt) {
-          curv += pq[k]*(XPT(k,j)*XPT(k,j));
-        }
-        bdtest += half*curv*rho;
-        if (bdtest < bdtol) {
-          goto L650;
-        }
-      }
-    }
-    goto L680;
-  }
-  ++ntrits;
-
-  /* Severe cancellation is likely to occur if XOPT is too far from XBASE.
-     If the following test holds, then XBASE is shifted so that XOPT becomes
-     zero.  The appropriate changes are made to BMAT and to the second
-     derivatives of the current model, beginning with the changes to BMAT
-     that do not depend on ZMAT.  VLAG is used temporarily for working space. */
- L90:
-  if (dsq <= xoptsq*0.001) {
-    REAL fracsq = xoptsq*0.25;
-    REAL sumpq = zero;
-    LOOP(k,npt) {
-      REAL temp, sum = -half*xoptsq;
-      LOOP(i,n) {
-        sum += XPT(k,i)*xopt[i];
-      }
-      sumpq += pq[k];
-      w[npt + k] = sum;
-      temp = fracsq - half*sum;
-      LOOP(i,n) {
-        INTEGER ip = npt + i;
-        w[i] = BMAT(k,i);
-        vlag[i] = sum*XPT(k,i) + temp*xopt[i];
-        LOOP(j,i) {
-          BMAT(ip,j) = BMAT(ip,j) + w[i]*vlag[j] + vlag[i]*w[j];
-        }
-      }
-    }
-
-    /* Then the revisions of BMAT that depend on ZMAT are calculated. */
-    LOOP(jj,nptm) {
-      REAL sumz = zero;
-      REAL sumw = zero;
-      LOOP(k,npt) {
-        sumz += ZMAT(k,jj);
-        vlag[k] = w[npt + k]*ZMAT(k,jj);
-        sumw += vlag[k];
-      }
-      LOOP(j,n) {
-        REAL sum = (fracsq*sumz - half*sumw)*xopt[j];
-        LOOP(k,npt) {
-          sum += vlag[k]*XPT(k,j);
-        }
-        w[j] = sum;
-        LOOP(k,npt) {
-          BMAT(k,j) += sum*ZMAT(k,jj);
-        }
-      }
-      LOOP(i,n) {
-        REAL temp = w[i];
-        INTEGER ip = i + npt;
-        LOOP(j,i) {
-          BMAT(ip,j) += temp*w[j];
-        }
-      }
-    }
-
-    /* The following instructions complete the shift, including the changes to
-       the second derivative parameters of the quadratic model. */
-    ih = 0;
-    LOOP(j,n) {
-      w[j] = -half*sumpq*xopt[j];
-      LOOP(k,npt) {
-        w[j] += pq[k]*XPT(k,j);
-        XPT(k,j) -= xopt[j];
-      }
-      LOOP(i,j) {
-        ++ih;
-        hq[ih] = hq[ih] + w[i]*xopt[j] + xopt[i]*w[j];
-        BMAT(npt + i, j) = BMAT(npt + j, i);
-      }
-    }
-    LOOP(i,n) {
-      xbase[i] += xopt[i];
-      xnew[i]  -= xopt[i];
-      sl[i]    -= xopt[i];
-      su[i]    -= xopt[i];
-      xopt[i] = zero;
-    }
+    /* The call of PRELIM sets the elements of XBASE, XPT, FVAL, GOPT, HQ, PQ, BMAT and
+       ZMAT for the first iteration, with the corresponding values of of NF and KOPT,
+       which are the number of calls of OBJFUN so far and the index of the interpolation
+       point at the trust region centre. Then the initial XOPT is set too. The branch to
+       label 720 occurs if MAXFUN is less than NPT. GOPT will be updated if KOPT is
+       different from KBASE. */
+    prelim(n, npt, ctx, &x[1], &xl[1], &xu[1], rhobeg, iprint,
+           maxfun, &xbase[1], &XPT(1,1), &fval[1], &gopt[1], &hq[1], &pq[1],
+           &BMAT(1,1), &ZMAT(1,1), ndim, &sl[1], &su[1], &nf, &kopt);
     xoptsq = zero;
-  }
-  if (ntrits == 0) {
-    goto L210;
-  }
-  goto L230;
-
-  /* XBASE is also moved to XOPT by a call of RESCUE.  This calculation is more
-     expensive than the previous shift, because new matrices BMAT and ZMAT are
-     generated from scratch, which may include the replacement of interpolation
-     points whose positions seem to be causing near linear dependence in the
-     interpolation conditions.  Therefore RESCUE is called only if rounding
-     errors have reduced by at least a factor of two the denominator of the
-     formula for updating the H matrix.  It provides a useful safeguard, but is
-     not invoked in most applications of BOBYQA. */
- L190:
-  nfsav = nf;
-  kbase = kopt;
-  rescue(n, npt, ctx, &xl[1], &xu[1], iprint, maxfun,
-         &xbase[1], &XPT(1,1), &fval[1], &xopt[1], &gopt[1], &hq[1],
-         &pq[1], &BMAT(1,1), &ZMAT(1,1), ndim, &sl[1], &su[1],
-         &nf, delta, &kopt, &vlag[1], &w[1], &w[n + np], &w[ndim + np]);
-
-  /* XOPT is updated now in case the branch below to label 720 is taken.  Any
-     updating of GOPT occurs after the branch below to label 20, which leads to
-     a trust region iteration as does the branch to label 60. */
-  xoptsq = zero;
-  if (kopt != kbase) {
     LOOP(i,n) {
-      REAL temp = XPT(kopt,i);
-      xopt[i] = temp;
-      xoptsq += temp*temp;
+        xopt[i] = XPT(kopt,i);
+        xoptsq += xopt[i]*xopt[i];
     }
-  }
-  if (nf < 0) {
-    nf = maxfun;
-    goto too_many_evaluations;
-  }
-  nresc = nf;
-  if (nfsav < nf) {
+    fsave = fval[1];
+    if (nf < npt) {
+        goto too_many_evaluations;
+    }
+    kbase = 1;
+
+    /* Complete the settings that are required for the iterative procedure. */
+    rho = rhobeg;
+    delta = rho;
+    nresc = nf;
+    ntrits = 0;
+    diffa = zero;
+    diffb = zero;
+    itest = 0;
     nfsav = nf;
-    goto L20;
-  }
-  if (ntrits > 0) {
-    goto L60;
-  }
 
-  /* Pick two alternative vectors of variables, relative to XBASE, that are
-     suitable as new positions of the KNEW-th interpolation point.  Firstly,
-     XNEW is set to the point on a line through XOPT and another interpolation
-     point that minimizes the predicted value of the next denominator, subject
-     to ||XNEW - XOPT|| <= ADELT and to the SL and SU bounds.  Secondly, XALT
-     is set to the best feasible point on a constrained version of the Cauchy
-     step of the KNEW-th Lagrange function, the corresponding value of the
-     square of this function being returned in CAUCHY.  The choice between
-     these alternatives is going to be made when the denominator is
-     calculated. */
+    /* Update GOPT if necessary before the first iteration and after each call of RESCUE
+       that makes a call of OBJFUN. */
+ L20:
+    if (kopt != kbase) {
+        ih = 0;
+        LOOP(j,n) {
+            LOOP(i,j) {
+                ++ih;
+                if (i < j) {
+                    gopt[j] += hq[ih]*xopt[i];
+                }
+                gopt[i] += hq[ih]*xopt[j];
+            }
+        }
+        if (nf > npt) {
+            LOOP(k,npt) {
+                REAL temp = zero;
+                LOOP(j,n) {
+                    temp += XPT(k,j)*xopt[j];
+                }
+                temp *= pq[k];
+                LOOP(i,n) {
+                    gopt[i] += temp*XPT(k,i);
+                }
+            }
+        }
+    }
+
+    /* Generate the next point in the trust region that provides a small value of the
+       quadratic model subject to the constraints on the variables. The integer NTRITS is
+       set to the number "trust region" iterations that have occurred since the last
+       "alternative" iteration. If the length of XNEW-XOPT is less than HALF*RHO, however,
+       then there is a branch to label 650 or 680 with NTRITS=-1, instead of calculating F
+       at XNEW. */
+ L60:
+    trsbox(n, npt, &XPT(1,1), &xopt[1], &gopt[1], &hq[1], &pq[1],
+           &sl[1], &su[1], delta, &xnew[1], &d[1], &w[1], &w[np],
+           &w[np + n], &w[np + 2*n], &w[np + n*3], &dsq, &crvmin);
+    dnorm = SQRT(dsq);
+    dnorm = min(dnorm,delta);
+    if (dnorm < half*rho) {
+        distsq = FLT(100.0)*rho*rho;
+        ntrits = -1;
+        if (nf <= nfsav + 2) {
+            goto L650;
+        }
+
+        /* The following choice between labels 650 and 680 depends on whether or not our
+           work with the current RHO seems to be complete. Either RHO is decreased or
+           termination occurs if the errors in the quadratic model at the last three
+           interpolation points compare favourably with predictions of likely improvements
+           to the model within distance HALF*RHO of XOPT. */
+        errbig = max(max(diffa, diffb), diffc);
+        frhosq = rho*FLT(0.125)*rho;
+        if (crvmin > zero && errbig > frhosq*crvmin) {
+            goto L650;
+        }
+        bdtol = errbig/rho;
+        LOOP(j,n) {
+            REAL bdtest = (xnew[j] == su[j] ? -w[j] :
+                           (xnew[j] == sl[j] ? w[j] : bdtol));
+            if (bdtest < bdtol) {
+                curv = hq[(j + j*j)/2];
+                LOOP(k,npt) {
+                    curv += pq[k]*(XPT(k,j)*XPT(k,j));
+                }
+                bdtest += half*curv*rho;
+                if (bdtest < bdtol) {
+                    goto L650;
+                }
+            }
+        }
+        goto L680;
+    }
+    ++ntrits;
+
+    /* Severe cancellation is likely to occur if XOPT is too far from XBASE. If the
+       following test holds, then XBASE is shifted so that XOPT becomes zero. The
+       appropriate changes are made to BMAT and to the second derivatives of the current
+       model, beginning with the changes to BMAT that do not depend on ZMAT. VLAG is used
+       temporarily for working space. */
+ L90:
+    if (dsq <= xoptsq*0.001) {
+        REAL fracsq = xoptsq*0.25;
+        REAL sumpq = zero;
+        LOOP(k,npt) {
+            REAL temp, sum = -half*xoptsq;
+            LOOP(i,n) {
+                sum += XPT(k,i)*xopt[i];
+            }
+            sumpq += pq[k];
+            w[npt + k] = sum;
+            temp = fracsq - half*sum;
+            LOOP(i,n) {
+                INTEGER ip = npt + i;
+                w[i] = BMAT(k,i);
+                vlag[i] = sum*XPT(k,i) + temp*xopt[i];
+                LOOP(j,i) {
+                    BMAT(ip,j) = BMAT(ip,j) + w[i]*vlag[j] + vlag[i]*w[j];
+                }
+            }
+        }
+
+        /* Then the revisions of BMAT that depend on ZMAT are calculated. */
+        LOOP(jj,nptm) {
+            REAL sumz = zero;
+            REAL sumw = zero;
+            LOOP(k,npt) {
+                sumz += ZMAT(k,jj);
+                vlag[k] = w[npt + k]*ZMAT(k,jj);
+                sumw += vlag[k];
+            }
+            LOOP(j,n) {
+                REAL sum = (fracsq*sumz - half*sumw)*xopt[j];
+                LOOP(k,npt) {
+                    sum += vlag[k]*XPT(k,j);
+                }
+                w[j] = sum;
+                LOOP(k,npt) {
+                    BMAT(k,j) += sum*ZMAT(k,jj);
+                }
+            }
+            LOOP(i,n) {
+                REAL temp = w[i];
+                INTEGER ip = i + npt;
+                LOOP(j,i) {
+                    BMAT(ip,j) += temp*w[j];
+                }
+            }
+        }
+
+        /* The following instructions complete the shift, including the changes to the
+           second derivative parameters of the quadratic model. */
+        ih = 0;
+        LOOP(j,n) {
+            w[j] = -half*sumpq*xopt[j];
+            LOOP(k,npt) {
+                w[j] += pq[k]*XPT(k,j);
+                XPT(k,j) -= xopt[j];
+            }
+            LOOP(i,j) {
+                ++ih;
+                hq[ih] = hq[ih] + w[i]*xopt[j] + xopt[i]*w[j];
+                BMAT(npt + i, j) = BMAT(npt + j, i);
+            }
+        }
+        LOOP(i,n) {
+            xbase[i] += xopt[i];
+            xnew[i]  -= xopt[i];
+            sl[i]    -= xopt[i];
+            su[i]    -= xopt[i];
+            xopt[i] = zero;
+        }
+        xoptsq = zero;
+    }
+    if (ntrits == 0) {
+        goto L210;
+    }
+    goto L230;
+
+    /* XBASE is also moved to XOPT by a call of RESCUE. This calculation is more expensive
+       than the previous shift, because new matrices BMAT and ZMAT are generated from
+       scratch, which may include the replacement of interpolation points whose positions
+       seem to be causing near linear dependence in the interpolation conditions.
+       Therefore RESCUE is called only if rounding errors have reduced by at least a
+       factor of two the denominator of the formula for updating the H matrix. It provides
+       a useful safeguard, but is not invoked in most applications of BOBYQA. */
+ L190:
+    nfsav = nf;
+    kbase = kopt;
+    rescue(n, npt, ctx, &xl[1], &xu[1], iprint, maxfun,
+           &xbase[1], &XPT(1,1), &fval[1], &xopt[1], &gopt[1], &hq[1],
+           &pq[1], &BMAT(1,1), &ZMAT(1,1), ndim, &sl[1], &su[1],
+           &nf, delta, &kopt, &vlag[1], &w[1], &w[n + np], &w[ndim + np]);
+
+    /* XOPT is updated now in case the branch below to label 720 is taken. Any updating of
+       GOPT occurs after the branch below to label 20, which leads to a trust region
+       iteration as does the branch to label 60. */
+    xoptsq = zero;
+    if (kopt != kbase) {
+        LOOP(i,n) {
+            REAL temp = XPT(kopt,i);
+            xopt[i] = temp;
+            xoptsq += temp*temp;
+        }
+    }
+    if (nf < 0) {
+        nf = maxfun;
+        goto too_many_evaluations;
+    }
+    nresc = nf;
+    if (nfsav < nf) {
+        nfsav = nf;
+        goto L20;
+    }
+    if (ntrits > 0) {
+        goto L60;
+    }
+
+    /* Pick two alternative vectors of variables, relative to XBASE, that are suitable as
+       new positions of the KNEW-th interpolation point. Firstly, XNEW is set to the point
+       on a line through XOPT and another interpolation point that minimizes the predicted
+       value of the next denominator, subject to ||XNEW - XOPT|| <= ADELT and to the SL
+       and SU bounds. Secondly, XALT is set to the best feasible point on a constrained
+       version of the Cauchy step of the KNEW-th Lagrange function, the corresponding
+       value of the square of this function being returned in CAUCHY. The choice between
+       these alternatives is going to be made when the denominator is calculated. */
  L210:
-  altmov(n, npt, &XPT(1,1), &xopt[1], &BMAT(1,1), &ZMAT(1,1), ndim,
-         &sl[1], &su[1], kopt, knew, adelt, &xnew[1], &xalt[1],
-         &alpha, &cauchy, &w[1], &w[np], &w[ndim + 1]);
-  LOOP(i,n) {
-    d[i] = xnew[i] - xopt[i];
-  }
-
-  /* Calculate VLAG and BETA for the current choice of D.  The scalar product
-     of D with XPT(K,.) is going to be held in W(NPT+K) for use when VQUAD is
-     calculated. */
- L230:
-  LOOP(k,npt) {
-    REAL suma = zero, sumb = zero, sumc = zero;
-    LOOP(j,n) {
-      suma += XPT(k,j)*d[j];
-      sumb += XPT(k,j)*xopt[j];
-      sumc += BMAT(k,j)*d[j];
-    }
-    w[k] = suma*(half*suma + sumb);
-    vlag[k] = sumc;
-    w[npt + k] = suma;
-  }
-  beta = zero;
-  LOOP(jj,nptm) {
-    REAL sum = zero;
-    LOOP(k,npt) {
-      sum += ZMAT(k,jj)*w[k];
-    }
-    beta -= sum*sum;
-    LOOP(k,npt) {
-      vlag[k] += sum*ZMAT(k,jj);
-    }
-  }
-  dsq = zero;
-  bsum = zero;
-  dx = zero;
-  LOOP(j,n) {
-    INTEGER jp = npt + j;
-    REAL sum = zero;
-    LOOP(k,npt) {
-      sum += w[k]*BMAT(k,j);
-    }
-    dsq += d[j]*d[j];
-    bsum += sum*d[j];
+    altmov(n, npt, &XPT(1,1), &xopt[1], &BMAT(1,1), &ZMAT(1,1), ndim,
+           &sl[1], &su[1], kopt, knew, adelt, &xnew[1], &xalt[1],
+           &alpha, &cauchy, &w[1], &w[np], &w[ndim + 1]);
     LOOP(i,n) {
-      sum += BMAT(jp,i)*d[i];
-    }
-    vlag[jp] = sum;
-    bsum += sum*d[j];
-    dx += d[j]*xopt[j];
-  }
-  beta = dx*dx + dsq*(xoptsq + dx + dx + half*dsq) + beta - bsum;
-  vlag[kopt] += one;
-  if (ntrits == 0) {
-    /* If NTRITS is zero, the denominator may be increased by replacing the
-       step D of ALTMOV by a Cauchy step.  Then RESCUE may be called if
-       rounding errors have damaged the chosen denominator. */
-    denom = vlag[knew]*vlag[knew] + alpha*beta;
-    if (denom < cauchy && cauchy > zero) {
-      LOOP(i,n) {
-        xnew[i] = xalt[i];
         d[i] = xnew[i] - xopt[i];
-      }
-      cauchy = zero;
-      goto L230;
     }
-    if (denom <= half*(vlag[knew]*vlag[knew])) {
-      if (nf > nresc) {
-        goto L190;
-      }
-      goto cancellation_of_denominator;
+
+    /* Calculate VLAG and BETA for the current choice of D. The scalar product of D with
+       XPT(K,.) is going to be held in W(NPT+K) for use when VQUAD is calculated. */
+ L230:
+    LOOP(k,npt) {
+        REAL suma = zero, sumb = zero, sumc = zero;
+        LOOP(j,n) {
+            suma += XPT(k,j)*d[j];
+            sumb += XPT(k,j)*xopt[j];
+            sumc += BMAT(k,j)*d[j];
+        }
+        w[k] = suma*(half*suma + sumb);
+        vlag[k] = sumc;
+        w[npt + k] = suma;
     }
-  } else {
-    /* Alternatively, if NTRITS is positive, then set KNEW to the index of the
-       next interpolation point to be deleted to make room for a trust region
-       step.  Again RESCUE may be called if rounding errors have damaged the
-       chosen denominator, which is the reason for attempting to select KNEW
-       before calculating the next value of the objective function. */
-    delsq = delta*delta;
-    scaden = zero;
-    biglsq = zero;
+    beta = zero;
+    LOOP(jj,nptm) {
+        REAL sum = zero;
+        LOOP(k,npt) {
+            sum += ZMAT(k,jj)*w[k];
+        }
+        beta -= sum*sum;
+        LOOP(k,npt) {
+            vlag[k] += sum*ZMAT(k,jj);
+        }
+    }
+    dsq = zero;
+    bsum = zero;
+    dx = zero;
+    LOOP(j,n) {
+        INTEGER jp = npt + j;
+        REAL sum = zero;
+        LOOP(k,npt) {
+            sum += w[k]*BMAT(k,j);
+        }
+        dsq += d[j]*d[j];
+        bsum += sum*d[j];
+        LOOP(i,n) {
+            sum += BMAT(jp,i)*d[i];
+        }
+        vlag[jp] = sum;
+        bsum += sum*d[j];
+        dx += d[j]*xopt[j];
+    }
+    beta = dx*dx + dsq*(xoptsq + dx + dx + half*dsq) + beta - bsum;
+    vlag[kopt] += one;
+    if (ntrits == 0) {
+        /* If NTRITS is zero, the denominator may be increased by replacing the step D of
+           ALTMOV by a Cauchy step. Then RESCUE may be called if rounding errors have
+           damaged the chosen denominator. */
+        denom = vlag[knew]*vlag[knew] + alpha*beta;
+        if (denom < cauchy && cauchy > zero) {
+            LOOP(i,n) {
+                xnew[i] = xalt[i];
+                d[i] = xnew[i] - xopt[i];
+            }
+            cauchy = zero;
+            goto L230;
+        }
+        if (denom <= half*(vlag[knew]*vlag[knew])) {
+            if (nf > nresc) {
+                goto L190;
+            }
+            goto cancellation_of_denominator;
+        }
+    } else {
+        /* Alternatively, if NTRITS is positive, then set KNEW to the index of the next
+           interpolation point to be deleted to make room for a trust region step. Again
+           RESCUE may be called if rounding errors have damaged the chosen denominator,
+           which is the reason for attempting to select KNEW before calculating the next
+           value of the objective function. */
+        delsq = delta*delta;
+        scaden = zero;
+        biglsq = zero;
+        knew = 0;
+        LOOP(k,npt) {
+            if (k != kopt) {
+                REAL den, temp, hdiag = zero;
+                LOOP(j,nptm) {
+                    hdiag += ZMAT(k,j)*ZMAT(k,j);
+                }
+                den = beta*hdiag + vlag[k]*vlag[k];
+                distsq = zero;
+                LOOP(j,n) {
+                    REAL tempa = XPT(k,j) - xopt[j];
+                    distsq += tempa*tempa;
+                }
+                temp = distsq/delsq;
+                temp = max(one, temp*temp);
+                if (temp*den > scaden) {
+                    scaden = temp*den;
+                    knew = k;
+                    denom = den;
+                }
+                temp *= vlag[k]*vlag[k];
+                biglsq = max(biglsq, temp);
+            }
+        }
+        if (scaden <= half*biglsq) {
+            if (nf > nresc) {
+                goto L190;
+            }
+            goto cancellation_of_denominator;
+        }
+    }
+
+    /* Put the variables for the next calculation of the objective function in XNEW, with
+       any adjustments for the bounds.
+
+       Calculate the value of the objective function at XBASE+XNEW, unless the limit on
+       the number of calculations of F has been reached. */
+ L360:
+    LOOP(i,n) {
+        x[i] = (xnew[i]  == su[i] ? xu[i] :
+                (xnew[i] == sl[i] ? xl[i] :
+                 clamp(xbase[i] + xnew[i], xl[i], xu[i])));
+    }
+    if (nf >= maxfun) {
+        goto too_many_evaluations;
+    }
+    ++nf;
+    f = CALL_OBJFUN(ctx, &x[1]);
+    if (iprint == 3) {
+        fprintf(OUTPUT,
+                "    Function number%6ld    F =%18.10E"
+                "    The corresponding X is:\n",
+                (long)nf, (double)(ctx->sgn*f));
+        print_x(OUTPUT, ctx, &x[1], NULL);
+    }
+    if (ntrits == -1) {
+        fsave = f;
+        goto done;
+    }
+
+    /* Use the quadratic model to predict the change in F due to the step D, and set DIFF
+       to the error of this prediction. */
+    fopt = fval[kopt];
+    vquad = zero;
+    ih = 0;
+    LOOP(j,n) {
+        vquad += d[j]*gopt[j];
+        LOOP(i,j) {
+            REAL temp = d[i]*d[j];
+            ++ih;
+            vquad += hq[ih]*(i == j ? half*temp : temp);
+        }
+    }
+    LOOP(k,npt) {
+        vquad += half*pq[k]*(w[npt + k]*w[npt + k]);
+    }
+    diff = f - fopt - vquad;
+    diffc = diffb;
+    diffb = diffa;
+    diffa = ABS(diff);
+    if (dnorm > rho) {
+        nfsav = nf;
+    }
+
+    /* Pick the next value of DELTA after a trust region step. */
+    if (ntrits > 0) {
+        if (vquad >= zero) {
+            goto step_failed;
+        }
+        ratio = (f - fopt)/vquad;
+        delta = (ratio <= tenth     ? min(delta*half, dnorm) :
+                 (ratio <= FLT(0.7) ? max(delta*half, dnorm) :
+                  max(delta*half, dnorm + dnorm)));
+        if (delta <= rho*FLT(1.5)) {
+            delta = rho;
+        }
+
+        /* Recalculate KNEW and DENOM if the new F is less than FOPT. */
+        if (f < fopt) {
+            ksav = knew;
+            densav = denom;
+            delsq = delta*delta;
+            scaden = zero;
+            biglsq = zero;
+            knew = 0;
+            LOOP(k,npt) {
+                REAL den, temp, hdiag = zero;
+                LOOP(j,nptm) {
+                    hdiag += ZMAT(k,j)*ZMAT(k,j);
+                }
+                den = beta*hdiag + vlag[k]*vlag[k];
+                distsq = zero;
+                LOOP(j,n) {
+                    temp = XPT(k,j) - xnew[j];
+                    distsq += temp*temp;
+                }
+                temp = distsq/delsq;
+                temp = max(one, temp*temp);
+                if (temp*den > scaden) {
+                    scaden = temp*den;
+                    knew = k;
+                    denom = den;
+                }
+                temp *= (vlag[k]*vlag[k]);
+                biglsq = max(biglsq, temp);
+            }
+            if (scaden <= half*biglsq) {
+                knew = ksav;
+                denom = densav;
+            }
+        }
+    }
+
+    /* Update BMAT and ZMAT, so that the KNEW-th interpolation point can be moved. Also
+       update the second derivative terms of the model. */
+    update(n, npt, &BMAT(1,1), &ZMAT(1,1), ndim, &vlag[1],
+           beta, denom, knew, &w[1]);
+    ih = 0;
+    pqold = pq[knew];
+    pq[knew] = zero;
+    LOOP(i,n) {
+        REAL temp = pqold*XPT(knew,i);
+        LOOP(j,i) {
+            ++ih;
+            hq[ih] += temp*XPT(knew,j);
+        }
+    }
+    LOOP(j,nptm) {
+        REAL temp = diff*ZMAT(knew,j);
+        LOOP(k,npt) {
+            pq[k] += temp*ZMAT(k,j);
+        }
+    }
+
+    /* Include the new interpolation point, and make the changes to GOPT at the old XOPT
+       that are caused by the updating of the quadratic model. */
+    fval[knew] = f;
+    LOOP(i,n) {
+        XPT(knew,i) = xnew[i];
+        w[i] = BMAT(knew,i);
+    }
+    LOOP(k,npt) {
+        REAL suma = zero, sumb = zero, temp;
+        LOOP(j,nptm) {
+            suma += ZMAT(knew,j)*ZMAT(k,j);
+        }
+        LOOP(j,n) {
+            sumb += XPT(k,j)*xopt[j];
+        }
+        temp = suma*sumb;
+        LOOP(i,n) {
+            w[i] += temp*XPT(k,i);
+        }
+    }
+    LOOP(i,n) {
+        gopt[i] += diff*w[i];
+    }
+
+    /* Update XOPT, GOPT and KOPT if the new calculated F is less than FOPT. */
+    if (f < fopt) {
+        kopt = knew;
+        xoptsq = zero;
+        ih = 0;
+        LOOP(j,n) {
+            REAL temp = xnew[j];
+            xopt[j] = temp;
+            xoptsq += temp*temp;
+            LOOP(i,j) {
+                ++ih;
+                if (i < j) {
+                    gopt[j] += hq[ih]*d[i];
+                }
+                gopt[i] += hq[ih]*d[j];
+            }
+        }
+        LOOP(k,npt) {
+            REAL temp = zero;
+            LOOP(j,n) {
+                temp += XPT(k,j)*d[j];
+            }
+            temp *= pq[k];
+            LOOP(i,n) {
+                gopt[i] += temp*XPT(k,i);
+            }
+        }
+    }
+
+    /* Calculate the parameters of the least Frobenius norm interpolant to the current
+       data, the gradient of this interpolant at XOPT being put into VLAG(NPT+I),
+       I=1,2,...,N. */
+    if (ntrits > 0) {
+        LOOP(k,npt) {
+            vlag[k] = fval[k] - fval[kopt];
+            w[k] = zero;
+        }
+        LOOP(j,nptm) {
+            REAL sum = zero;
+            LOOP(k,npt) {
+                sum += ZMAT(k,j)*vlag[k];
+            }
+            LOOP(k,npt) {
+                w[k] += sum*ZMAT(k,j);
+            }
+        }
+        LOOP(k,npt) {
+            REAL sum = zero;
+            LOOP(j,n) {
+                sum += XPT(k,j)*xopt[j];
+            }
+            w[k + npt] = w[k];
+            w[k] *= sum;
+        }
+        gqsq = zero;
+        gisq = zero;
+        LOOP(i,n) {
+            REAL tempa, tempb, sum = zero;
+            LOOP(k,npt) {
+                sum = sum + BMAT(k,i)*vlag[k] + XPT(k,i)*w[k];
+            }
+            if (xopt[i] == sl[i]) {
+                tempa = min(zero, gopt[i]);
+                tempb = min(zero, sum);
+            } else if (xopt[i] == su[i]) {
+                tempa = max(zero, gopt[i]);
+                tempb = max(zero, sum);
+            } else {
+                tempa = gopt[i];
+                tempb = sum;
+            }
+            gqsq += tempa*tempa;
+            gisq += tempb*tempb;
+            vlag[npt + i] = sum;
+        }
+
+        /* Test whether to replace the new quadratic model by the least Frobenius norm
+           interpolant, making the replacement if the test is satisfied. */
+        itest = (gqsq < ten*gisq ? 0 : itest + 1);
+        if (itest >= 3) {
+            /* FIXME: simplify the loops. */
+            INTEGER i1 = MAX(npt,nh);
+            LOOP(i,i1) {
+                if (i <= n) {
+                    gopt[i] = vlag[npt + i];
+                }
+                if (i <= npt) {
+                    pq[i] = w[npt + i];
+                }
+                if (i <= nh) {
+                    hq[i] = zero;
+                }
+                itest = 0;
+            }
+        }
+    }
+    if (ntrits == 0 || f <= fopt + tenth*vquad) {
+        /* If a trust region step has provided a sufficient decrease in F, then branch for
+           another trust region calculation. The case NTRITS=0 occurs when the new
+           interpolation point was reached by an alternative step. */
+        goto L60;
+    }
+
+    /* Alternatively, find out if the interpolation points are close enough to the best
+       point so far. */
+    {
+        REAL tempa = two*delta, tempb = ten*rho;
+        distsq = max(tempa*tempa, tempb*tempb);
+    }
+ L650:
     knew = 0;
     LOOP(k,npt) {
-      if (k != kopt) {
-        REAL den, temp, hdiag = zero;
-        LOOP(j,nptm) {
-          hdiag += ZMAT(k,j)*ZMAT(k,j);
-        }
-        den = beta*hdiag + vlag[k]*vlag[k];
-        distsq = zero;
+        REAL sum = zero;
         LOOP(j,n) {
-          REAL tempa = XPT(k,j) - xopt[j];
-          distsq += tempa*tempa;
+            REAL temp = XPT(k,j) - xopt[j];
+            sum += temp*temp;
         }
-        temp = distsq/delsq;
-        temp = max(one, temp*temp);
-        if (temp*den > scaden) {
-          scaden = temp*den;
-          knew = k;
-          denom = den;
+        if (sum > distsq) {
+            knew = k;
+            distsq = sum;
         }
-        temp *= vlag[k]*vlag[k];
-        biglsq = max(biglsq, temp);
-      }
-    }
-    if (scaden <= half*biglsq) {
-      if (nf > nresc) {
-        goto L190;
-      }
-      goto cancellation_of_denominator;
-    }
-  }
-
-  /* Put the variables for the next calculation of the objective function in
-     XNEW, with any adjustments for the bounds.
-
-     Calculate the value of the objective function at XBASE+XNEW, unless the
-     limit on the number of calculations of F has been reached. */
- L360:
-  LOOP(i,n) {
-    x[i] = (xnew[i]  == su[i] ? xu[i] :
-            (xnew[i] == sl[i] ? xl[i] :
-             clamp(xbase[i] + xnew[i], xl[i], xu[i])));
-  }
-  if (nf >= maxfun) {
-    goto too_many_evaluations;
-  }
-  ++nf;
-  f = CALL_OBJFUN(ctx, &x[1]);
-  if (iprint == 3) {
-    fprintf(OUTPUT,
-            "    Function number%6ld    F =%18.10E"
-            "    The corresponding X is:\n",
-            (long)nf, (double)(ctx->sgn*f));
-    print_x(OUTPUT, ctx, &x[1], NULL);
-  }
-  if (ntrits == -1) {
-    fsave = f;
-    goto done;
-  }
-
-  /* Use the quadratic model to predict the change in F due to the step D, and
-     set DIFF to the error of this prediction. */
-  fopt = fval[kopt];
-  vquad = zero;
-  ih = 0;
-  LOOP(j,n) {
-    vquad += d[j]*gopt[j];
-    LOOP(i,j) {
-      REAL temp = d[i]*d[j];
-      ++ih;
-      vquad += hq[ih]*(i == j ? half*temp : temp);
-    }
-  }
-  LOOP(k,npt) {
-    vquad += half*pq[k]*(w[npt + k]*w[npt + k]);
-  }
-  diff = f - fopt - vquad;
-  diffc = diffb;
-  diffb = diffa;
-  diffa = ABS(diff);
-  if (dnorm > rho) {
-    nfsav = nf;
-  }
-
-  /* Pick the next value of DELTA after a trust region step. */
-  if (ntrits > 0) {
-    if (vquad >= zero) {
-      goto step_failed;
-    }
-    ratio = (f - fopt)/vquad;
-    delta = (ratio <= tenth     ? min(delta*half, dnorm) :
-             (ratio <= FLT(0.7) ? max(delta*half, dnorm) :
-              max(delta*half, dnorm + dnorm)));
-    if (delta <= rho*FLT(1.5)) {
-      delta = rho;
     }
 
-    /* Recalculate KNEW and DENOM if the new F is less than FOPT. */
-    if (f < fopt) {
-      ksav = knew;
-      densav = denom;
-      delsq = delta*delta;
-      scaden = zero;
-      biglsq = zero;
-      knew = 0;
-      LOOP(k,npt) {
-        REAL den, temp, hdiag = zero;
-        LOOP(j,nptm) {
-          hdiag += ZMAT(k,j)*ZMAT(k,j);
+    /* If KNEW is positive, then ALTMOV finds alternative new positions for the KNEW-th
+       interpolation point within distance ADELT of XOPT. It is reached via label 90.
+       Otherwise, there is a branch to label 60 for another trust region iteration, unless
+       the calculations with the current RHO are complete. */
+    if (knew > 0) {
+        dist = SQRT(distsq);
+        if (ntrits == -1) {
+            delta = min(tenth*delta, half*dist);
+            if (delta <= rho*1.5) {
+                delta = rho;
+            }
         }
-        den = beta*hdiag + vlag[k]*vlag[k];
-        distsq = zero;
-        LOOP(j,n) {
-          temp = XPT(k,j) - xnew[j];
-          distsq += temp*temp;
-        }
-        temp = distsq/delsq;
-        temp = max(one, temp*temp);
-        if (temp*den > scaden) {
-          scaden = temp*den;
-          knew = k;
-          denom = den;
-        }
-        temp *= (vlag[k]*vlag[k]);
-        biglsq = max(biglsq, temp);
-      }
-      if (scaden <= half*biglsq) {
-        knew = ksav;
-        denom = densav;
-      }
-    }
-  }
-
-  /* Update BMAT and ZMAT, so that the KNEW-th interpolation point can be
-     moved.  Also update the second derivative terms of the model. */
-  update(n, npt, &BMAT(1,1), &ZMAT(1,1), ndim, &vlag[1],
-         beta, denom, knew, &w[1]);
-  ih = 0;
-  pqold = pq[knew];
-  pq[knew] = zero;
-  LOOP(i,n) {
-    REAL temp = pqold*XPT(knew,i);
-    LOOP(j,i) {
-      ++ih;
-      hq[ih] += temp*XPT(knew,j);
-    }
-  }
-  LOOP(j,nptm) {
-    REAL temp = diff*ZMAT(knew,j);
-    LOOP(k,npt) {
-      pq[k] += temp*ZMAT(k,j);
-    }
-  }
-
-  /* Include the new interpolation point, and make the changes to GOPT at the
-     old XOPT that are caused by the updating of the quadratic model. */
-  fval[knew] = f;
-  LOOP(i,n) {
-    XPT(knew,i) = xnew[i];
-    w[i] = BMAT(knew,i);
-  }
-  LOOP(k,npt) {
-    REAL suma = zero, sumb = zero, temp;
-    LOOP(j,nptm) {
-      suma += ZMAT(knew,j)*ZMAT(k,j);
-    }
-    LOOP(j,n) {
-      sumb += XPT(k,j)*xopt[j];
-    }
-    temp = suma*sumb;
-    LOOP(i,n) {
-      w[i] += temp*XPT(k,i);
-    }
-  }
-  LOOP(i,n) {
-    gopt[i] += diff*w[i];
-  }
-
-  /* Update XOPT, GOPT and KOPT if the new calculated F is less than FOPT. */
-  if (f < fopt) {
-    kopt = knew;
-    xoptsq = zero;
-    ih = 0;
-    LOOP(j,n) {
-      REAL temp = xnew[j];
-      xopt[j] = temp;
-      xoptsq += temp*temp;
-      LOOP(i,j) {
-        ++ih;
-        if (i < j) {
-          gopt[j] += hq[ih]*d[i];
-        }
-        gopt[i] += hq[ih]*d[j];
-      }
-    }
-    LOOP(k,npt) {
-      REAL temp = zero;
-      LOOP(j,n) {
-        temp += XPT(k,j)*d[j];
-      }
-      temp *= pq[k];
-      LOOP(i,n) {
-        gopt[i] += temp*XPT(k,i);
-      }
-    }
-  }
-
-  /* Calculate the parameters of the least Frobenius norm interpolant to
-     the current data, the gradient of this interpolant at XOPT being put
-     into VLAG(NPT+I), I=1,2,...,N. */
-  if (ntrits > 0) {
-    LOOP(k,npt) {
-      vlag[k] = fval[k] - fval[kopt];
-      w[k] = zero;
-    }
-    LOOP(j,nptm) {
-      REAL sum = zero;
-      LOOP(k,npt) {
-        sum += ZMAT(k,j)*vlag[k];
-      }
-      LOOP(k,npt) {
-        w[k] += sum*ZMAT(k,j);
-      }
-    }
-    LOOP(k,npt) {
-      REAL sum = zero;
-      LOOP(j,n) {
-        sum += XPT(k,j)*xopt[j];
-      }
-      w[k + npt] = w[k];
-      w[k] *= sum;
-    }
-    gqsq = zero;
-    gisq = zero;
-    LOOP(i,n) {
-      REAL tempa, tempb, sum = zero;
-      LOOP(k,npt) {
-        sum = sum + BMAT(k,i)*vlag[k] + XPT(k,i)*w[k];
-      }
-      if (xopt[i] == sl[i]) {
-        tempa = min(zero, gopt[i]);
-        tempb = min(zero, sum);
-      } else if (xopt[i] == su[i]) {
-        tempa = max(zero, gopt[i]);
-        tempb = max(zero, sum);
-      } else {
-        tempa = gopt[i];
-        tempb = sum;
-      }
-      gqsq += tempa*tempa;
-      gisq += tempb*tempb;
-      vlag[npt + i] = sum;
+        ntrits = 0;
+        adelt = clamp(tenth*dist, rho, delta);
+        dsq = adelt*adelt;
+        goto L90;
+    } else if (ntrits == -1) {
+        goto L680;
+    } else if (ratio > zero || max(delta,dnorm) > rho) {
+        goto L60;
     }
 
-    /* Test whether to replace the new quadratic model by the least Frobenius
-       norm interpolant, making the replacement if the test is satisfied. */
-    itest = (gqsq < ten*gisq ? 0 : itest + 1);
-    if (itest >= 3) {
-      /* FIXME: simplify the loops. */
-      INTEGER i1 = MAX(npt,nh);
-      LOOP(i,i1) {
-        if (i <= n) {
-          gopt[i] = vlag[npt + i];
-        }
-        if (i <= npt) {
-          pq[i] = w[npt + i];
-        }
-        if (i <= nh) {
-          hq[i] = zero;
-        }
-        itest = 0;
-      }
-    }
-  }
-  if (ntrits == 0 || f <= fopt + tenth*vquad) {
-    /* If a trust region step has provided a sufficient decrease in F, then
-       branch for another trust region calculation.  The case NTRITS=0 occurs
-       when the new interpolation point was reached by an alternative step. */
-    goto L60;
-  }
-
-  /* Alternatively, find out if the interpolation points are close enough to
-     the best point so far. */
-  {
-    REAL tempa = two*delta, tempb = ten*rho;
-    distsq = max(tempa*tempa, tempb*tempb);
-  }
- L650:
-  knew = 0;
-  LOOP(k,npt) {
-    REAL sum = zero;
-    LOOP(j,n) {
-      REAL temp = XPT(k,j) - xopt[j];
-      sum += temp*temp;
-    }
-    if (sum > distsq) {
-      knew = k;
-      distsq = sum;
-    }
-  }
-
-  /* If KNEW is positive, then ALTMOV finds alternative new positions for the
-     KNEW-th interpolation point within distance ADELT of XOPT.  It is reached
-     via label 90.  Otherwise, there is a branch to label 60 for another trust
-     region iteration, unless the calculations with the current RHO are
-     complete. */
-  if (knew > 0) {
-    dist = SQRT(distsq);
-    if (ntrits == -1) {
-      delta = min(tenth*delta, half*dist);
-      if (delta <= rho*1.5) {
-        delta = rho;
-      }
-    }
-    ntrits = 0;
-    adelt = clamp(tenth*dist, rho, delta);
-    dsq = adelt*adelt;
-    goto L90;
-  } else if (ntrits == -1) {
-    goto L680;
-  } else if (ratio > zero || max(delta,dnorm) > rho) {
-    goto L60;
-  }
-
-  /* The calculations with the current value of RHO are complete.  Pick the
-     next values of RHO and DELTA. */
+    /* The calculations with the current value of RHO are complete. Pick the next values
+       of RHO and DELTA. */
  L680:
-  if (rho > rhoend) {
-    delta = half*rho;
-    ratio = rho/rhoend;
-    rho = (ratio <= FLT(16.0) ? rhoend :
-           (ratio <= FLT(250.0) ? SQRT(ratio)*rhoend :
-            tenth*rho));
-    delta = max(delta, rho);
-    if (iprint >= 2) {
-      if (iprint >= 3) {
-        fprintf(OUTPUT, "\n");
-      }
-      fprintf(OUTPUT, "\n"
-              "    New RHO =%11.4E "
-              "    Number of function values =%6ld\n"
-              "    %s value of F =%23.15E     "
-              "    The corresponding X is:\n",
-              (double)rho, (long)nf, (ctx->sgn < zero ? "Most" : "Least"),
-              (double)(ctx->sgn*fval[kopt]));
-      print_x(OUTPUT, ctx, &xbase[1], &xopt[1]);
+    if (rho > rhoend) {
+        delta = half*rho;
+        ratio = rho/rhoend;
+        rho = (ratio <= FLT(16.0) ? rhoend :
+               (ratio <= FLT(250.0) ? SQRT(ratio)*rhoend :
+                tenth*rho));
+        delta = max(delta, rho);
+        if (iprint >= 2) {
+            if (iprint >= 3) {
+                fprintf(OUTPUT, "\n");
+            }
+            fprintf(OUTPUT, "\n"
+                    "    New RHO =%11.4E "
+                    "    Number of function values =%6ld\n"
+                    "    %s value of F =%23.15E     "
+                    "    The corresponding X is:\n",
+                    (double)rho, (long)nf, (ctx->sgn < zero ? "Most" : "Least"),
+                    (double)(ctx->sgn*fval[kopt]));
+            print_x(OUTPUT, ctx, &xbase[1], &xopt[1]);
+        }
+        ntrits = 0;
+        nfsav = nf;
+        goto L60;
     }
-    ntrits = 0;
-    nfsav = nf;
-    goto L60;
-  }
 
-  /* Return from the calculation, after another Newton-Raphson step, if it is
-     too short to have been tried before. */
-  if (ntrits == -1) {
-    goto L360;
-  }
+    /* Return from the calculation, after another Newton-Raphson step, if it is too short
+       to have been tried before. */
+    if (ntrits == -1) {
+        goto L360;
+    }
  done:
-  if (fval[kopt] <= fsave) {
-    LOOP(i,n) {
-      x[i] = (xopt[i]  == su[i] ? xu[i] :
-              (xopt[i] == sl[i] ? xl[i] :
-               clamp(xbase[i] + xopt[i], xl[i], xu[i])));
+    if (fval[kopt] <= fsave) {
+        LOOP(i,n) {
+            x[i] = (xopt[i]  == su[i] ? xu[i] :
+                    (xopt[i] == sl[i] ? xl[i] :
+                     clamp(xbase[i] + xopt[i], xl[i], xu[i])));
+        }
+        f = fval[kopt];
     }
-    f = fval[kopt];
-  }
-  if (iprint >= 1) {
-    fprintf(OUTPUT, "\n    At the return from BOBYQA ");
-    fprintf(OUTPUT, "    Number of function values =%6ld\n", (long)nf);
-    fprintf(OUTPUT, "    %s value of F =%23.15E     ",
-            (ctx->sgn < zero ? "Most" : "Least"), (double)(ctx->sgn*f));
-    fprintf(OUTPUT, "    The corresponding X is:\n");
-    print_x(OUTPUT, ctx, &x[1], NULL);
-  }
+    if (iprint >= 1) {
+        fprintf(OUTPUT, "\n    At the return from BOBYQA ");
+        fprintf(OUTPUT, "    Number of function values =%6ld\n", (long)nf);
+        fprintf(OUTPUT, "    %s value of F =%23.15E     ",
+                (ctx->sgn < zero ? "Most" : "Least"), (double)(ctx->sgn*f));
+        fprintf(OUTPUT, "    The corresponding X is:\n");
+        print_x(OUTPUT, ctx, &x[1], NULL);
+    }
 
-  /* Save function value at the solution and return status. */
-  if (status == BOBYQA_SUCCESS) {
-    xbase[1] = f;
-  }
-  return status;
+    /* Save function value at the solution and return status. */
+    if (status == BOBYQA_SUCCESS) {
+        xbase[1] = f;
+    }
+    return status;
 
  too_many_evaluations:
-  reason = "CALFUN has been called MAXFUN times";
-  status = BOBYQA_TOO_MANY_EVALUATIONS;
-  goto error;
+    reason = "CALFUN has been called MAXFUN times";
+    status = BOBYQA_TOO_MANY_EVALUATIONS;
+    goto error;
 
  cancellation_of_denominator:
-  reason = "of much cancellation in a denominator";
-  status = BOBYQA_ROUNDING_ERRORS;
-  goto error;
+    reason = "of much cancellation in a denominator";
+    status = BOBYQA_ROUNDING_ERRORS;
+    goto error;
 
  step_failed:
-  reason = "a trust region step has failed to reduce Q";
-  status = BOBYQA_STEP_FAILED;
-  goto error;
+    reason = "a trust region step has failed to reduce Q";
+    status = BOBYQA_STEP_FAILED;
+    goto error;
 
  error:
-  if (iprint > 0) {
-    print_error(reason);
-  }
-  goto done;
+    if (iprint > 0) {
+        print_error(reason);
+    }
+    goto done;
 
 } /* bobyqb */
 
@@ -1361,8 +1340,8 @@ bobyqb(const INTEGER n, const INTEGER npt, const context* ctx,
 #undef BMAT
 #undef XPT
 
-/* The arguments N, NPT, XPT, XOPT, BMAT, ZMAT, NDIM, SL and SU all have the
-   same meanings as the corresponding arguments of BOBYQB.
+/* The arguments N, NPT, XPT, XOPT, BMAT, ZMAT, NDIM, SL and SU all have the same meanings
+   as the corresponding arguments of BOBYQB.
 
    KOPT is the index of the optimal interpolation point.
 
@@ -1370,34 +1349,33 @@ bobyqb(const INTEGER n, const INTEGER npt, const context* ctx,
 
    ADELT is the current trust region bound.
 
-   XNEW will be set to a suitable new position for the interpolation point
-   XPT(KNEW,.).  Specifically, it satisfies the SL, SU and trust region bounds
-   and it should provide a large denominator in the next call of UPDATE.  The
-   step XNEW-XOPT from XOPT is restricted to moves along the straight lines
-   through XOPT and another interpolation point.
+   XNEW will be set to a suitable new position for the interpolation point XPT(KNEW,.).
+   Specifically, it satisfies the SL, SU and trust region bounds and it should provide a
+   large denominator in the next call of UPDATE. The step XNEW-XOPT from XOPT is
+   restricted to moves along the straight lines through XOPT and another interpolation
+   point.
 
-   XALT also provides a large value of the modulus of the KNEW-th Lagrange
-   function subject to the constraints that have been mentioned, its main
-   difference from XNEW being that XALT-XOPT is a constrained version of the
-   Cauchy step within the trust region.  An exception is that XALT is not
-   calculated if all components of GLAG (see below) are zero.
+   XALT also provides a large value of the modulus of the KNEW-th Lagrange function
+   subject to the constraints that have been mentioned, its main difference from XNEW
+   being that XALT-XOPT is a constrained version of the Cauchy step within the trust
+   region. An exception is that XALT is not calculated if all components of GLAG (see
+   below) are zero.
 
    ALPHA will be set to the KNEW-th diagonal element of the H matrix.
 
-   CAUCHY will be set to the square of the KNEW-th Lagrange function at the
-   step XALT-XOPT from XOPT for the vector XALT that is returned, except that
-   CAUCHY is set to zero if XALT is not calculated.
+   CAUCHY will be set to the square of the KNEW-th Lagrange function at the step XALT-XOPT
+   from XOPT for the vector XALT that is returned, except that CAUCHY is set to zero if
+   XALT is not calculated.
 
-   GLAG is a working space vector of length N for the gradient of the KNEW-th
-   Lagrange function at XOPT.
+   GLAG is a working space vector of length N for the gradient of the KNEW-th Lagrange
+   function at XOPT.
 
-   HCOL is a working space vector of length NPT for the second derivative
-   coefficients of the KNEW-th Lagrange function.
+   HCOL is a working space vector of length NPT for the second derivative coefficients of
+   the KNEW-th Lagrange function.
 
-   W is a working space vector of length 2N that is going to hold the
-   constrained Cauchy step from XOPT of the Lagrange function, followed by the
-   downhill version of XALT when the uphill step is calculated. */
-
+   W is a working space vector of length 2N that is going to hold the constrained Cauchy
+   step from XOPT of the Lagrange function, followed by the downhill version of XALT when
+   the uphill step is calculated. */
 static void
 altmov(const INTEGER n, const INTEGER npt, REAL xpt[],
        REAL* xopt, REAL* bmat, REAL* zmat, const INTEGER ndim,
@@ -1405,294 +1383,293 @@ altmov(const INTEGER n, const INTEGER npt, REAL xpt[],
        const REAL adelt, REAL* xnew, REAL* xalt, REAL* alpha,
        REAL* cauchy, REAL* glag, REAL* hcol, REAL* w)
 {
-  /* Constants. */
-  const REAL half = FLT(0.5);
-  const REAL one = FLT(1.0);
-  const REAL zero = FLT(0.0);
-  const REAL one_plus_sqrt2 = one + M_SQRT2;
+    /* Constants. */
+    const REAL half = FLT(0.5);
+    const REAL one = FLT(1.0);
+    const REAL zero = FLT(0.0);
+    const REAL one_plus_sqrt2 = one + M_SQRT2;
 
-  /* Local variables. */
-  REAL bigstp, csave, curv, dderiv, diff, distsq, ggfree, gw, ha,
-    predsq, presav, scale, slbd, step, stpsav, subd, sumin,
-    temp, tempa, tempb, tempd, vlag, wfixsq, wsqsav;
-  INTEGER i, i1, ibdsav, iflag, ilbd, isbd, iubd, j, k, ksav;
+    /* Local variables. */
+    REAL bigstp, csave, curv, dderiv, diff, distsq, ggfree, gw, ha,
+        predsq, presav, scale, slbd, step, stpsav, subd, sumin,
+        temp, tempa, tempb, tempd, vlag, wfixsq, wsqsav;
+    INTEGER i, i1, ibdsav, iflag, ilbd, isbd, iubd, j, k, ksav;
 
-  /* Parameter adjustments to comply with FORTRAN indexing. */
-  xpt  -= 1 + npt;
-  xopt -= 1;
-  bmat -= 1 + ndim;
-  zmat -= 1 + npt;
-  sl   -= 1;
-  su   -= 1;
-  xnew -= 1;
-  xalt -= 1;
-  glag -= 1;
-  hcol -= 1;
-  w    -= 1;
+    /* Parameter adjustments to comply with FORTRAN indexing. */
+    xpt  -= 1 + npt;
+    xopt -= 1;
+    bmat -= 1 + ndim;
+    zmat -= 1 + npt;
+    sl   -= 1;
+    su   -= 1;
+    xnew -= 1;
+    xalt -= 1;
+    glag -= 1;
+    hcol -= 1;
+    w    -= 1;
 #define XPT(a1,a2) xpt[(a2)*npt + a1]
 #define BMAT(a1,a2) bmat[(a2)*ndim + a1]
 #define ZMAT(a1,a2) zmat[(a2)*npt + a1]
 
-  /* FIXME: Set uninitialized variables. */
-  csave = zero;
-  stpsav = zero;
-  step = zero;
-  ksav = 0;
-  ibdsav = 0;
+    /* FIXME: Set uninitialized variables. */
+    csave = zero;
+    stpsav = zero;
+    step = zero;
+    ksav = 0;
+    ibdsav = 0;
 
-  /* Set the first NPT components of W to the leading elements of the KNEW-th
-     column of the H matrix. */
-  LOOP(k,npt) {
-    hcol[k] = zero;
-  }
-  i1 = npt - n - 1;
-  LOOP(j,i1) {
-    temp = ZMAT(knew, j);
+    /* Set the first NPT components of W to the leading elements of the KNEW-th
+       column of the H matrix. */
     LOOP(k,npt) {
-      hcol[k] += temp*ZMAT(k,j);
+        hcol[k] = zero;
     }
-  }
-  *alpha = hcol[knew];
-  ha = half*(*alpha);
+    i1 = npt - n - 1;
+    LOOP(j,i1) {
+        temp = ZMAT(knew, j);
+        LOOP(k,npt) {
+            hcol[k] += temp*ZMAT(k,j);
+        }
+    }
+    *alpha = hcol[knew];
+    ha = half*(*alpha);
 
-  /* Calculate the gradient of the KNEW-th Lagrange function at XOPT. */
-  LOOP(i,n) {
-    glag[i] = BMAT(knew, i);
-  }
-  LOOP(k,npt) {
-    temp = zero;
-    LOOP(j,n) {
-      temp += XPT(k,j)*xopt[j];
-    }
-    temp *= hcol[k];
+    /* Calculate the gradient of the KNEW-th Lagrange function at XOPT. */
     LOOP(i,n) {
-      glag[i] += temp*XPT(k,i);
+        glag[i] = BMAT(knew, i);
     }
-  }
-
-  /* Search for a large denominator along the straight lines through XOPT and
-     another interpolation point.  SLBD and SUBD will be lower and upper bounds
-     on the step along each of these lines in turn.  PREDSQ will be set to the
-     square of the predicted denominator for each line.  PRESAV will be set to
-     the largest admissible value of PREDSQ that occurs. */
-  presav = zero;
-  LOOP(k,npt) {
-    if (k == kopt) {
-      continue;
-    }
-    dderiv = zero;
-    distsq = zero;
-    LOOP(i,n) {
-      temp = XPT(k,i) - xopt[i];
-      dderiv += glag[i]*temp;
-      distsq += temp*temp;
-    }
-    subd = adelt/SQRT(distsq);
-    slbd = -subd;
-    ilbd = 0;
-    iubd = 0;
-    sumin = min(one, subd);
-
-    /* Revise SLBD and SUBD if necessary because of the bounds in SL and SU. */
-    LOOP(i,n) {
-      temp = XPT(k,i) - xopt[i];
-      if (temp > zero) {
-        if (slbd*temp < sl[i] - xopt[i]) {
-          slbd = (sl[i] - xopt[i])/temp;
-          ilbd = -i;
-        }
-        if (subd*temp > su[i] - xopt[i]) {
-          subd = max((su[i] - xopt[i])/temp, sumin);
-          iubd = i;
-        }
-      } else if (temp < zero) {
-        if (slbd*temp > su[i] - xopt[i]) {
-          slbd = (su[i] - xopt[i])/temp;
-          ilbd = i;
-        }
-        if (subd*temp < sl[i] - xopt[i]) {
-          subd = max((sl[i] - xopt[i])/temp, sumin);
-          iubd = -i;
-        }
-      }
-    }
-
-    if (k == knew) {
-      /* Seek a large modulus of the KNEW-th Lagrange function when the index
-         of the other interpolation point on the line through XOPT is KNEW. */
-      diff = dderiv - one;
-      step = slbd;
-      vlag = slbd*(dderiv - slbd*diff);
-      isbd = ilbd;
-      temp = subd*(dderiv - subd*diff);
-      if (ABS(temp) > ABS(vlag)) {
-        step = subd;
-        vlag = temp;
-        isbd = iubd;
-      }
-      tempd = half*dderiv;
-      tempa = tempd - diff*slbd;
-      tempb = tempd - diff*subd;
-      if (tempa*tempb < zero) {
-        temp = tempd*tempd/diff;
-        if (ABS(temp) > ABS(vlag)) {
-          step = tempd/diff;
-          vlag = temp;
-          isbd = 0;
-        }
-      }
-    } else {
-      /* Search along each of the other lines through XOPT and another
-         point. */
-      step = slbd;
-      vlag = slbd*(one - slbd);
-      isbd = ilbd;
-      temp = subd*(one - subd);
-      if (ABS(temp) > ABS(vlag)) {
-        step = subd;
-        vlag = temp;
-        isbd = iubd;
-      }
-      if (subd > half) {
-        if (ABS(vlag) < FLT(0.25)) {
-          step = half;
-          vlag = FLT(0.25);
-          isbd = 0;
-        }
-      }
-      vlag *= dderiv;
-    }
-
-    /* Calculate PREDSQ for the current line search and maintain PRESAV. */
-    temp = step*(one - step)*distsq;
-    predsq = vlag*vlag*(vlag*vlag + ha*temp*temp);
-    if (predsq > presav) {
-      presav = predsq;
-      ksav = k;
-      stpsav = step;
-      ibdsav = isbd;
-    }
-  }
-
-  /* Construct XNEW in a way that satisfies the bound constraints exactly. */
-  LOOP(i,n) {
-    xnew[i] = clamp(xopt[i] + stpsav*(XPT(ksav,i) - xopt[i]), sl[i], su[i]);
-  }
-  if (ibdsav < 0) {
-    xnew[-ibdsav] = sl[-ibdsav];
-  }
-  if (ibdsav > 0) {
-    xnew[ibdsav] = su[ibdsav];
-  }
-
-  /* Prepare for the iterative method that assembles the constrained Cauchy
-     step in W.  The sum of squares of the fixed components of W is formed in
-     WFIXSQ, and the free components of W are set to BIGSTP. */
-  bigstp = adelt + adelt;
-  iflag = 0;
-  for (;;) {
-    wfixsq = zero;
-    ggfree = zero;
-    LOOP(i,n) {
-      w[i] = zero;
-      tempa = min(xopt[i] - sl[i], glag[i]);
-      tempb = max(xopt[i] - su[i], glag[i]);
-      if (tempa > zero || tempb < zero) {
-        w[i] = bigstp;
-        ggfree += glag[i]*glag[i];
-      }
-    }
-    if (ggfree == zero) {
-      *cauchy = zero;
-      return;
-    }
-
-    /* Investigate whether more components of W can be fixed. */
-    do {
-      temp = adelt*adelt - wfixsq;
-      if (temp <= zero) break;
-      wsqsav = wfixsq;
-      step = SQRT(temp/ggfree);
-      ggfree = zero;
-      LOOP(i,n) {
-        if (w[i] == bigstp) {
-          temp = xopt[i] - step*glag[i];
-          if (temp <= sl[i]) {
-            w[i] = sl[i] - xopt[i];
-            wfixsq += w[i]*w[i];
-          } else if (temp >= su[i]) {
-            w[i] = su[i] - xopt[i];
-            wfixsq += w[i]*w[i];
-          } else {
-            ggfree += glag[i]*glag[i];
-          }
-        }
-      }
-    } while (wfixsq > wsqsav && ggfree > zero);
-
-    /* Set the remaining free components of W and all components of XALT,
-       except that W may be scaled later. */
-    gw = zero;
-    LOOP(i,n) {
-      if (w[i] == bigstp) {
-        w[i] = -step*glag[i];
-        xalt[i] = clamp(xopt[i] + w[i], sl[i], su[i]);
-      } else if (w[i] == zero) {
-        xalt[i] = xopt[i];
-      } else if (glag[i] > zero) {
-        xalt[i] = sl[i];
-      } else {
-        xalt[i] = su[i];
-      }
-      gw += glag[i]*w[i];
-    }
-
-    /* Set CURV to the curvature of the KNEW-th Lagrange function along W.
-       Scale W by a factor less than one if that can reduce the modulus of the
-       Lagrange function at XOPT+W.  Set CAUCHY to the final value of the
-       square of this function. */
-    curv = zero;
     LOOP(k,npt) {
-      temp = zero;
-      LOOP(j,n) {
-        temp += XPT(k,j)*w[j];
-      }
-      curv += hcol[k]*temp*temp;
-    }
-    if (iflag == 1) {
-      curv = -curv;
-    }
-    if (curv > -gw && curv < -one_plus_sqrt2*gw) {
-      scale = -gw/curv;
-      LOOP(i,n) {
-        xalt[i] = clamp(xopt[i] + scale*w[i], sl[i], su[i]);
-      }
-      temp = half*gw*scale;
-      *cauchy = temp*temp;
-    } else {
-      temp = gw + half*curv;
-      *cauchy = temp*temp;
+        temp = zero;
+        LOOP(j,n) {
+            temp += XPT(k,j)*xopt[j];
+        }
+        temp *= hcol[k];
+        LOOP(i,n) {
+            glag[i] += temp*XPT(k,i);
+        }
     }
 
-    /* If IFLAG is zero, then XALT is calculated as before after reversing the
-       sign of GLAG.  Thus two XALT vectors become available.  The one that is
-       chosen is the one that gives the larger value of CAUCHY. */
-    if (iflag != 0) {
-      break;
+    /* Search for a large denominator along the straight lines through XOPT and another
+       interpolation point. SLBD and SUBD will be lower and upper bounds on the step along
+       each of these lines in turn. PREDSQ will be set to the square of the predicted
+       denominator for each line. PRESAV will be set to the largest admissible value of
+       PREDSQ that occurs. */
+    presav = zero;
+    LOOP(k,npt) {
+        if (k == kopt) {
+            continue;
+        }
+        dderiv = zero;
+        distsq = zero;
+        LOOP(i,n) {
+            temp = XPT(k,i) - xopt[i];
+            dderiv += glag[i]*temp;
+            distsq += temp*temp;
+        }
+        subd = adelt/SQRT(distsq);
+        slbd = -subd;
+        ilbd = 0;
+        iubd = 0;
+        sumin = min(one, subd);
+
+        /* Revise SLBD and SUBD if necessary because of the bounds in SL and SU. */
+        LOOP(i,n) {
+            temp = XPT(k,i) - xopt[i];
+            if (temp > zero) {
+                if (slbd*temp < sl[i] - xopt[i]) {
+                    slbd = (sl[i] - xopt[i])/temp;
+                    ilbd = -i;
+                }
+                if (subd*temp > su[i] - xopt[i]) {
+                    subd = max((su[i] - xopt[i])/temp, sumin);
+                    iubd = i;
+                }
+            } else if (temp < zero) {
+                if (slbd*temp > su[i] - xopt[i]) {
+                    slbd = (su[i] - xopt[i])/temp;
+                    ilbd = i;
+                }
+                if (subd*temp < sl[i] - xopt[i]) {
+                    subd = max((sl[i] - xopt[i])/temp, sumin);
+                    iubd = -i;
+                }
+            }
+        }
+
+        if (k == knew) {
+            /* Seek a large modulus of the KNEW-th Lagrange function when the index of the
+               other interpolation point on the line through XOPT is KNEW. */
+            diff = dderiv - one;
+            step = slbd;
+            vlag = slbd*(dderiv - slbd*diff);
+            isbd = ilbd;
+            temp = subd*(dderiv - subd*diff);
+            if (ABS(temp) > ABS(vlag)) {
+                step = subd;
+                vlag = temp;
+                isbd = iubd;
+            }
+            tempd = half*dderiv;
+            tempa = tempd - diff*slbd;
+            tempb = tempd - diff*subd;
+            if (tempa*tempb < zero) {
+                temp = tempd*tempd/diff;
+                if (ABS(temp) > ABS(vlag)) {
+                    step = tempd/diff;
+                    vlag = temp;
+                    isbd = 0;
+                }
+            }
+        } else {
+            /* Search along each of the other lines through XOPT and another point. */
+            step = slbd;
+            vlag = slbd*(one - slbd);
+            isbd = ilbd;
+            temp = subd*(one - subd);
+            if (ABS(temp) > ABS(vlag)) {
+                step = subd;
+                vlag = temp;
+                isbd = iubd;
+            }
+            if (subd > half) {
+                if (ABS(vlag) < FLT(0.25)) {
+                    step = half;
+                    vlag = FLT(0.25);
+                    isbd = 0;
+                }
+            }
+            vlag *= dderiv;
+        }
+
+        /* Calculate PREDSQ for the current line search and maintain PRESAV. */
+        temp = step*(one - step)*distsq;
+        predsq = vlag*vlag*(vlag*vlag + ha*temp*temp);
+        if (predsq > presav) {
+            presav = predsq;
+            ksav = k;
+            stpsav = step;
+            ibdsav = isbd;
+        }
     }
+
+    /* Construct XNEW in a way that satisfies the bound constraints exactly. */
     LOOP(i,n) {
-      glag[i] = -glag[i];
-      w[n + i] = xalt[i];
+        xnew[i] = clamp(xopt[i] + stpsav*(XPT(ksav,i) - xopt[i]), sl[i], su[i]);
     }
-    csave = *cauchy;
-    iflag = 1;
-  }
-  if (csave > *cauchy) {
-    LOOP(i,n) {
-      xalt[i] = w[n + i];
+    if (ibdsav < 0) {
+        xnew[-ibdsav] = sl[-ibdsav];
     }
-    *cauchy = csave;
-  }
+    if (ibdsav > 0) {
+        xnew[ibdsav] = su[ibdsav];
+    }
+
+    /* Prepare for the iterative method that assembles the constrained Cauchy step in W.
+       The sum of squares of the fixed components of W is formed in WFIXSQ, and the free
+       components of W are set to BIGSTP. */
+    bigstp = adelt + adelt;
+    iflag = 0;
+    for (;;) {
+        wfixsq = zero;
+        ggfree = zero;
+        LOOP(i,n) {
+            w[i] = zero;
+            tempa = min(xopt[i] - sl[i], glag[i]);
+            tempb = max(xopt[i] - su[i], glag[i]);
+            if (tempa > zero || tempb < zero) {
+                w[i] = bigstp;
+                ggfree += glag[i]*glag[i];
+            }
+        }
+        if (ggfree == zero) {
+            *cauchy = zero;
+            return;
+        }
+
+        /* Investigate whether more components of W can be fixed. */
+        do {
+            temp = adelt*adelt - wfixsq;
+            if (temp <= zero) break;
+            wsqsav = wfixsq;
+            step = SQRT(temp/ggfree);
+            ggfree = zero;
+            LOOP(i,n) {
+                if (w[i] == bigstp) {
+                    temp = xopt[i] - step*glag[i];
+                    if (temp <= sl[i]) {
+                        w[i] = sl[i] - xopt[i];
+                        wfixsq += w[i]*w[i];
+                    } else if (temp >= su[i]) {
+                        w[i] = su[i] - xopt[i];
+                        wfixsq += w[i]*w[i];
+                    } else {
+                        ggfree += glag[i]*glag[i];
+                    }
+                }
+            }
+        } while (wfixsq > wsqsav && ggfree > zero);
+
+        /* Set the remaining free components of W and all components of XALT, except that
+           W may be scaled later. */
+        gw = zero;
+        LOOP(i,n) {
+            if (w[i] == bigstp) {
+                w[i] = -step*glag[i];
+                xalt[i] = clamp(xopt[i] + w[i], sl[i], su[i]);
+            } else if (w[i] == zero) {
+                xalt[i] = xopt[i];
+            } else if (glag[i] > zero) {
+                xalt[i] = sl[i];
+            } else {
+                xalt[i] = su[i];
+            }
+            gw += glag[i]*w[i];
+        }
+
+        /* Set CURV to the curvature of the KNEW-th Lagrange function along W.
+           Scale W by a factor less than one if that can reduce the modulus of the
+           Lagrange function at XOPT+W.  Set CAUCHY to the final value of the
+           square of this function. */
+        curv = zero;
+        LOOP(k,npt) {
+            temp = zero;
+            LOOP(j,n) {
+                temp += XPT(k,j)*w[j];
+            }
+            curv += hcol[k]*temp*temp;
+        }
+        if (iflag == 1) {
+            curv = -curv;
+        }
+        if (curv > -gw && curv < -one_plus_sqrt2*gw) {
+            scale = -gw/curv;
+            LOOP(i,n) {
+                xalt[i] = clamp(xopt[i] + scale*w[i], sl[i], su[i]);
+            }
+            temp = half*gw*scale;
+            *cauchy = temp*temp;
+        } else {
+            temp = gw + half*curv;
+            *cauchy = temp*temp;
+        }
+
+        /* If IFLAG is zero, then XALT is calculated as before after reversing the sign of
+           GLAG. Thus two XALT vectors become available. The one that is chosen is the one
+           that gives the larger value of CAUCHY. */
+        if (iflag != 0) {
+            break;
+        }
+        LOOP(i,n) {
+            glag[i] = -glag[i];
+            w[n + i] = xalt[i];
+        }
+        csave = *cauchy;
+        iflag = 1;
+    }
+    if (csave > *cauchy) {
+        LOOP(i,n) {
+            xalt[i] = w[n + i];
+        }
+        *cauchy = csave;
+    }
 } /* altmov */
 
 #undef ZMAT
@@ -1708,251 +1685,247 @@ prelim(const INTEGER n, const INTEGER npt, const context* ctx,
        REAL* zmat, const INTEGER ndim, REAL* sl, REAL* su,
        INTEGER* nf, INTEGER* kopt)
 {
-  /* The arguments N, NPT, X, XL, XU, RHOBEG, IPRINT and MAXFUN are the same as
-     the corresponding arguments in SUBROUTINE BOBYQA.  The arguments XBASE,
-     XPT, FVAL, HQ, PQ, BMAT, ZMAT, NDIM, SL and SU are the same as the
-     corresponding arguments in BOBYQB, the elements of SL and SU being set in
-     BOBYQA.
+    /* The arguments N, NPT, X, XL, XU, RHOBEG, IPRINT and MAXFUN are the same as the
+       corresponding arguments in SUBROUTINE BOBYQA. The arguments XBASE, XPT, FVAL, HQ,
+       PQ, BMAT, ZMAT, NDIM, SL and SU are the same as the corresponding arguments in
+       BOBYQB, the elements of SL and SU being set in BOBYQA.
 
-     GOPT is usually the gradient of the quadratic model at XOPT+XBASE, but it
-     is set by PRELIM to the gradient of the quadratic model at XBASE.
+       GOPT is usually the gradient of the quadratic model at XOPT+XBASE, but it is set by
+       PRELIM to the gradient of the quadratic model at XBASE.
 
-     If XOPT is nonzero, BOBYQB will change it to its usual value later.
+       If XOPT is nonzero, BOBYQB will change it to its usual value later.
 
-     NF is maintaned as the number of calls of OBJFUN so far.
+       NF is maintained as the number of calls of OBJFUN so far.
 
-     KOPT will be such that the least calculated value of F so far is at the
-     point XPT(KOPT,.)+XBASE in the space of the variables.
+       KOPT will be such that the least calculated value of F so far is at the point
+       XPT(KOPT,.)+XBASE in the space of the variables.
 
-     SUBROUTINE PRELIM sets the elements of XBASE, XPT, FVAL, GOPT, HQ, PQ,
-     BMAT and ZMAT for the first iteration, and it maintains the values of NF
-     and KOPT.  The vector X is also changed by PRELIM. */
+       SUBROUTINE PRELIM sets the elements of XBASE, XPT, FVAL, GOPT, HQ, PQ, BMAT and
+       ZMAT for the first iteration, and it maintains the values of NF and KOPT. The
+       vector X is also changed by PRELIM. */
 
-  /* Constants. */
-  const REAL half = 0.5;
-  const REAL one = 1.0;
-  const REAL two = 2.0;
-  const REAL zero = 0.0;
+    /* Constants. */
+    const REAL half = 0.5;
+    const REAL one = 1.0;
+    const REAL two = 2.0;
+    const REAL zero = 0.0;
 
-  /* Local variables. */
-  REAL diff, f, fbeg, recip, rhosq, stepa, stepb, temp;
-  INTEGER i, i1, ih, ipt, itemp, j, jpt, k, nfm, nfx, np;
+    /* Local variables. */
+    REAL diff, f, fbeg, recip, rhosq, stepa, stepb, temp;
+    INTEGER i, i1, ih, ipt, itemp, j, jpt, k, nfm, nfx, np;
 
-  /* Parameter adjustments to comply with FORTRAN indexing. */
-  x     -= 1;
-  xl    -= 1;
-  xu    -= 1;
-  xbase -= 1;
-  xpt   -= 1 + npt;
-  fval  -= 1;
-  gopt  -= 1;
-  hq    -= 1;
-  pq    -= 1;
-  bmat  -= 1 + ndim;
-  zmat  -= 1 + npt;
-  sl    -= 1;
-  su    -= 1;
+    /* Parameter adjustments to comply with FORTRAN indexing. */
+    x     -= 1;
+    xl    -= 1;
+    xu    -= 1;
+    xbase -= 1;
+    xpt   -= 1 + npt;
+    fval  -= 1;
+    gopt  -= 1;
+    hq    -= 1;
+    pq    -= 1;
+    bmat  -= 1 + ndim;
+    zmat  -= 1 + npt;
+    sl    -= 1;
+    su    -= 1;
 #define XPT(a1,a2) xpt[(a2)*npt + a1]
 #define BMAT(a1,a2) bmat[(a2)*ndim + a1]
 #define ZMAT(a1,a2) zmat[(a2)*npt + a1]
 
-  /* FIXME: Set uninitialized variables. */
-  stepa = zero;
-  stepb = zero;
-  fbeg = zero;
-  ipt = 0;
-  jpt = 0;
+    /* FIXME: Set uninitialized variables. */
+    stepa = zero;
+    stepb = zero;
+    fbeg = zero;
+    ipt = 0;
+    jpt = 0;
 
-  /* Set some constants. */
-  rhosq = rhobeg*rhobeg;
-  recip = one/rhosq;
-  np = n + 1;
+    /* Set some constants. */
+    rhosq = rhobeg*rhobeg;
+    recip = one/rhosq;
+    np = n + 1;
 
-  /* Set XBASE to the initial vector of variables, and set the initial elements
-     of XPT, BMAT, HQ, PQ and ZMAT to zero. */
-  LOOP(j,n) {
-    xbase[j] = x[j];
-    LOOP(k,npt) {
-      XPT(k,j) = zero;
-    }
-    LOOP(i,ndim) {
-      BMAT(i,j) = zero;
-    }
-  }
-  i1 = n*np/2;
-  LOOP(ih,i1) {
-    hq[ih] = zero;
-  }
-  LOOP(k,npt) {
-    pq[k] = zero;
-    i1 = npt - np;
-    LOOP(j,i1) {
-      ZMAT(k,j) = zero;
-    }
-  }
-
-  /* Begin the initialization procedure.  NF becomes one more than the number
-     of function values so far.  The coordinates of the displacement of the
-     next initial interpolation point from XBASE are set in XPT(NF+1,.). */
-  *nf = 0;
-  do {
-    nfm = *nf;
-    nfx = *nf - n;
-    ++(*nf);
-    if (nfm <= 2*n) {
-      if (nfm >= 1 && nfm <= n) {
-        stepa = rhobeg;
-        if (su[nfm] == zero) {
-          stepa = -stepa;
-        }
-        XPT(*nf, nfm) = stepa;
-      } else if (nfm > n) {
-        stepa = XPT(*nf - n, nfx);
-        stepb = -rhobeg;
-        if (sl[nfx] == zero) {
-          stepb = min(two*rhobeg, su[nfx]);
-        }
-        if (su[nfx] == zero) {
-          stepb = max(-two*rhobeg, sl[nfx]);
-        }
-        XPT(*nf, nfx) = stepb;
-      }
-    } else {
-      itemp = (nfm - np)/n;
-      jpt = nfm - itemp*n - n;
-      ipt = jpt + itemp;
-      if (ipt > n) {
-        itemp = jpt;
-        jpt = ipt - n;
-        ipt = itemp;
-      }
-      XPT(*nf, ipt) = XPT(ipt + 1, ipt);
-      XPT(*nf, jpt) = XPT(jpt + 1, jpt);
-    }
-
-    /* Calculate the next value of F.  The least function value so far and its
-       index are required. */
+    /* Set XBASE to the initial vector of variables, and set the initial elements of XPT,
+       BMAT, HQ, PQ and ZMAT to zero. */
     LOOP(j,n) {
-      x[j] = clamp(xbase[j] + XPT(*nf, j), xl[j], xu[j]);
-      if (XPT(*nf, j) == sl[j]) {
-        x[j] = xl[j];
-      }
-      if (XPT(*nf, j) == su[j]) {
-        x[j] = xu[j];
-      }
+        xbase[j] = x[j];
+        LOOP(k,npt) {
+            XPT(k,j) = zero;
+        }
+        LOOP(i,ndim) {
+            BMAT(i,j) = zero;
+        }
     }
-    f = CALL_OBJFUN(ctx, &x[1]);
-    if (iprint == 3) {
-      fprintf(OUTPUT, "Function number%6ld    F = %.18G"
-              "    The corresponding X is: ", (long)*nf, (double)(ctx->sgn*f));
-      LOOP(i,n) {
-        fprintf(OUTPUT, " %15.6E", (ctx->scl == NULL ? x[i] : ctx->scl[i-1]*x[i]));
-      }
-      fprintf(OUTPUT, "\n");
+    i1 = n*np/2;
+    LOOP(ih,i1) {
+        hq[ih] = zero;
     }
-    fval[*nf] = f;
-    if (*nf == 1) {
-      fbeg = f;
-      *kopt = 1;
-    } else if (f < fval[*kopt]) {
-      *kopt = *nf;
+    LOOP(k,npt) {
+        pq[k] = zero;
+        i1 = npt - np;
+        LOOP(j,i1) {
+            ZMAT(k,j) = zero;
+        }
     }
 
-    /* Set the nonzero initial elements of BMAT and the quadratic model in the
-       cases when NF is at most 2*N+1.  If NF exceeds N+1, then the positions
-       of the NF-th and (NF-N)-th interpolation points may be switched, in
-       order that the function value at the first of them contributes to the
-       off-diagonal second derivative terms of the initial quadratic model. */
-    if (*nf <= 2*n + 1) {
-      if (*nf >= 2 && *nf <= n + 1) {
-        gopt[nfm] = (f - fbeg)/stepa;
-        if (npt < *nf + n) {
-          BMAT(1,nfm) = -one/stepa;
-          BMAT(*nf, nfm) = one/stepa;
-          BMAT(npt + nfm, nfm) = -half*rhosq;
-        }
-      } else if (*nf >= n + 2) {
-        ih = nfx*(nfx + 1)/2;
-        temp = (f - fbeg)/stepb;
-        diff = stepb - stepa;
-        hq[ih] = two*(temp - gopt[nfx])/diff;
-        gopt[nfx] = (gopt[nfx]*stepb - temp*stepa)/diff;
-        if (stepa*stepb < zero) {
-          if (f < fval[*nf - n]) {
-            fval[*nf] = fval[*nf - n];
-            fval[*nf - n] = f;
-            if (*kopt == *nf) {
-              *kopt = *nf - n;
+    /* Begin the initialization procedure. NF becomes one more than the number of function
+       values so far. The coordinates of the displacement of the next initial
+       interpolation point from XBASE are set in XPT(NF+1,.). */
+    *nf = 0;
+    do {
+        nfm = *nf;
+        nfx = *nf - n;
+        ++(*nf);
+        if (nfm <= 2*n) {
+            if (nfm >= 1 && nfm <= n) {
+                stepa = rhobeg;
+                if (su[nfm] == zero) {
+                    stepa = -stepa;
+                }
+                XPT(*nf, nfm) = stepa;
+            } else if (nfm > n) {
+                stepa = XPT(*nf - n, nfx);
+                stepb = -rhobeg;
+                if (sl[nfx] == zero) {
+                    stepb = min(two*rhobeg, su[nfx]);
+                }
+                if (su[nfx] == zero) {
+                    stepb = max(-two*rhobeg, sl[nfx]);
+                }
+                XPT(*nf, nfx) = stepb;
             }
-            XPT(*nf - n, nfx) = stepb;
-            XPT(*nf, nfx) = stepa;
-          }
+        } else {
+            itemp = (nfm - np)/n;
+            jpt = nfm - itemp*n - n;
+            ipt = jpt + itemp;
+            if (ipt > n) {
+                itemp = jpt;
+                jpt = ipt - n;
+                ipt = itemp;
+            }
+            XPT(*nf, ipt) = XPT(ipt + 1, ipt);
+            XPT(*nf, jpt) = XPT(jpt + 1, jpt);
         }
-        BMAT(1,nfx) = -(stepa + stepb)/(stepa*stepb);
-        BMAT(*nf, nfx) = -half/XPT(*nf - n, nfx);
-        BMAT(*nf - n, nfx) = -BMAT(1,nfx) - BMAT(*nf, nfx);
-        ZMAT(1,nfx) = SQRT(two)/(stepa*stepb);
-        ZMAT(*nf, nfx) = SQRT(half)/rhosq;
-        ZMAT(*nf - n, nfx) = -ZMAT(1,nfx) - ZMAT(*nf, nfx);
-      }
-    } else {
-      /* Set the off-diagonal second derivatives of the Lagrange functions and
-         the initial quadratic model. */
-      ih = ipt*(ipt - 1)/2 + jpt;
-      ZMAT(1,nfx) = recip;
-      ZMAT(*nf, nfx) = recip;
-      ZMAT(ipt + 1, nfx) = -recip;
-      ZMAT(jpt + 1, nfx) = -recip;
-      temp = XPT(*nf, ipt)*XPT(*nf, jpt);
-      hq[ih] = (fbeg - fval[ipt + 1] - fval[jpt + 1] + f)/temp;
-    }
-  } while (*nf < npt && *nf < maxfun);
+
+        /* Calculate the next value of F. The least function value so far and its index
+           are required. */
+        LOOP(j,n) {
+            x[j] = clamp(xbase[j] + XPT(*nf, j), xl[j], xu[j]);
+            if (XPT(*nf, j) == sl[j]) {
+                x[j] = xl[j];
+            }
+            if (XPT(*nf, j) == su[j]) {
+                x[j] = xu[j];
+            }
+        }
+        f = CALL_OBJFUN(ctx, &x[1]);
+        if (iprint == 3) {
+            fprintf(OUTPUT, "Function number%6ld    F = %.18G"
+                    "    The corresponding X is: ", (long)*nf, (double)(ctx->sgn*f));
+            LOOP(i,n) {
+                fprintf(OUTPUT, " %15.6E", (ctx->scl == NULL ? x[i] : ctx->scl[i-1]*x[i]));
+            }
+            fprintf(OUTPUT, "\n");
+        }
+        fval[*nf] = f;
+        if (*nf == 1) {
+            fbeg = f;
+            *kopt = 1;
+        } else if (f < fval[*kopt]) {
+            *kopt = *nf;
+        }
+
+        /* Set the nonzero initial elements of BMAT and the quadratic model in the cases
+           when NF is at most 2*N+1. If NF exceeds N+1, then the positions of the NF-th
+           and (NF-N)-th interpolation points may be switched, in order that the function
+           value at the first of them contributes to the off-diagonal second derivative
+           terms of the initial quadratic model. */
+        if (*nf <= 2*n + 1) {
+            if (*nf >= 2 && *nf <= n + 1) {
+                gopt[nfm] = (f - fbeg)/stepa;
+                if (npt < *nf + n) {
+                    BMAT(1,nfm) = -one/stepa;
+                    BMAT(*nf, nfm) = one/stepa;
+                    BMAT(npt + nfm, nfm) = -half*rhosq;
+                }
+            } else if (*nf >= n + 2) {
+                ih = nfx*(nfx + 1)/2;
+                temp = (f - fbeg)/stepb;
+                diff = stepb - stepa;
+                hq[ih] = two*(temp - gopt[nfx])/diff;
+                gopt[nfx] = (gopt[nfx]*stepb - temp*stepa)/diff;
+                if (stepa*stepb < zero) {
+                    if (f < fval[*nf - n]) {
+                        fval[*nf] = fval[*nf - n];
+                        fval[*nf - n] = f;
+                        if (*kopt == *nf) {
+                            *kopt = *nf - n;
+                        }
+                        XPT(*nf - n, nfx) = stepb;
+                        XPT(*nf, nfx) = stepa;
+                    }
+                }
+                BMAT(1,nfx) = -(stepa + stepb)/(stepa*stepb);
+                BMAT(*nf, nfx) = -half/XPT(*nf - n, nfx);
+                BMAT(*nf - n, nfx) = -BMAT(1,nfx) - BMAT(*nf, nfx);
+                ZMAT(1,nfx) = SQRT(two)/(stepa*stepb);
+                ZMAT(*nf, nfx) = SQRT(half)/rhosq;
+                ZMAT(*nf - n, nfx) = -ZMAT(1,nfx) - ZMAT(*nf, nfx);
+            }
+        } else {
+            /* Set the off-diagonal second derivatives of the Lagrange functions and the
+               initial quadratic model. */
+            ih = ipt*(ipt - 1)/2 + jpt;
+            ZMAT(1,nfx) = recip;
+            ZMAT(*nf, nfx) = recip;
+            ZMAT(ipt + 1, nfx) = -recip;
+            ZMAT(jpt + 1, nfx) = -recip;
+            temp = XPT(*nf, ipt)*XPT(*nf, jpt);
+            hq[ih] = (fbeg - fval[ipt + 1] - fval[jpt + 1] + f)/temp;
+        }
+    } while (*nf < npt && *nf < maxfun);
 } /* prelim */
 
 #undef ZMAT
 #undef BMAT
 #undef XPT
 
-/* The arguments N, NPT, XL, XU, IPRINT, MAXFUN, XBASE, XPT, FVAL, XOPT, GOPT,
-   HQ, PQ, BMAT, ZMAT, NDIM, SL and SU have the same meanings as the
-   corresponding arguments of BOBYQB on the entry to RESCUE.
+/* The arguments N, NPT, XL, XU, IPRINT, MAXFUN, XBASE, XPT, FVAL, XOPT, GOPT, HQ, PQ,
+   BMAT, ZMAT, NDIM, SL and SU have the same meanings as the corresponding arguments of
+   BOBYQB on the entry to RESCUE.
 
-   NF is maintained as the number of calls of OBJFUN so far, except that NF is
-   set to -1 if the value of MAXFUN prevents further progress.
+   NF is maintained as the number of calls of OBJFUN so far, except that NF is set to -1
+   if the value of MAXFUN prevents further progress.
 
-   KOPT is maintained so that FVAL(KOPT) is the least calculated function
-   value.  Its correct value must be given on entry.  It is updated if a new
-   least function value is found, but the corresponding changes to XOPT and
-   GOPT have to be made later by the calling program.
+   KOPT is maintained so that FVAL(KOPT) is the least calculated function value. Its
+   correct value must be given on entry. It is updated if a new least function value is
+   found, but the corresponding changes to XOPT and GOPT have to be made later by the
+   calling program.
 
    DELTA is the current trust region radius.
 
-   VLAG is a working space vector that will be used for the values of the
-   provisional Lagrange functions at each of the interpolation points.  They
-   are part of a product that requires VLAG to be of length NDIM.
+   VLAG is a working space vector that will be used for the values of the provisional
+   Lagrange functions at each of the interpolation points. They are part of a product that
+   requires VLAG to be of length NDIM.
 
-   PTSAUX is also a working space array.  For J=1,2,...,N, PTSAUX(1,J) and
-   PTSAUX(2,J) specify the two positions of provisional interpolation points
-   when a nonzero step is taken along e_J (the J-th coordinate direction)
-   through XBASE+XOPT, as specified below.  Usually these steps have length
-   DELTA, but other lengths are chosen if necessary in order to satisfy the
-   given bounds on the variables.
+   PTSAUX is also a working space array. For J=1,2,...,N, PTSAUX(1,J) and PTSAUX(2,J)
+   specify the two positions of provisional interpolation points when a nonzero step is
+   taken along e_J (the J-th coordinate direction) through XBASE+XOPT, as specified below.
+   Usually these steps have length DELTA, but other lengths are chosen if necessary in
+   order to satisfy the given bounds on the variables.
 
-   PTSID is also a working space array.  It has NPT components that denote
-   provisional new positions of the original interpolation points, in case
-   changes are needed to restore the linear independence of the interpolation
-   conditions.  The K-th point is a candidate for change if and only if
-   PTSID(K) is nonzero.  In this case let p and q be the integer parts of
-   PTSID(K) and (PTSID(K)-p) multiplied by N+1.  If p and q are both positive,
-   the step from XBASE+XOPT to the new K-th interpolation point is
-   PTSAUX(1,p)*e_p + PTSAUX(1,q)*e_q.  Otherwise the step is PTSAUX(1,p)*e_p or
-   PTSAUX(2,q)*e_q in the cases q=0 or p=0, respectively.
+   PTSID is also a working space array. It has NPT components that denote provisional new
+   positions of the original interpolation points, in case changes are needed to restore
+   the linear independence of the interpolation conditions. The K-th point is a candidate
+   for change if and only if PTSID(K) is nonzero. In this case let p and q be the integer
+   parts of PTSID(K) and (PTSID(K)-p) multiplied by N+1. If p and q are both positive, the
+   step from XBASE+XOPT to the new K-th interpolation point is PTSAUX(1,p)*e_p +
+   PTSAUX(1,q)*e_q. Otherwise the step is PTSAUX(1,p)*e_p or PTSAUX(2,q)*e_q in the cases
+   q=0 or p=0, respectively.
 
-   The first NDIM+NPT elements of the array W are used for working space.  The
-   final elements of BMAT and ZMAT are set in a well-conditioned way to the
-   values that are appropriate for the new interpolation points.  The elements
-   of GOPT, HQ and PQ are also revised to the values that are appropriate to
-   the final quadratic model. */
+   The first NDIM+NPT elements of the array W are used for working space. The final
+   elements of BMAT and ZMAT are set in a well-conditioned way to the values that are
+   appropriate for the new interpolation points. The elements of GOPT, HQ and PQ are also
+   revised to the values that are appropriate to the final quadratic model. */
 
 static void
 rescue(const INTEGER n, const INTEGER npt, const context* ctx,
@@ -1964,427 +1937,427 @@ rescue(const INTEGER n, const INTEGER npt, const context* ctx,
        const REAL delta, INTEGER* kopt, REAL* vlag, REAL* ptsaux,
        REAL* ptsid, REAL* w)
 {
-  /* Constants. */
-  const REAL half = 0.5;
-  const REAL one = 1.0;
-  const REAL zero = 0.0;
-  const REAL sqrt2 = M_SQRT2;
+    /* Constants. */
+    const REAL half = 0.5;
+    const REAL one = 1.0;
+    const REAL zero = 0.0;
+    const REAL sqrt2 = M_SQRT2;
 
-  /* Local variables. */
-  REAL beta, bsum, denom, diff, distsq, dsqmin, f, fbase,
-    sfrac, sumpq, vlmxsq, vquad, winc, xp, xq;
-  INTEGER i, ih, ihp, ihq, ip, iq, iw, j, k, knew, kold, kpt,
-    np, nptm, nrem;
+    /* Local variables. */
+    REAL beta, bsum, denom, diff, distsq, dsqmin, f, fbase,
+        sfrac, sumpq, vlmxsq, vquad, winc, xp, xq;
+    INTEGER i, ih, ihp, ihq, ip, iq, iw, j, k, knew, kold, kpt,
+        np, nptm, nrem;
 
-  /* Parameter adjustments to comply with FORTRAN indexing. */
-  zmat   -= 1 + npt;
-  xpt    -= 1 + npt;
-  xl     -= 1;
-  xu     -= 1;
-  xbase  -= 1;
-  fval   -= 1;
-  xopt   -= 1;
-  gopt   -= 1;
-  hq     -= 1;
-  pq     -= 1;
-  bmat   -= 1 + ndim;
-  sl     -= 1;
-  su     -= 1;
-  vlag   -= 1;
-  ptsaux -= 3;
-  ptsid  -= 1;
-  w      -= 1;
+    /* Parameter adjustments to comply with FORTRAN indexing. */
+    zmat   -= 1 + npt;
+    xpt    -= 1 + npt;
+    xl     -= 1;
+    xu     -= 1;
+    xbase  -= 1;
+    fval   -= 1;
+    xopt   -= 1;
+    gopt   -= 1;
+    hq     -= 1;
+    pq     -= 1;
+    bmat   -= 1 + ndim;
+    sl     -= 1;
+    su     -= 1;
+    vlag   -= 1;
+    ptsaux -= 3;
+    ptsid  -= 1;
+    w      -= 1;
 #define XPT(a1,a2) xpt[(a2)*npt + a1]
 #define BMAT(a1,a2) bmat[(a2)*ndim + a1]
 #define ZMAT(a1,a2) zmat[(a2)*npt + a1]
 #define PTSAUX(a1,a2) ptsaux[(a2)*2 + a1]
 
-  /* FIXME: Set uninitialized variables. */
-  beta = zero;
-  denom = zero;
-  xp = zero;
-  xq = zero;
-  ihp = 0;
+    /* FIXME: Set uninitialized variables. */
+    beta = zero;
+    denom = zero;
+    xp = zero;
+    xq = zero;
+    ihp = 0;
 
-  /* Set some constants. */
-  np = n + 1;
-  sfrac = half/(REAL)np;
-  nptm = npt - np;
+    /* Set some constants. */
+    np = n + 1;
+    sfrac = half/(REAL)np;
+    nptm = npt - np;
 
-  /* Shift the interpolation points so that XOPT becomes the origin, and set
-     the elements of ZMAT to zero.  The value of SUMPQ is required in the
-     updating of HQ below.  The squares of the distances from XOPT to the other
-     interpolation points are set at the end of W.  Increments of WINC may be
-     added later to these squares to balance the consideration of the choice of
-     point that is going to become current. */
-  sumpq = zero;
-  winc = zero;
-  LOOP(k,npt) {
-    distsq = zero;
+    /* Shift the interpolation points so that XOPT becomes the origin, and set the
+       elements of ZMAT to zero. The value of SUMPQ is required in the updating of HQ
+       below. The squares of the distances from XOPT to the other interpolation points are
+       set at the end of W. Increments of WINC may be added later to these squares to
+       balance the consideration of the choice of point that is going to become
+       current. */
+    sumpq = zero;
+    winc = zero;
+    LOOP(k,npt) {
+        distsq = zero;
+        LOOP(j,n) {
+            REAL temp = XPT(k,j) - xopt[j];
+            XPT(k,j) = temp;
+            distsq += temp*temp;
+        }
+        sumpq += pq[k];
+        w[ndim + k] = distsq;
+        winc = max(winc, distsq);
+        LOOP(j,nptm) {
+            ZMAT(k,j) = zero;
+        }
+    }
+
+    /* Update HQ so that HQ and PQ define the second derivatives of the model after XBASE
+       has been shifted to the trust region centre. */
+    ih = 0;
     LOOP(j,n) {
-      REAL temp = XPT(k,j) - xopt[j];
-      XPT(k,j) = temp;
-      distsq += temp*temp;
+        w[j] = half*sumpq*xopt[j];
+        LOOP(k,npt) {
+            w[j] += pq[k]*XPT(k,j);
+        }
+        LOOP(i,j) {
+            ++ih;
+            hq[ih] = hq[ih] + w[i]*xopt[j] + w[j]*xopt[i];
+        }
     }
-    sumpq += pq[k];
-    w[ndim + k] = distsq;
-    winc = max(winc, distsq);
-    LOOP(j,nptm) {
-      ZMAT(k,j) = zero;
-    }
-  }
 
-  /* Update HQ so that HQ and PQ define the second derivatives of the model
-     after XBASE has been shifted to the trust region centre. */
-  ih = 0;
-  LOOP(j,n) {
-    w[j] = half*sumpq*xopt[j];
-    LOOP(k,npt) {
-      w[j] += pq[k]*XPT(k,j);
+    /* Shift XBASE, SL, SU and XOPT. Set the elements of BMAT to zero, and also set the
+       elements of PTSAUX. */
+    LOOP(j,n) {
+        REAL temp1, temp2;
+        xbase[j] += xopt[j];
+        sl[j]    -= xopt[j];
+        su[j]    -= xopt[j];
+        xopt[j] = zero;
+        temp1 = min( delta, su[j]);
+        temp2 = max(-delta, sl[j]);
+        if (temp1 + temp2 < zero) {
+            REAL temp = temp1;
+            temp1 = temp2;
+            temp2 = temp;
+        }
+        if (ABS(temp2) < half*ABS(temp1)) {
+            temp2 = half*temp1;
+        }
+        PTSAUX(1,j) = temp1;
+        PTSAUX(2,j) = temp2;
+        LOOP(i,ndim) {
+            BMAT(i,j) = zero;
+        }
     }
-    LOOP(i,j) {
-      ++ih;
-      hq[ih] = hq[ih] + w[i]*xopt[j] + w[j]*xopt[i];
-    }
-  }
+    fbase = fval[*kopt];
 
-  /* Shift XBASE, SL, SU and XOPT.  Set the elements of BMAT to zero, and also
-     set the elements of PTSAUX. */
-  LOOP(j,n) {
-    REAL temp1, temp2;
-    xbase[j] += xopt[j];
-    sl[j]    -= xopt[j];
-    su[j]    -= xopt[j];
-    xopt[j] = zero;
-    temp1 = min( delta, su[j]);
-    temp2 = max(-delta, sl[j]);
-    if (temp1 + temp2 < zero) {
-      REAL temp = temp1;
-      temp1 = temp2;
-      temp2 = temp;
+    /* Set the identifiers of the artificial interpolation points that are along a
+       coordinate direction from XOPT, and set the corresponding nonzero elements of BMAT
+       and ZMAT. */
+    ptsid[1] = sfrac;
+    LOOP(j,n) {
+        REAL temp, temp1 = PTSAUX(1,j), temp2 = PTSAUX(2,j);
+        INTEGER jp = j + 1, jpn = jp + n;
+        ptsid[jp] = (REAL)j + sfrac;
+        if (jpn <= npt) {
+            temp = one/(temp1 - temp2);
+            ptsid[jpn]  = (REAL)j/(REAL)np + sfrac;
+            BMAT(jp,j)  = one/temp1 - temp;
+            BMAT(jpn,j) = one/temp2 + temp;
+            BMAT(1,j)   = -BMAT(jp,j) - BMAT(jpn,j);
+            ZMAT(1,j)   = sqrt2/ABS(temp1*temp2);
+            temp *= ZMAT(1,j);
+            ZMAT(jp,j)  =  temp*temp2;
+            ZMAT(jpn,j) = -temp*temp1;
+        } else {
+            temp = one/temp1;
+            BMAT(1,j)  = -temp;
+            BMAT(jp,j) =  temp;
+            BMAT(j + npt, j) = -half*(temp1*temp1);
+        }
     }
-    if (ABS(temp2) < half*ABS(temp1)) {
-      temp2 = half*temp1;
-    }
-    PTSAUX(1,j) = temp1;
-    PTSAUX(2,j) = temp2;
-    LOOP(i,ndim) {
-      BMAT(i,j) = zero;
-    }
-  }
-  fbase = fval[*kopt];
 
-  /* Set the identifiers of the artificial interpolation points that are along
-     a coordinate direction from XOPT, and set the corresponding nonzero
-     elements of BMAT and ZMAT. */
-  ptsid[1] = sfrac;
-  LOOP(j,n) {
-    REAL temp, temp1 = PTSAUX(1,j), temp2 = PTSAUX(2,j);
-    INTEGER jp = j + 1, jpn = jp + n;
-    ptsid[jp] = (REAL)j + sfrac;
-    if (jpn <= npt) {
-      temp = one/(temp1 - temp2);
-      ptsid[jpn]  = (REAL)j/(REAL)np + sfrac;
-      BMAT(jp,j)  = one/temp1 - temp;
-      BMAT(jpn,j) = one/temp2 + temp;
-      BMAT(1,j)   = -BMAT(jp,j) - BMAT(jpn,j);
-      ZMAT(1,j)   = sqrt2/ABS(temp1*temp2);
-      temp *= ZMAT(1,j);
-      ZMAT(jp,j)  =  temp*temp2;
-      ZMAT(jpn,j) = -temp*temp1;
-    } else {
-      temp = one/temp1;
-      BMAT(1,j)  = -temp;
-      BMAT(jp,j) =  temp;
-      BMAT(j + npt, j) = -half*(temp1*temp1);
+    /* Set any remaining identifiers with their nonzero elements of ZMAT. */
+    if (npt >= n + np) {
+        for (k = 2*np; k <= npt; ++k) {
+            REAL temp;
+            iw = (INTEGER) (((REAL)(k - np) - half)/(REAL)n);
+            ip = k - np - iw*n;
+            iq = ip + iw;
+            if (iq > n) {
+                iq -= n;
+            }
+            ptsid[k] = (REAL)ip + (REAL)iq/(REAL)np + sfrac;
+            temp = one/(PTSAUX(1,ip)*PTSAUX(1,iq));
+            ZMAT(1, k - np) = temp;
+            ZMAT(ip + 1, k - np) = -temp;
+            ZMAT(iq + 1, k - np) = -temp;
+            ZMAT(k, k - np) = temp;
+        }
     }
-  }
+    nrem = npt;
+    kold = 1;
+    knew = *kopt;
 
-  /* Set any remaining identifiers with their nonzero elements of ZMAT. */
-  if (npt >= n + np) {
-    for (k = 2*np; k <= npt; ++k) {
-      REAL temp;
-      iw = (INTEGER) (((REAL)(k - np) - half)/(REAL)n);
-      ip = k - np - iw*n;
-      iq = ip + iw;
-      if (iq > n) {
-        iq -= n;
-      }
-      ptsid[k] = (REAL)ip + (REAL)iq/(REAL)np + sfrac;
-      temp = one/(PTSAUX(1,ip)*PTSAUX(1,iq));
-      ZMAT(1, k - np) = temp;
-      ZMAT(ip + 1, k - np) = -temp;
-      ZMAT(iq + 1, k - np) = -temp;
-      ZMAT(k, k - np) = temp;
-    }
-  }
-  nrem = npt;
-  kold = 1;
-  knew = *kopt;
-
-  /* Reorder the provisional points in the way that exchanges PTSID(KOLD) with
-     PTSID(KNEW). */
+    /* Reorder the provisional points in the way that exchanges PTSID(KOLD) with
+       PTSID(KNEW). */
  L80:
-  LOOP(j,n) {
-    REAL temp = BMAT(kold,j);
-    BMAT(kold,j) = BMAT(knew,j);
-    BMAT(knew,j) = temp;
-  }
-  LOOP(j,nptm) {
-    REAL temp = ZMAT(kold,j);
-    ZMAT(kold,j) = ZMAT(knew,j);
-    ZMAT(knew,j) = temp;
-  }
-  ptsid[kold] = ptsid[knew];
-  ptsid[knew] = zero;
-  w[ndim + knew] = zero;
-  --nrem;
-  if (knew != *kopt) {
-    REAL temp = vlag[kold];
-    vlag[kold] = vlag[knew];
-    vlag[knew] = temp;
+    LOOP(j,n) {
+        REAL temp = BMAT(kold,j);
+        BMAT(kold,j) = BMAT(knew,j);
+        BMAT(knew,j) = temp;
+    }
+    LOOP(j,nptm) {
+        REAL temp = ZMAT(kold,j);
+        ZMAT(kold,j) = ZMAT(knew,j);
+        ZMAT(knew,j) = temp;
+    }
+    ptsid[kold] = ptsid[knew];
+    ptsid[knew] = zero;
+    w[ndim + knew] = zero;
+    --nrem;
+    if (knew != *kopt) {
+        REAL temp = vlag[kold];
+        vlag[kold] = vlag[knew];
+        vlag[knew] = temp;
 
-    /* Update the BMAT and ZMAT matrices so that the status of the KNEW-th
-       interpolation point can be changed from provisional to original.
-       Termination occurs if all the original points are reinstated.  The
-       nonnegative values of W(NDIM+K) are required in the search below. */
-    update(n, npt, &BMAT(1,1), &ZMAT(1,1), ndim, &vlag[1],
-           beta, denom, knew, &w[1]);
-    if (nrem == 0) {
-      return;
+        /* Update the BMAT and ZMAT matrices so that the status of the KNEW-th
+           interpolation point can be changed from provisional to original. Termination
+           occurs if all the original points are reinstated. The nonnegative values of
+           W(NDIM+K) are required in the search below. */
+        update(n, npt, &BMAT(1,1), &ZMAT(1,1), ndim, &vlag[1],
+               beta, denom, knew, &w[1]);
+        if (nrem == 0) {
+            return;
+        }
+        LOOP(k,npt) {
+            w[ndim + k] = ABS(w[ndim + k]);
+        }
     }
-    LOOP(k,npt) {
-      w[ndim + k] = ABS(w[ndim + k]);
-    }
-  }
 
  L120:
-  /* Pick the index KNEW of an original interpolation point that has not yet
-     replaced one of the provisional interpolation points, giving attention to
-     the closeness to XOPT and to previous tries with KNEW. */
-  dsqmin = zero;
-  LOOP(k,npt) {
-    if (w[ndim+k] > zero && (dsqmin == zero || w[ndim+k] < dsqmin)) {
-      knew = k;
-      dsqmin = w[ndim+k];
+    /* Pick the index KNEW of an original interpolation point that has not yet replaced
+       one of the provisional interpolation points, giving attention to the closeness to
+       XOPT and to previous tries with KNEW. */
+    dsqmin = zero;
+    LOOP(k,npt) {
+        if (w[ndim+k] > zero && (dsqmin == zero || w[ndim+k] < dsqmin)) {
+            knew = k;
+            dsqmin = w[ndim+k];
+        }
     }
-  }
-  if (dsqmin == zero) {
-    /* All the final positions of the interpolation points have been chosen
-       although any changes have not been included yet in XPT.  Also the final
-       BMAT and ZMAT matrices are complete, but, apart from the shift of XBASE,
-       the updating of the quadratic model remains to be done.  The following
-       cycle through the new interpolation points begins by putting the new
-       point in XPT(KPT,.) and by setting PQ(KPT) to zero, except that a RETURN
-       occurs if MAXFUN prohibits another value of F. */
-    LOOP(kpt,npt) {
-      if (ptsid[kpt] == zero) {
-        continue;
-      }
-      if (*nf >= maxfun) {
-        *nf = -1;
-        return;
-      }
-      ih = 0;
-      LOOP(j,n) {
-        REAL temp = XPT(kpt,j);
-        XPT(kpt,j) = zero;
-        w[j] = temp;
-        temp *= pq[kpt];
-        LOOP(i,j) {
-          hq[++ih] += temp*w[i];
-        }
-      }
-      pq[kpt] = zero;
-      ip = (INTEGER)ptsid[kpt];
-      iq = (INTEGER)((REAL)np*ptsid[kpt] - (REAL)(ip*np));
-      if (ip > 0) {
-        xp = PTSAUX(1,ip);
-        XPT(kpt,ip) = xp;
-      }
-      if (iq > 0) {
-        xq = PTSAUX((ip != 0 ? 1 : 2),iq);
-        XPT(kpt,iq) = xq;
-      }
-
-      /* Set VQUAD to the value of the current model at the new point. */
-      vquad = fbase;
-      if (ip > 0) {
-        ihp = (ip + ip*ip)/2;
-        vquad += xp*(gopt[ip] + half*xp*hq[ihp]);
-      }
-      if (iq > 0) {
-        ihq = (iq + iq*iq)/2;
-        vquad += xq*(gopt[iq] + half*xq*hq[ihq]);
-        if (ip > 0) {
-          iw = MAX(ihp, ihq) - (ip >= iq ? ip - iq : iq - ip);
-          vquad += xp*xq*hq[iw];
-        }
-      }
-      LOOP(k,npt) {
-        REAL temp = zero;
-        if (ip > 0) {
-          temp += xp*XPT(k,ip);
-        }
-        if (iq > 0) {
-          temp += xq*XPT(k,iq);
-        }
-        vquad += half*pq[k]*temp*temp;
-      }
-
-      /* Calculate F at the new interpolation point, and set DIFF to the factor
-         that is going to multiply the KPT-th Lagrange function when the model
-         is updated to provide interpolation to the new function value. */
-      LOOP(i,n) {
-        REAL temp = XPT(kpt,i);
-        w[i] = (temp  == su[i] ? xu[i] :
-                (temp == sl[i] ? xl[i] :
-                 clamp(xbase[i] + XPT(kpt,i), xl[i], xu[i])));
-      }
-      ++(*nf);
-      f = CALL_OBJFUN(ctx, &w[1]);
-      if (iprint == 3) {
-        fprintf(OUTPUT,
-                "    Function number%6ld"
-                "    F =%18.10E"
-                "    The corresponding X is:\n",
-                (long)*nf, (double)(ctx->sgn*f));
-        print_x(OUTPUT, ctx, &w[1], NULL);
-      }
-      fval[kpt] = f;
-      if (f < fval[*kopt]) {
-        *kopt = kpt;
-      }
-      diff = f - vquad;
-
-      /* Update the quadratic model.  The RETURN from the subroutine occurs
-         when all the new interpolation points are included in the model. */
-      LOOP(i,n) {
-        gopt[i] += diff*BMAT(kpt,i);
-      }
-      LOOP(k,npt) {
-        REAL temp, sum = zero;
-        LOOP(j,nptm) {
-          sum += ZMAT(k,j)*ZMAT(kpt,j);
-        }
-        temp = diff*sum;
-        if (ptsid[k] == zero) {
-          pq[k] += temp;
-        } else {
-          ip = (INTEGER) ptsid[k];
-          iq = (INTEGER) ((REAL)np*ptsid[k] - (REAL)(ip*np));
-          ihq = (iq*iq + iq)/2;
-          if (ip == 0) {
-            REAL ptsaux2iq = PTSAUX(2,iq);
-            hq[ihq] += temp*(ptsaux2iq*ptsaux2iq);
-          } else {
-            REAL ptsaux1ip = PTSAUX(1,ip);
-            ihp = (ip*ip + ip)/2;
-            hq[ihp] += temp*(ptsaux1ip*ptsaux1ip);
-            if (iq > 0) {
-              REAL ptsaux1iq = PTSAUX(1,iq);
-              hq[ihq] += temp*(ptsaux1iq*ptsaux1iq);
-              iw = MAX(ihp, ihq) - (ip >= iq ? ip - iq : iq - ip);
-              hq[iw] += temp*ptsaux1ip*ptsaux1iq;
+    if (dsqmin == zero) {
+        /* All the final positions of the interpolation points have been chosen although
+           any changes have not been included yet in XPT. Also the final BMAT and ZMAT
+           matrices are complete, but, apart from the shift of XBASE, the updating of the
+           quadratic model remains to be done. The following cycle through the new
+           interpolation points begins by putting the new point in XPT(KPT,.) and by
+           setting PQ(KPT) to zero, except that a RETURN occurs if MAXFUN prohibits
+           another value of F. */
+        LOOP(kpt,npt) {
+            if (ptsid[kpt] == zero) {
+                continue;
             }
-          }
-        }
-      }
-      ptsid[kpt] = zero;
-    }
-    return;
-  }
+            if (*nf >= maxfun) {
+                *nf = -1;
+                return;
+            }
+            ih = 0;
+            LOOP(j,n) {
+                REAL temp = XPT(kpt,j);
+                XPT(kpt,j) = zero;
+                w[j] = temp;
+                temp *= pq[kpt];
+                LOOP(i,j) {
+                    hq[++ih] += temp*w[i];
+                }
+            }
+            pq[kpt] = zero;
+            ip = (INTEGER)ptsid[kpt];
+            iq = (INTEGER)((REAL)np*ptsid[kpt] - (REAL)(ip*np));
+            if (ip > 0) {
+                xp = PTSAUX(1,ip);
+                XPT(kpt,ip) = xp;
+            }
+            if (iq > 0) {
+                xq = PTSAUX((ip != 0 ? 1 : 2),iq);
+                XPT(kpt,iq) = xq;
+            }
 
-  /* Form the W-vector of the chosen original interpolation point. */
-  LOOP(j,n) {
-    w[npt + j] = XPT(knew,j);
-  }
-  LOOP(k,npt) {
-    REAL sum = zero;
-    if (k != *kopt) {
-      if (ptsid[k] == zero) {
-        LOOP(j,n) {
-          sum += w[npt + j]*XPT(k,j);
-        }
-      } else {
-        ip = (INTEGER) ptsid[k];
-        if (ip > 0) {
-          sum = w[npt + ip]*PTSAUX(1,ip);
-        }
-        iq = (INTEGER) ((REAL)np*ptsid[k] - (REAL)(ip*np));
-        if (iq > 0) {
-          iw = (ip != 0 ? 1 : 2);
-          sum += w[npt + iq]*PTSAUX(iw,iq);
-        }
-      }
-    }
-    w[k] = half*sum*sum;
-  }
+            /* Set VQUAD to the value of the current model at the new point. */
+            vquad = fbase;
+            if (ip > 0) {
+                ihp = (ip + ip*ip)/2;
+                vquad += xp*(gopt[ip] + half*xp*hq[ihp]);
+            }
+            if (iq > 0) {
+                ihq = (iq + iq*iq)/2;
+                vquad += xq*(gopt[iq] + half*xq*hq[ihq]);
+                if (ip > 0) {
+                    iw = MAX(ihp, ihq) - (ip >= iq ? ip - iq : iq - ip);
+                    vquad += xp*xq*hq[iw];
+                }
+            }
+            LOOP(k,npt) {
+                REAL temp = zero;
+                if (ip > 0) {
+                    temp += xp*XPT(k,ip);
+                }
+                if (iq > 0) {
+                    temp += xq*XPT(k,iq);
+                }
+                vquad += half*pq[k]*temp*temp;
+            }
 
-  /* Calculate VLAG and BETA for the required updating of the H matrix if
-     XPT(KNEW,.) is reinstated in the set of interpolation points. */
-  LOOP(k,npt) {
-    REAL sum = zero;
+            /* Calculate F at the new interpolation point, and set DIFF to the factor that
+               is going to multiply the KPT-th Lagrange function when the model is updated
+               to provide interpolation to the new function value. */
+            LOOP(i,n) {
+                REAL temp = XPT(kpt,i);
+                w[i] = (temp  == su[i] ? xu[i] :
+                        (temp == sl[i] ? xl[i] :
+                         clamp(xbase[i] + XPT(kpt,i), xl[i], xu[i])));
+            }
+            ++(*nf);
+            f = CALL_OBJFUN(ctx, &w[1]);
+            if (iprint == 3) {
+                fprintf(OUTPUT,
+                        "    Function number%6ld"
+                        "    F =%18.10E"
+                        "    The corresponding X is:\n",
+                        (long)*nf, (double)(ctx->sgn*f));
+                print_x(OUTPUT, ctx, &w[1], NULL);
+            }
+            fval[kpt] = f;
+            if (f < fval[*kopt]) {
+                *kopt = kpt;
+            }
+            diff = f - vquad;
+
+            /* Update the quadratic model. The RETURN from the subroutine occurs when all
+               the new interpolation points are included in the model. */
+            LOOP(i,n) {
+                gopt[i] += diff*BMAT(kpt,i);
+            }
+            LOOP(k,npt) {
+                REAL temp, sum = zero;
+                LOOP(j,nptm) {
+                    sum += ZMAT(k,j)*ZMAT(kpt,j);
+                }
+                temp = diff*sum;
+                if (ptsid[k] == zero) {
+                    pq[k] += temp;
+                } else {
+                    ip = (INTEGER) ptsid[k];
+                    iq = (INTEGER) ((REAL)np*ptsid[k] - (REAL)(ip*np));
+                    ihq = (iq*iq + iq)/2;
+                    if (ip == 0) {
+                        REAL ptsaux2iq = PTSAUX(2,iq);
+                        hq[ihq] += temp*(ptsaux2iq*ptsaux2iq);
+                    } else {
+                        REAL ptsaux1ip = PTSAUX(1,ip);
+                        ihp = (ip*ip + ip)/2;
+                        hq[ihp] += temp*(ptsaux1ip*ptsaux1ip);
+                        if (iq > 0) {
+                            REAL ptsaux1iq = PTSAUX(1,iq);
+                            hq[ihq] += temp*(ptsaux1iq*ptsaux1iq);
+                            iw = MAX(ihp, ihq) - (ip >= iq ? ip - iq : iq - ip);
+                            hq[iw] += temp*ptsaux1ip*ptsaux1iq;
+                        }
+                    }
+                }
+            }
+            ptsid[kpt] = zero;
+        }
+        return;
+    }
+
+    /* Form the W-vector of the chosen original interpolation point. */
     LOOP(j,n) {
-      sum += BMAT(k,j)*w[npt + j];
+        w[npt + j] = XPT(knew,j);
     }
-    vlag[k] = sum;
-  }
-  beta = zero;
-  LOOP(j,nptm) {
-    REAL sum = zero;
     LOOP(k,npt) {
-      sum += ZMAT(k,j)*w[k];
+        REAL sum = zero;
+        if (k != *kopt) {
+            if (ptsid[k] == zero) {
+                LOOP(j,n) {
+                    sum += w[npt + j]*XPT(k,j);
+                }
+            } else {
+                ip = (INTEGER) ptsid[k];
+                if (ip > 0) {
+                    sum = w[npt + ip]*PTSAUX(1,ip);
+                }
+                iq = (INTEGER) ((REAL)np*ptsid[k] - (REAL)(ip*np));
+                if (iq > 0) {
+                    iw = (ip != 0 ? 1 : 2);
+                    sum += w[npt + iq]*PTSAUX(iw,iq);
+                }
+            }
+        }
+        w[k] = half*sum*sum;
     }
-    beta -= sum*sum;
-    LOOP(k,npt) {
-      vlag[k] += sum*ZMAT(k,j);
-    }
-  }
-  bsum = zero;
-  distsq = zero;
-  LOOP(j,n) {
-    INTEGER jp = j + npt;
-    REAL sum = zero;
-    LOOP(k,npt) {
-      sum += BMAT(k,j)*w[k];
-    }
-    bsum += sum*w[jp];
-    for (ip = npt + 1; ip <= ndim; ++ip) {
-      sum += BMAT(ip,j)*w[ip];
-    }
-    bsum += sum*w[jp];
-    vlag[jp] = sum;
-    distsq += XPT(knew,j)*XPT(knew,j);
-  }
-  beta = half*distsq*distsq + beta - bsum;
-  vlag[*kopt] += one;
 
-  /* KOLD is set to the index of the provisional interpolation point that is
-     going to be deleted to make way for the KNEW-th original interpolation
-     point.  The choice of KOLD is governed by the avoidance of a small value
-     of the denominator in the updating calculation of UPDATE. */
-  denom = zero;
-  vlmxsq = zero;
-  LOOP(k,npt) {
-    if (ptsid[k] != zero) {
-      REAL den, hdiag = zero;
-      LOOP(j,nptm) {
-        hdiag += ZMAT(k,j)*ZMAT(k,j);
-      }
-      den = beta*hdiag + vlag[k]*vlag[k];
-      if (den > denom) {
-        kold = k;
-        denom = den;
-      }
+    /* Calculate VLAG and BETA for the required updating of the H matrix if XPT(KNEW,.) is
+       reinstated in the set of interpolation points. */
+    LOOP(k,npt) {
+        REAL sum = zero;
+        LOOP(j,n) {
+            sum += BMAT(k,j)*w[npt + j];
+        }
+        vlag[k] = sum;
     }
-    vlmxsq = max(vlmxsq, vlag[k]*vlag[k]);
-  }
-  if (denom <= vlmxsq*0.01) {
-    w[ndim + knew] = -w[ndim + knew] - winc;
-    goto L120;
-  }
-  goto L80;
+    beta = zero;
+    LOOP(j,nptm) {
+        REAL sum = zero;
+        LOOP(k,npt) {
+            sum += ZMAT(k,j)*w[k];
+        }
+        beta -= sum*sum;
+        LOOP(k,npt) {
+            vlag[k] += sum*ZMAT(k,j);
+        }
+    }
+    bsum = zero;
+    distsq = zero;
+    LOOP(j,n) {
+        INTEGER jp = j + npt;
+        REAL sum = zero;
+        LOOP(k,npt) {
+            sum += BMAT(k,j)*w[k];
+        }
+        bsum += sum*w[jp];
+        for (ip = npt + 1; ip <= ndim; ++ip) {
+            sum += BMAT(ip,j)*w[ip];
+        }
+        bsum += sum*w[jp];
+        vlag[jp] = sum;
+        distsq += XPT(knew,j)*XPT(knew,j);
+    }
+    beta = half*distsq*distsq + beta - bsum;
+    vlag[*kopt] += one;
+
+    /* KOLD is set to the index of the provisional interpolation point that is going to be
+       deleted to make way for the KNEW-th original interpolation point. The choice of
+       KOLD is governed by the avoidance of a small value of the denominator in the
+       updating calculation of UPDATE. */
+    denom = zero;
+    vlmxsq = zero;
+    LOOP(k,npt) {
+        if (ptsid[k] != zero) {
+            REAL den, hdiag = zero;
+            LOOP(j,nptm) {
+                hdiag += ZMAT(k,j)*ZMAT(k,j);
+            }
+            den = beta*hdiag + vlag[k]*vlag[k];
+            if (den > denom) {
+                kold = k;
+                denom = den;
+            }
+        }
+        vlmxsq = max(vlmxsq, vlag[k]*vlag[k]);
+    }
+    if (denom <= vlmxsq*0.01) {
+        w[ndim + knew] = -w[ndim + knew] - winc;
+        goto L120;
+    }
+    goto L80;
 
 } /* rescue */
 
@@ -2393,50 +2366,47 @@ rescue(const INTEGER n, const INTEGER npt, const context* ctx,
 #undef BMAT
 #undef XPT
 
-/* The arguments N, NPT, XPT, XOPT, GOPT, HQ, PQ, SL and SU have the same
-   meanings as the corresponding arguments of BOBYQB.
+/* The arguments N, NPT, XPT, XOPT, GOPT, HQ, PQ, SL and SU have the same meanings as the
+   corresponding arguments of BOBYQB.
 
-   DELTA is the trust region radius for the present calculation, which seeks a
-   small value of the quadratic model within distance DELTA of
+   DELTA is the trust region radius for the present calculation, which seeks a small value
+   of the quadratic model within distance DELTA of XOPT subject to the bounds on the
+   variables.
 
-   XOPT subject to the bounds on the variables.
+   XNEW will be set to a new vector of variables that is approximately the one that
+   minimizes the quadratic model within the trust region subject to the SL and SU
+   constraints on the variables. It satisfies as equations the bounds that become active
+   during the calculation.
 
-   XNEW will be set to a new vector of variables that is approximately the one
-   that minimizes the quadratic model within the trust region subject to the SL
-   and SU constraints on the variables.  It satisfies as equations the bounds
-   that become active during the calculation.
+   D is the calculated trial step from XOPT, generated iteratively from an initial value
+   of zero. Thus XNEW is XOPT+D after the final iteration.
 
-   D is the calculated trial step from XOPT, generated iteratively from an
-   initial value of zero.  Thus XNEW is XOPT+D after the final iteration.
+   GNEW holds the gradient of the quadratic model at XOPT+D. It is updated when D is
+   updated.
 
-   GNEW holds the gradient of the quadratic model at XOPT+D.  It is updated
-   when D is updated.
-
-   XBDI is a working space vector.  For I=1,2,...,N, the element XBDI(I) is set
-   to -1.0, 0.0, or 1.0, the value being nonzero if and only if the I-th
-   variable has become fixed at a bound, the bound being SL(I) or SU(I) in the
-   case XBDI(I)=-1.0 or XBDI(I)=1.0, respectively.  This information is
-   accumulated during the construction of XNEW.  The arrays S, HS and HRED are
-   also used for working space.  They hold the current search direction, and
-   the changes in the gradient of Q along S and the reduced D, respectively,
-   where the reduced D is the same as D, except that the components of the
+   XBDI is a working space vector. For I=1,2,...,N, the element XBDI(I) is set to -1.0,
+   0.0, or 1.0, the value being nonzero if and only if the I-th variable has become fixed
+   at a bound, the bound being SL(I) or SU(I) in the case XBDI(I)=-1.0 or XBDI(I)=1.0,
+   respectively. This information is accumulated during the construction of XNEW. The
+   arrays S, HS and HRED are also used for working space. They hold the current search
+   direction, and the changes in the gradient of Q along S and the reduced D,
+   respectively, where the reduced D is the same as D, except that the components of the
    fixed variables are zero.
 
    DSQ will be set to the square of the length of XNEW-XOPT.
 
-   CRVMIN is set to zero if D reaches the trust region boundary.  Otherwise it
-   is set to the least curvature of H that occurs in the conjugate gradient
-   searches that are not restricted by any constraints.  The value
-   CRVMIN=-1.0D0 is set, however, if all of these searches are constrained.
+   CRVMIN is set to zero if D reaches the trust region boundary. Otherwise it is set to
+   the least curvature of H that occurs in the conjugate gradient searches that are not
+   restricted by any constraints. The value CRVMIN=-1.0D0 is set, however, if all of these
+   searches are constrained.
 
-   A version of the truncated conjugate gradient is applied.  If a line search
-   is restricted by a constraint, then the procedure is restarted, the values
-   of the variables that are at their bounds being fixed.  If the trust region
-   boundary is reached, then further changes may be made to D, each one being
-   in the two dimensional space that is spanned by the current D and the
-   gradient of Q at XOPT+D, staying on the trust region boundary.  Termination
-   occurs when the reduction in Q seems to be close to the greatest reduction
-   that can be achieved. */
+   A version of the truncated conjugate gradient is applied. If a line search is
+   restricted by a constraint, then the procedure is restarted, the values of the
+   variables that are at their bounds being fixed. If the trust region boundary is
+   reached, then further changes may be made to D, each one being in the two dimensional
+   space that is spanned by the current D and the gradient of Q at XOPT+D, staying on the
+   trust region boundary. Termination occurs when the reduction in Q seems to be close to
+   the greatest reduction that can be achieved. */
 
 static void
 trsbox(const INTEGER n, const INTEGER npt, REAL* xpt,
@@ -2445,419 +2415,418 @@ trsbox(const INTEGER n, const INTEGER npt, REAL* xpt,
        REAL* d, REAL* gnew, REAL* xbdi, REAL* s,
        REAL* hs, REAL* hred, REAL* dsq, REAL* crvmin)
 {
-  /* Constants. */
-  const REAL half = 0.5;
-  const REAL one = 1.0;
-  const REAL onemin = -1.0;
-  const REAL zero = 0.0;
+    /* Constants. */
+    const REAL half = 0.5;
+    const REAL one = 1.0;
+    const REAL onemin = -1.0;
+    const REAL zero = 0.0;
 
-  /* Local variables. */
-  REAL angbd, angt, beta, blen, cth, delsq, dhd, dhs, dredg, dredsq, ds,
-    ggsav, gredsq, qred, rdnext, rdprev, redmax, rednew, redsav, resid,
-    sdec, shs, sredg, ssq, stepsq, sth, stplen, temp, tempa, tempb, xsav, xsum;
-  INTEGER i, iact, ih, isav, itcsav, iterc, itermax, iu, j, k, nact;
+    /* Local variables. */
+    REAL angbd, angt, beta, blen, cth, delsq, dhd, dhs, dredg, dredsq, ds,
+        ggsav, gredsq, qred, rdnext, rdprev, redmax, rednew, redsav, resid,
+        sdec, shs, sredg, ssq, stepsq, sth, stplen, temp, tempa, tempb, xsav, xsum;
+    INTEGER i, iact, ih, isav, itcsav, iterc, itermax, iu, j, k, nact;
 
-  /* Parameter adjustments to comply with FORTRAN indexing. */
-  xpt  -= 1 + npt;
-  xopt -= 1;
-  gopt -= 1;
-  hq   -= 1;
-  pq   -= 1;
-  sl   -= 1;
-  su   -= 1;
-  xnew -= 1;
-  d    -= 1;
-  gnew -= 1;
-  xbdi -= 1;
-  s    -= 1;
-  hs   -= 1;
-  hred -= 1;
+    /* Parameter adjustments to comply with FORTRAN indexing. */
+    xpt  -= 1 + npt;
+    xopt -= 1;
+    gopt -= 1;
+    hq   -= 1;
+    pq   -= 1;
+    sl   -= 1;
+    su   -= 1;
+    xnew -= 1;
+    d    -= 1;
+    gnew -= 1;
+    xbdi -= 1;
+    s    -= 1;
+    hs   -= 1;
+    hred -= 1;
 #define XPT(a1,a2) xpt[(a2)*npt + a1]
 
-  /* FIXME: Set uninitialized variables. */
-  angbd = zero;
-  dredg = zero;
-  dredsq = zero;
-  ggsav = zero;
-  gredsq = zero;
-  rdnext = zero;
-  sredg = zero;
-  xsav = zero;
-  iact = 0;
-  itcsav = 0;
-  itermax = 0;
+    /* FIXME: Set uninitialized variables. */
+    angbd = zero;
+    dredg = zero;
+    dredsq = zero;
+    ggsav = zero;
+    gredsq = zero;
+    rdnext = zero;
+    sredg = zero;
+    xsav = zero;
+    iact = 0;
+    itcsav = 0;
+    itermax = 0;
 
-  /* The sign of GOPT(I) gives the sign of the change to the I-th variable that
-     will reduce Q from its value at XOPT.  Thus XBDI(I) shows whether or not
-     to fix the I-th variable at one of its bounds initially, with NACT being
-     set to the number of fixed variables.  D and GNEW are also set for the
-     first iteration.  DELSQ is the upper bound on the sum of squares of the
-     free variables.  QRED is the reduction in Q so far. */
-  iterc = 0;
-  nact = 0;
-  LOOP(i,n) {
-    xbdi[i] = zero;
-    if (xopt[i] <= sl[i]) {
-      if (gopt[i] >= zero) {
-        xbdi[i] = onemin;
-      }
-    } else if (xopt[i] >= su[i]) {
-      if (gopt[i] <= zero) {
-        xbdi[i] = one;
-      }
+    /* The sign of GOPT(I) gives the sign of the change to the I-th variable that will
+       reduce Q from its value at XOPT. Thus XBDI(I) shows whether or not to fix the I-th
+       variable at one of its bounds initially, with NACT being set to the number of fixed
+       variables. D and GNEW are also set for the first iteration. DELSQ is the upper
+       bound on the sum of squares of the free variables. QRED is the reduction in Q so
+       far. */
+    iterc = 0;
+    nact = 0;
+    LOOP(i,n) {
+        xbdi[i] = zero;
+        if (xopt[i] <= sl[i]) {
+            if (gopt[i] >= zero) {
+                xbdi[i] = onemin;
+            }
+        } else if (xopt[i] >= su[i]) {
+            if (gopt[i] <= zero) {
+                xbdi[i] = one;
+            }
+        }
+        if (xbdi[i] != zero) {
+            ++nact;
+        }
+        d[i] = zero;
+        gnew[i] = gopt[i];
     }
-    if (xbdi[i] != zero) {
-      ++nact;
-    }
-    d[i] = zero;
-    gnew[i] = gopt[i];
-  }
-  delsq = delta*delta;
-  qred = zero;
-  *crvmin = onemin;
+    delsq = delta*delta;
+    qred = zero;
+    *crvmin = onemin;
 
-  /* Set the next search direction of the conjugate gradient method.  It is the
-     steepest descent direction initially and when the iterations are restarted
-     because a variable has just been fixed by a bound, and of course the
-     components of the fixed variables are zero.  ITERMAX is an upper bound on
-     the indices of the conjugate gradient iterations. */
+    /* Set the next search direction of the conjugate gradient method. It is the steepest
+       descent direction initially and when the iterations are restarted because a
+       variable has just been fixed by a bound, and of course the components of the fixed
+       variables are zero. ITERMAX is an upper bound on the indices of the conjugate
+       gradient iterations. */
  L20:
-  beta = zero;
+    beta = zero;
  L30:
-  stepsq = zero;
-  LOOP(i,n) {
-    if (xbdi[i] != zero) {
-      s[i] = zero;
-    } else if (beta == zero) {
-      s[i] = -gnew[i];
-    } else {
-      s[i] = beta*s[i] - gnew[i];
+    stepsq = zero;
+    LOOP(i,n) {
+        if (xbdi[i] != zero) {
+            s[i] = zero;
+        } else if (beta == zero) {
+            s[i] = -gnew[i];
+        } else {
+            s[i] = beta*s[i] - gnew[i];
+        }
+        stepsq += s[i]*s[i];
     }
-    stepsq += s[i]*s[i];
-  }
-  if (stepsq == zero) {
-    goto L190;
-  }
-  if (beta == zero) {
-    gredsq = stepsq;
-    itermax = iterc + n - nact;
-  }
-  if (gredsq*delsq <= qred*1e-4*qred) {
-    goto L190;
-  }
-  goto L210;
+    if (stepsq == zero) {
+        goto L190;
+    }
+    if (beta == zero) {
+        gredsq = stepsq;
+        itermax = iterc + n - nact;
+    }
+    if (gredsq*delsq <= qred*1e-4*qred) {
+        goto L190;
+    }
+    goto L210;
 
  L50:
-  /* Multiply the search direction by the second derivative matrix of Q and
-     calculate some scalars for the choice of steplength.  Then set BLEN to the
-     length of the the step to the trust region boundary and STPLEN to the
-     steplength, ignoring the simple bounds. */
-  resid = delsq;
-  ds = zero;
-  shs = zero;
-  LOOP(i,n) {
-    if (xbdi[i] == zero) {
-      resid -= d[i]*d[i];
-      ds += s[i]*d[i];
-      shs += s[i]*hs[i];
+    /* Multiply the search direction by the second derivative matrix of Q and calculate
+       some scalars for the choice of steplength. Then set BLEN to the length of the the
+       step to the trust region boundary and STPLEN to the steplength, ignoring the simple
+       bounds. */
+    resid = delsq;
+    ds = zero;
+    shs = zero;
+    LOOP(i,n) {
+        if (xbdi[i] == zero) {
+            resid -= d[i]*d[i];
+            ds += s[i]*d[i];
+            shs += s[i]*hs[i];
+        }
     }
-  }
-  if (resid <= zero) {
-    goto L90;
-  }
-  temp = SQRT(stepsq*resid + ds*ds);
-  if (ds < zero) {
-    blen = (temp - ds)/stepsq;
-  } else {
-    blen = resid/(temp + ds);
-  }
-  if (shs > zero) {
-    stplen = gredsq/shs;
-    stplen = min(blen, stplen);
-  } else {
-    stplen = blen;
-  }
+    if (resid <= zero) {
+        goto L90;
+    }
+    temp = SQRT(stepsq*resid + ds*ds);
+    if (ds < zero) {
+        blen = (temp - ds)/stepsq;
+    } else {
+        blen = resid/(temp + ds);
+    }
+    if (shs > zero) {
+        stplen = gredsq/shs;
+        stplen = min(blen, stplen);
+    } else {
+        stplen = blen;
+    }
 
-  /* Reduce STPLEN if necessary in order to preserve the simple bounds, letting
-     IACT be the index of the new constrained variable. */
-  iact = 0;
-  LOOP(i,n) {
-    if (s[i] != zero) {
-      xsum = xopt[i] + d[i];
-      if (s[i] > zero) {
-        temp = (su[i] - xsum)/s[i];
-      } else {
-        temp = (sl[i] - xsum)/s[i];
-      }
-      if (temp < stplen) {
-        stplen = temp;
-        iact = i;
-      }
+    /* Reduce STPLEN if necessary in order to preserve the simple bounds, letting IACT be
+       the index of the new constrained variable. */
+    iact = 0;
+    LOOP(i,n) {
+        if (s[i] != zero) {
+            xsum = xopt[i] + d[i];
+            if (s[i] > zero) {
+                temp = (su[i] - xsum)/s[i];
+            } else {
+                temp = (sl[i] - xsum)/s[i];
+            }
+            if (temp < stplen) {
+                stplen = temp;
+                iact = i;
+            }
+        }
     }
-  }
 
-  /* Update CRVMIN, GNEW and D.  Set SDEC to the decrease that occurs in Q. */
-  sdec = zero;
-  if (stplen > zero) {
-    ++iterc;
-    temp = shs/stepsq;
-    if (iact == 0 && temp > zero) {
-      *crvmin = min(*crvmin, temp);
-      if (*crvmin == onemin) {
-        *crvmin = temp;
-      }
+    /* Update CRVMIN, GNEW and D.  Set SDEC to the decrease that occurs in Q. */
+    sdec = zero;
+    if (stplen > zero) {
+        ++iterc;
+        temp = shs/stepsq;
+        if (iact == 0 && temp > zero) {
+            *crvmin = min(*crvmin, temp);
+            if (*crvmin == onemin) {
+                *crvmin = temp;
+            }
+        }
+        ggsav = gredsq;
+        gredsq = zero;
+        LOOP(i,n) {
+            gnew[i] += stplen*hs[i];
+            if (xbdi[i] == zero) {
+                gredsq += gnew[i]*gnew[i];
+            }
+            d[i] += stplen*s[i];
+        }
+        sdec = max(stplen*(ggsav - half*stplen*shs), zero);
+        qred += sdec;
     }
-    ggsav = gredsq;
+
+    /* Restart the conjugate gradient method if it has hit a new bound. */
+    if (iact > 0) {
+        ++nact;
+        xbdi[iact] = (s[iact] < zero ? onemin : one);
+        delsq -= d[iact]*d[iact];
+        if (delsq <= zero) {
+            goto L90;
+        }
+        goto L20;
+    }
+
+    /* If STPLEN is less than BLEN, then either apply another conjugate gradient iteration
+       or RETURN. */
+    if (stplen < blen) {
+        if (iterc == itermax || sdec <= qred*FLT(0.01)) {
+            goto L190;
+        }
+        beta = gredsq/ggsav;
+        goto L30;
+    }
+ L90:
+    *crvmin = zero;
+
+    /* Prepare for the alternative iteration by calculating some scalars and by
+       multiplying the reduced D by the second derivative matrix of Q. */
+ L100:
+    if (nact >= n - 1) {
+        goto L190;
+    }
+    dredsq = zero;
+    dredg = zero;
     gredsq = zero;
     LOOP(i,n) {
-      gnew[i] += stplen*hs[i];
-      if (xbdi[i] == zero) {
-        gredsq += gnew[i]*gnew[i];
-      }
-      d[i] += stplen*s[i];
+        if (xbdi[i] == zero) {
+            dredsq += d[i]*d[i];
+            dredg += d[i]*gnew[i];
+            gredsq += gnew[i]*gnew[i];
+            s[i] = d[i];
+        } else {
+            s[i] = zero;
+        }
     }
-    sdec = max(stplen*(ggsav - half*stplen*shs), zero);
-    qred += sdec;
-  }
+    itcsav = iterc;
+    goto L210;
 
-  /* Restart the conjugate gradient method if it has hit a new bound. */
-  if (iact > 0) {
-    ++nact;
-    xbdi[iact] = (s[iact] < zero ? onemin : one);
-    delsq -= d[iact]*d[iact];
-    if (delsq <= zero) {
-      goto L90;
-    }
-    goto L20;
-  }
-
-  /* If STPLEN is less than BLEN, then either apply another conjugate gradient
-     iteration or RETURN. */
-  if (stplen < blen) {
-    if (iterc == itermax || sdec <= qred*FLT(0.01)) {
-      goto L190;
-    }
-    beta = gredsq/ggsav;
-    goto L30;
-  }
- L90:
-  *crvmin = zero;
-
-  /* Prepare for the alternative iteration by calculating some scalars and by
-     multiplying the reduced D by the second derivative matrix of Q. */
- L100:
-  if (nact >= n - 1) {
-    goto L190;
-  }
-  dredsq = zero;
-  dredg = zero;
-  gredsq = zero;
-  LOOP(i,n) {
-    if (xbdi[i] == zero) {
-      dredsq += d[i]*d[i];
-      dredg += d[i]*gnew[i];
-      gredsq += gnew[i]*gnew[i];
-      s[i] = d[i];
-    } else {
-      s[i] = zero;
-    }
-  }
-  itcsav = iterc;
-  goto L210;
-
-  /* Let the search direction S be a linear combination of the reduced D and
-     the reduced G that is orthogonal to the reduced D. */
+    /* Let the search direction S be a linear combination of the reduced D and the reduced
+       G that is orthogonal to the reduced D. */
  L120:
-  ++iterc;
-  temp = gredsq*dredsq - dredg*dredg;
-  if (temp <= qred*1e-4*qred) {
-    goto L190;
-  }
-  temp = SQRT(temp);
-  LOOP(i,n) {
-    if (xbdi[i] == zero) {
-      s[i] = (dredg*d[i] - dredsq*gnew[i])/temp;
-    } else {
-      s[i] = zero;
+    ++iterc;
+    temp = gredsq*dredsq - dredg*dredg;
+    if (temp <= qred*1e-4*qred) {
+        goto L190;
     }
-  }
-  sredg = -temp;
-
-  /* By considering the simple bounds on the variables, calculate an upper
-     bound on the tangent of half the angle of the alternative iteration,
-     namely ANGBD, except that, if already a free variable has reached a bound,
-     there is a branch back to label 100 after fixing that variable. */
-  angbd = one;
-  iact = 0;
-  LOOP(i,n) {
-    if (xbdi[i] == zero) {
-      tempa = xopt[i] + d[i] - sl[i];
-      tempb = su[i] - xopt[i] - d[i];
-      if (tempa <= zero) {
-        ++nact;
-        xbdi[i] = onemin;
-        goto L100;
-      } else if (tempb <= zero) {
-        ++nact;
-        xbdi[i] = one;
-        goto L100;
-      }
-      ssq = d[i]*d[i] + s[i]*s[i];
-      temp = xopt[i] - sl[i];
-      temp = ssq - temp*temp;
-      if (temp > zero) {
-        temp = SQRT(temp) - s[i];
-        if (angbd*temp > tempa) {
-          angbd = tempa/temp;
-          iact = i;
-          xsav = onemin;
+    temp = SQRT(temp);
+    LOOP(i,n) {
+        if (xbdi[i] == zero) {
+            s[i] = (dredg*d[i] - dredsq*gnew[i])/temp;
+        } else {
+            s[i] = zero;
         }
-      }
-      temp = su[i] - xopt[i];
-      temp = ssq - temp*temp;
-      if (temp > zero) {
-        temp = SQRT(temp) + s[i];
-        if (angbd*temp > tempb) {
-          angbd = tempb/temp;
-          iact = i;
-          xsav = one;
-        }
-      }
     }
-  }
-  goto L210;
+    sredg = -temp;
 
-  /* Calculate HHD and some curvatures for the alternative iteration. */
+    /* By considering the simple bounds on the variables, calculate an upper bound on the
+       tangent of half the angle of the alternative iteration, namely ANGBD, except that,
+       if already a free variable has reached a bound, there is a branch back to label 100
+       after fixing that variable. */
+    angbd = one;
+    iact = 0;
+    LOOP(i,n) {
+        if (xbdi[i] == zero) {
+            tempa = xopt[i] + d[i] - sl[i];
+            tempb = su[i] - xopt[i] - d[i];
+            if (tempa <= zero) {
+                ++nact;
+                xbdi[i] = onemin;
+                goto L100;
+            } else if (tempb <= zero) {
+                ++nact;
+                xbdi[i] = one;
+                goto L100;
+            }
+            ssq = d[i]*d[i] + s[i]*s[i];
+            temp = xopt[i] - sl[i];
+            temp = ssq - temp*temp;
+            if (temp > zero) {
+                temp = SQRT(temp) - s[i];
+                if (angbd*temp > tempa) {
+                    angbd = tempa/temp;
+                    iact = i;
+                    xsav = onemin;
+                }
+            }
+            temp = su[i] - xopt[i];
+            temp = ssq - temp*temp;
+            if (temp > zero) {
+                temp = SQRT(temp) + s[i];
+                if (angbd*temp > tempb) {
+                    angbd = tempb/temp;
+                    iact = i;
+                    xsav = one;
+                }
+            }
+        }
+    }
+    goto L210;
+
+    /* Calculate HHD and some curvatures for the alternative iteration. */
  L150:
-  shs = zero;
-  dhs = zero;
-  dhd = zero;
-  LOOP(i,n) {
-    if (xbdi[i] == zero) {
-      shs += s[i]*hs[i];
-      dhs += d[i]*hs[i];
-      dhd += d[i]*hred[i];
+    shs = zero;
+    dhs = zero;
+    dhd = zero;
+    LOOP(i,n) {
+        if (xbdi[i] == zero) {
+            shs += s[i]*hs[i];
+            dhs += d[i]*hs[i];
+            dhd += d[i]*hred[i];
+        }
     }
-  }
 
-  /* Seek the greatest reduction in Q for a range of equally spaced values of
-     ANGT in [0,ANGBD], where ANGT is the tangent of half the angle of the
-     alternative iteration. */
-  redmax = zero;
-  isav = 0;
-  redsav = zero;
-  iu = (INTEGER)(angbd*FLT(17.0) + FLT(3.1));
-  LOOP(i,iu) {
-    angt = angbd*(REAL)i/(REAL)iu;
+    /* Seek the greatest reduction in Q for a range of equally spaced values of ANGT in
+       [0,ANGBD], where ANGT is the tangent of half the angle of the alternative
+       iteration. */
+    redmax = zero;
+    isav = 0;
+    redsav = zero;
+    iu = (INTEGER)(angbd*FLT(17.0) + FLT(3.1));
+    LOOP(i,iu) {
+        angt = angbd*(REAL)i/(REAL)iu;
+        sth = (angt + angt)/(one + angt*angt);
+        temp = shs + angt*(angt*dhd - dhs - dhs);
+        rednew = sth*(angt*dredg - sredg - half*sth*temp);
+        if (rednew > redmax) {
+            redmax = rednew;
+            isav = i;
+            rdprev = redsav;
+        } else if (i == isav + 1) {
+            rdnext = rednew;
+        }
+        redsav = rednew;
+    }
+
+    /* Return if the reduction is zero. Otherwise, set the sine and cosine of the angle of
+       the alternative iteration, and calculate SDEC. */
+    if (isav == 0) {
+        goto L190;
+    }
+    if (isav < iu) {
+        temp = (rdnext - rdprev)/(redmax + redmax - rdprev - rdnext);
+        angt = angbd*((REAL)isav + half*temp)/(REAL)iu;
+    }
+    cth = (one - angt*angt)/(one + angt*angt);
     sth = (angt + angt)/(one + angt*angt);
     temp = shs + angt*(angt*dhd - dhs - dhs);
-    rednew = sth*(angt*dredg - sredg - half*sth*temp);
-    if (rednew > redmax) {
-      redmax = rednew;
-      isav = i;
-      rdprev = redsav;
-    } else if (i == isav + 1) {
-      rdnext = rednew;
+    sdec = sth*(angt*dredg - sredg - half*sth*temp);
+    if (sdec <= zero) {
+        goto L190;
     }
-    redsav = rednew;
-  }
 
-  /* Return if the reduction is zero.  Otherwise, set the sine and cosine of
-     the angle of the alternative iteration, and calculate SDEC. */
-  if (isav == 0) {
-    goto L190;
-  }
-  if (isav < iu) {
-    temp = (rdnext - rdprev)/(redmax + redmax - rdprev - rdnext);
-    angt = angbd*((REAL)isav + half*temp)/(REAL)iu;
-  }
-  cth = (one - angt*angt)/(one + angt*angt);
-  sth = (angt + angt)/(one + angt*angt);
-  temp = shs + angt*(angt*dhd - dhs - dhs);
-  sdec = sth*(angt*dredg - sredg - half*sth*temp);
-  if (sdec <= zero) {
-    goto L190;
-  }
-
-  /* Update GNEW, D and HRED.  If the angle of the alternative iteration is
-     restricted by a bound on a free variable, that variable is fixed at the
-     bound. */
-  dredg = zero;
-  gredsq = zero;
-  LOOP(i,n) {
-    gnew[i] = gnew[i] + (cth - one)*hred[i] + sth*hs[i];
-    if (xbdi[i] == zero) {
-      d[i] = cth*d[i] + sth*s[i];
-      dredg += d[i]*gnew[i];
-      gredsq += gnew[i]*gnew[i];
+    /* Update GNEW, D and HRED. If the angle of the alternative iteration is restricted by
+       a bound on a free variable, that variable is fixed at the bound. */
+    dredg = zero;
+    gredsq = zero;
+    LOOP(i,n) {
+        gnew[i] = gnew[i] + (cth - one)*hred[i] + sth*hs[i];
+        if (xbdi[i] == zero) {
+            d[i] = cth*d[i] + sth*s[i];
+            dredg += d[i]*gnew[i];
+            gredsq += gnew[i]*gnew[i];
+        }
+        hred[i] = cth*hred[i] + sth*hs[i];
     }
-    hred[i] = cth*hred[i] + sth*hs[i];
-  }
-  qred += sdec;
-  if (iact > 0 && isav == iu) {
-    ++nact;
-    xbdi[iact] = xsav;
-    goto L100;
-  }
+    qred += sdec;
+    if (iact > 0 && isav == iu) {
+        ++nact;
+        xbdi[iact] = xsav;
+        goto L100;
+    }
 
-  /* If SDEC is sufficiently small, then RETURN after setting XNEW to XOPT+D,
-     giving careful attention to the bounds. */
-  if (sdec > qred*FLT(0.01)) {
-    goto L120;
-  }
+    /* If SDEC is sufficiently small, then RETURN after setting XNEW to XOPT+D, giving
+       careful attention to the bounds. */
+    if (sdec > qred*FLT(0.01)) {
+        goto L120;
+    }
  L190:
-  *dsq = zero;
-  LOOP(i,n) {
-    xnew[i] = clamp(xopt[i] + d[i], sl[i], su[i]);
-    if (xbdi[i] == onemin) {
-      xnew[i] = sl[i];
+    *dsq = zero;
+    LOOP(i,n) {
+        xnew[i] = clamp(xopt[i] + d[i], sl[i], su[i]);
+        if (xbdi[i] == onemin) {
+            xnew[i] = sl[i];
+        }
+        if (xbdi[i] == one) {
+            xnew[i] = su[i];
+        }
+        d[i] = xnew[i] - xopt[i];
+        *dsq += d[i]*d[i];
     }
-    if (xbdi[i] == one) {
-      xnew[i] = su[i];
-    }
-    d[i] = xnew[i] - xopt[i];
-    *dsq += d[i]*d[i];
-  }
-  return;
+    return;
 
-  /* The following instructions multiply the current S-vector by the second
-     derivative matrix of the quadratic model, putting the product in HS.  They
-     are reached from three different parts of the software above and they can
-     be regarded as an external subroutine. */
+    /* The following instructions multiply the current S-vector by the second derivative
+       matrix of the quadratic model, putting the product in HS. They are reached from
+       three different parts of the software above and they can be regarded as an external
+       subroutine. */
  L210:
-  ih = 0;
-  LOOP(j,n) {
-    hs[j] = zero;
-    LOOP(i,j) {
-      ++ih;
-      if (i < j) {
-        hs[j] += hq[ih]*s[i];
-      }
-      hs[i] += hq[ih]*s[j];
+    ih = 0;
+    LOOP(j,n) {
+        hs[j] = zero;
+        LOOP(i,j) {
+            ++ih;
+            if (i < j) {
+                hs[j] += hq[ih]*s[i];
+            }
+            hs[i] += hq[ih]*s[j];
+        }
     }
-  }
-  LOOP(k,npt) {
-    if (pq[k] != zero) {
-      temp = zero;
-      LOOP(j,n) {
-        temp += XPT(k,j)*s[j];
-      }
-      temp *= pq[k];
-      LOOP(i,n) {
-        hs[i] += temp*XPT(k,i);
-      }
+    LOOP(k,npt) {
+        if (pq[k] != zero) {
+            temp = zero;
+            LOOP(j,n) {
+                temp += XPT(k,j)*s[j];
+            }
+            temp *= pq[k];
+            LOOP(i,n) {
+                hs[i] += temp*XPT(k,i);
+            }
+        }
     }
-  }
-  if (*crvmin != zero) {
-    goto L50;
-  }
-  if (iterc > itcsav) {
-    goto L150;
-  }
-  LOOP(i,n) {
-    hred[i] = hs[i];
-  }
-  goto L120;
+    if (*crvmin != zero) {
+        goto L50;
+    }
+    if (iterc > itcsav) {
+        goto L150;
+    }
+    LOOP(i,n) {
+        hred[i] = hs[i];
+    }
+    goto L120;
 } /* trsbox */
 
 #undef XPT
@@ -2867,88 +2836,87 @@ update(const INTEGER n, const INTEGER npt, REAL* bmat,
        REAL* zmat, const INTEGER ndim, REAL* vlag, const REAL beta,
        const REAL denom, const INTEGER knew, REAL* w)
 {
-  /* The arrays BMAT and ZMAT are updated, as required by the new position of
-     the interpolation point that has the index KNEW.  The vector VLAG has
-     N+NPT components, set on entry to the first NPT and last N components of
-     the product Hw in equation (4.11) of the Powell (2006) paper on NEWUOA.
-     Further, BETA is set on entry to the value of the parameter with that
-     name, and DENOM is set to the denominator of the updating formula.
-     Elements of ZMAT may be treated as zero if their moduli are at most ZTEST.
-     The first NDIM elements of W are used for working space. */
+    /* The arrays BMAT and ZMAT are updated, as required by the new position of the
+       interpolation point that has the index KNEW. The vector VLAG has N+NPT components,
+       set on entry to the first NPT and last N components of the product Hw in equation
+       (4.11) of the Powell (2006) paper on NEWUOA. Further, BETA is set on entry to the
+       value of the parameter with that name, and DENOM is set to the denominator of the
+       updating formula. Elements of ZMAT may be treated as zero if their moduli are at
+       most ZTEST. The first NDIM elements of W are used for working space. */
 
-  /* Constants. */
-  const REAL one = 1.0;
-  const REAL zero = 0.0;
+    /* Constants. */
+    const REAL one = 1.0;
+    const REAL zero = 0.0;
 
-  /* Local variables. */
-  REAL alpha, tau, temp, tempa, tempb, ztest;
-  INTEGER i, j, jp, k, nptm;
+    /* Local variables. */
+    REAL alpha, tau, temp, tempa, tempb, ztest;
+    INTEGER i, j, jp, k, nptm;
 
-  /* Parameter adjustments to comply with FORTRAN indexing. */
-  zmat -= 1 + npt;
-  bmat -= 1 + ndim;
-  vlag -= 1;
-  w    -= 1;
+    /* Parameter adjustments to comply with FORTRAN indexing. */
+    zmat -= 1 + npt;
+    bmat -= 1 + ndim;
+    vlag -= 1;
+    w    -= 1;
 #define BMAT(a1,a2) bmat[(a2)*ndim + a1]
 #define ZMAT(a1,a2) zmat[(a2)*npt + a1]
 
-  /* Initialization. */
-  nptm = npt - n - 1;
-  ztest = zero;
-  LOOP(k,npt) {
-    LOOP(j,nptm) {
-      ztest = max(ztest, ABS(ZMAT(k,j)));
+    /* Initialization. */
+    nptm = npt - n - 1;
+    ztest = zero;
+    LOOP(k,npt) {
+        LOOP(j,nptm) {
+            ztest = max(ztest, ABS(ZMAT(k,j)));
+        }
     }
-  }
-  ztest *= 1e-20;
+    ztest *= 1e-20;
 
-  /* Apply the rotations that put zeros in the KNEW-th row of ZMAT. */
-  for (j = 2; j <= nptm; ++j) {
-    if (ABS(ZMAT(knew,j)) > ztest) {
-      tempa = ZMAT(knew,1);
-      tempb = ZMAT(knew,j);
-      temp = SQRT(tempa*tempa + tempb*tempb);
-      tempa /= temp;
-      tempb /= temp;
-      LOOP(i,npt) {
-        temp = tempa*ZMAT(i,1) + tempb*ZMAT(i,j);
-        ZMAT(i,j) = tempa*ZMAT(i,j) - tempb*ZMAT(i,1);
-        ZMAT(i,1) = temp;
-      }
+    /* Apply the rotations that put zeros in the KNEW-th row of ZMAT. */
+    for (j = 2; j <= nptm; ++j) {
+        if (ABS(ZMAT(knew,j)) > ztest) {
+            tempa = ZMAT(knew,1);
+            tempb = ZMAT(knew,j);
+            temp = SQRT(tempa*tempa + tempb*tempb);
+            tempa /= temp;
+            tempb /= temp;
+            LOOP(i,npt) {
+                temp = tempa*ZMAT(i,1) + tempb*ZMAT(i,j);
+                ZMAT(i,j) = tempa*ZMAT(i,j) - tempb*ZMAT(i,1);
+                ZMAT(i,1) = temp;
+            }
+        }
+        ZMAT(knew, j) = zero;
     }
-    ZMAT(knew, j) = zero;
-  }
 
-  /* Put the first NPT components of the KNEW-th column of HLAG into W, and
-     calculate the parameters of the updating formula. */
-  LOOP(i,npt) {
-    w[i] = ZMAT(knew,1)*ZMAT(i,1);
-  }
-  alpha = w[knew];
-  tau = vlag[knew];
-  vlag[knew] -= one;
-
-  /* Complete the updating of ZMAT. */
-  temp = SQRT(denom);
-  tempb = ZMAT(knew,1)/temp;
-  tempa = tau/temp;
-  LOOP(i,npt) {
-    ZMAT(i,1) = tempa*ZMAT(i,1) - tempb*vlag[i];
-  }
-
-  /* Finally, update the matrix BMAT. */
-  LOOP(j,n) {
-    jp = npt + j;
-    w[jp] = BMAT(knew, j);
-    tempa = (alpha*vlag[jp] - tau*w[jp])/denom;
-    tempb = (-beta*w[jp] - tau*vlag[jp])/denom;
-    LOOP(i,jp) {
-      BMAT(i,j) = BMAT(i,j) + tempa*vlag[i] + tempb*w[i];
-      if (i > npt) {
-        BMAT(jp, i - npt) = BMAT(i,j);
-      }
+    /* Put the first NPT components of the KNEW-th column of HLAG into W, and calculate
+       the parameters of the updating formula. */
+    LOOP(i,npt) {
+        w[i] = ZMAT(knew,1)*ZMAT(i,1);
     }
-  }
+    alpha = w[knew];
+    tau = vlag[knew];
+    vlag[knew] -= one;
+
+    /* Complete the updating of ZMAT. */
+    temp = SQRT(denom);
+    tempb = ZMAT(knew,1)/temp;
+    tempa = tau/temp;
+    LOOP(i,npt) {
+        ZMAT(i,1) = tempa*ZMAT(i,1) - tempb*vlag[i];
+    }
+
+    /* Finally, update the matrix BMAT. */
+    LOOP(j,n) {
+        jp = npt + j;
+        w[jp] = BMAT(knew, j);
+        tempa = (alpha*vlag[jp] - tau*w[jp])/denom;
+        tempb = (-beta*w[jp] - tau*vlag[jp])/denom;
+        LOOP(i,jp) {
+            BMAT(i,j) = BMAT(i,j) + tempa*vlag[i] + tempb*w[i];
+            if (i > npt) {
+                BMAT(jp, i - npt) = BMAT(i,j);
+            }
+        }
+    }
 } /* update */
 
 #undef ZMAT
@@ -2957,40 +2925,40 @@ update(const INTEGER n, const INTEGER npt, REAL* bmat,
 static void
 print_error(const char* reason)
 {
-  fprintf(stderr, "\n    Return from BOBYQA because %s.\n", reason);
+    fprintf(stderr, "\n    Return from BOBYQA because %s.\n", reason);
 }
 
 static void
 print_x(FILE* output, const context* ctx, const REAL x[], const REAL dx[])
 {
-  INTEGER i, k, n = ctx->n;
-  const REAL* scl = ctx->scl;
-  REAL xi;
+    INTEGER i, k, n = ctx->n;
+    const REAL* scl = ctx->scl;
+    REAL xi;
 
-  if (output == NULL) {
-    output = stdout;
-  }
-  for (i = 0; i < n; ++i) {
-    k = i%5;
-    if (k == 0) {
-      fprintf(output, "  ");
+    if (output == NULL) {
+        output = stdout;
     }
-    if (scl != NULL) {
-      if (dx != NULL) {
-        xi = (x[i] + dx[i])*scl[i];
-      } else {
-        xi = x[i]*scl[i];
-      }
-    } else {
-      if (dx != NULL) {
-        xi = x[i] + dx[i];
-      } else {
-        xi = x[i];
-      }
+    for (i = 0; i < n; ++i) {
+        k = i%5;
+        if (k == 0) {
+            fprintf(output, "  ");
+        }
+        if (scl != NULL) {
+            if (dx != NULL) {
+                xi = (x[i] + dx[i])*scl[i];
+            } else {
+                xi = x[i]*scl[i];
+            }
+        } else {
+            if (dx != NULL) {
+                xi = x[i] + dx[i];
+            } else {
+                xi = x[i];
+            }
+        }
+        fprintf(output, "%15.6E", xi);
+        if (i == n - 1 || k == 4) {
+            fprintf(output, "\n");
+        }
     }
-    fprintf(output, "%15.6E", xi);
-    if (i == n - 1 || k == 4) {
-      fprintf(output, "\n");
-    }
-  }
 }
