@@ -359,6 +359,7 @@ cobyla_optimize(INTEGER n, INTEGER m, bool maximize, cobyla_calcfc* calcfc, void
     /* Local variables (for each type, real or integer, the first group of variables are
        those which must be preserved between calls in a reverse communication version of
        the algorithm). */
+    REAL vmold, vmnew, trured;
     REAL parmu, parsig, prerec, prerem, rho;
     REAL barmu, cvmaxm, cvmaxp, dxsign, edgmax, error, pareta, phi, phimin,
         ratio, resmax, resnew, sum, temp, tempa;
@@ -838,9 +839,9 @@ cobyla_optimize(INTEGER n, INTEGER m, bool maximize, cobyla_calcfc* calcfc, void
     ibrnch = 1;
     goto call_calcfc;
  L_440:
-    REAL vmold = DATMAT(mp,np) + parmu*DATMAT(mpp,np);
-    REAL vmnew = f + parmu*resmax;
-    REAL trured = vmold - vmnew;
+    vmold = DATMAT(mp,np) + parmu*DATMAT(mpp,np);
+    vmnew = f + parmu*resmax;
+    trured = vmold - vmnew;
     if (parmu == zero && f == DATMAT(mp,np)) {
         prerem = prerec;
         trured = DATMAT(mpp,np) - resmax;
