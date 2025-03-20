@@ -32,10 +32,8 @@
 
 #include "cobyla.h"
 
-/* Set basic types according to those in `optimpack.h` */
 #undef SINGLE_PRECISION
-#define LOGICAL opk_bool
-#define INTEGER opk_index
+#define INTEGER ptrdiff_t /* Integer type used for indexing arrays. */
 
 /* Macros to deal with single/double precision. */
 #undef REAL
@@ -68,10 +66,6 @@
 # define ACOS(x)   acos(x)
 # define ATAN(x)   atan(x)
 #endif
-
-#define TRUE    1
-#define FALSE   0
-
 
 /* Helper macro for simple FORTRAN-like loops. */
 #define LOOP(var,num)    for (var = 1; var <= num; ++var)
@@ -128,7 +122,7 @@ cobyla_status
 cobyla(INTEGER n, INTEGER m, cobyla_calcfc* calcfc, void* data, REAL x[], REAL rhobeg,
        REAL rhoend, INTEGER iprint, INTEGER maxfun, REAL work[], INTEGER iact[])
 {
-    return cobyla_optimize(n, m, FALSE, calcfc, data,
+    return cobyla_optimize(n, m, false, calcfc, data,
                            x, NULL, rhobeg, rhoend,
                            iprint, maxfun, work, iact);
 }
@@ -334,15 +328,13 @@ cobyla_get_last_f(const cobyla_context* ctx)
 #  define PRINT(o,n,nf,f,r,x) print_calcfc(o,n,nf,(maximize?-(f):(f)),r,x)
 #endif
 
-#ifdef COBYLA_REVCOM_
 cobyla_status
+#ifdef COBYLA_REVCOM_
 cobyla_iterate(cobyla_context* ctx, REAL f, REAL x[], REAL c[])
 #else
-cobyla_status
-cobyla_optimize(INTEGER n, INTEGER m,
-                LOGICAL maximize, cobyla_calcfc* calcfc, void* data,
-                REAL x[], const REAL scl[], REAL rhobeg, REAL rhoend,
-                INTEGER iprint, INTEGER maxfun, REAL work[], INTEGER iact[])
+cobyla_optimize(INTEGER n, INTEGER m, bool maximize, cobyla_calcfc* calcfc, void* data,
+                REAL x[], const REAL scl[], REAL rhobeg, REAL rhoend, INTEGER iprint,
+                INTEGER maxfun, REAL work[], INTEGER iact[])
 #endif
 {
     /* Constants. */
@@ -424,14 +416,14 @@ cobyla_optimize(INTEGER n, INTEGER m,
 
     /* Decide whether scaling is needed. */
     if (scl != NULL) {
-        LOGICAL scaling = FALSE;
+        bool scaling = false;
         for (i = 0; i < n; ++i) {
             REAL s = scl[i];
             if (s != one) {
                 if (s - s != zero || s <= zero) {
                     return COBYLA_BAD_SCALING;
                 }
-                scaling = TRUE;
+                scaling = true;
             }
         }
         if (! scaling) {

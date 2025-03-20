@@ -26,10 +26,8 @@
 
 #define OUTPUT stdout
 
-/* Set basic types according to those in `optimpack.h` */
 #undef SINGLE_PRECISION
-#define LOGICAL opk_bool
-#define INTEGER opk_index
+#define INTEGER ptrdiff_t /* Integer type used for indexing arrays. */
 
 /* Macros to deal with single/double precision. */
 #undef REAL
@@ -62,9 +60,6 @@
 # define ACOS(x)   acos(x)
 # define ATAN(x)   atan(x)
 #endif
-
-#define TRUE    1
-#define FALSE   0
 
 /* Helper macro for simple FORTRAN-like loops. */
 #define LOOP(var,num)    for (var = 1; var <= num; ++var)
@@ -306,22 +301,18 @@ const char* bobyqa_reason(bobyqa_status status)
 }
 
 bobyqa_status bobyqa(
-    const INTEGER n, const INTEGER npt,
-    bobyqa_objfun* objfun, void* data,
-    REAL* x, const REAL* xl, const REAL* xu,
-    const REAL rhobeg, const REAL rhoend,
+    const INTEGER n, const INTEGER npt, bobyqa_objfun* objfun, void* data, REAL* x,
+    const REAL* xl, const REAL* xu, const REAL rhobeg, const REAL rhoend,
     const INTEGER iprint, const INTEGER maxfun, REAL* w)
 {
-    return bobyqa_optimize(n, npt, FALSE, objfun, data, x, xl, xu, NULL,
+    return bobyqa_optimize(n, npt, false, objfun, data, x, xl, xu, NULL,
                            rhobeg, rhoend, iprint, maxfun, w);
 }
 
 bobyqa_status bobyqa_optimize(
-    const INTEGER n, const INTEGER npt,
-    LOGICAL maximize, bobyqa_objfun* objfun, void* data,
-    REAL* x, const REAL* xl, const REAL* xu, const REAL* scl,
-    const REAL rhobeg, const REAL rhoend,
-    const INTEGER iprint, const INTEGER maxfun, REAL* w)
+    const INTEGER n, const INTEGER npt, bool maximize, bobyqa_objfun* objfun, void* data,
+    REAL* x, const REAL* xl, const REAL* xu, const REAL* scl, const REAL rhobeg,
+    const REAL rhoend, const INTEGER iprint, const INTEGER maxfun, REAL* w)
 {
     /* Constants. */
     const REAL zero = FLT(0.0);
@@ -362,14 +353,14 @@ bobyqa_status bobyqa_optimize(
 
     /* Decide whether scaling is needed. */
     if (scl != NULL) {
-        LOGICAL scaling = FALSE;
+        bool scaling = false;
         for (j = 0; j < n; ++j) {
             REAL s = scl[j];
             if (s != one) {
                 if (s - s != zero || s <= zero) {
                     return BOBYQA_BAD_SCALING;
                 }
-                scaling = TRUE;
+                scaling = true;
             }
         }
         if (scaling) {

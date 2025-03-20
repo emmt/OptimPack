@@ -20,7 +20,8 @@
 #ifndef COBYLA_H_
 #define  COBYLA_H_ 1
 
-#include "optimpack.h"
+#include <stddef.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,9 +35,8 @@ extern "C" {
  * constraints, `x` are the current values of the variables and `con` is to store the `m`
  * constraints. `data` is anything needed by the function (unused by COBYLA itself).
  */
-typedef double
-cobyla_calcfc(opk_index n, opk_index m, const double x[],
-              double con[], void* data);
+typedef double cobyla_calcfc(ptrdiff_t n, ptrdiff_t m, const double x[], double con[],
+                             void* data);
 
 /**
  * @brief Status for COBYLA routines.
@@ -120,39 +120,34 @@ typedef enum {
  *
  * @param data   - Anything needed by the objective function.
  *
- * @param x      - On entry, the initial variables; on exit, the final
- *                 variables.
+ * @param x      - On entry, the initial variables; on exit, the final variables.
  *
  * @param rhobeg - The initial trust region radius.
  *
  * @param rhoend - The final trust region radius.
  *
- * @param maxfun - On entry, the maximum number of calls to `fc`; on exit, the
- *                 actual number of calls to `fc`.
+ * @param maxfun - On entry, the maximum number of calls to `fc`; on exit, the actual
+ *                 number of calls to `fc`.
  *
  * @param iprint - The level of verbosity.
  *
  * @param maxfun - The maximum number of calls to `fc`.
  *
- * @param work   - Workspace array with at least `n*(3*n+2*m+11)+4*m+6`
- *                 elements.  On successful exit, the value of the objective
- *                 function and of the worst constraint at the final `x` are
- *                 stored in `work[0]` and `work[1]` respectively.
+ * @param work   - Workspace array with at least `n*(3*n+2*m+11)+4*m+6` elements. On
+ *                 successful exit, the value of the objective function and of the worst
+ *                 constraint at the final `x` are stored in `work[0]` and `work[1]`
+ *                 respectively.
  *
- * @param iact   - Workspace array with at least `m+1` elements.  On successful
- *                 exit, the actual number of calls to `fc` is stored in
- *                 `iact[0]`.
+ * @param iact   - Workspace array with at least `m+1` elements. On successful exit, the
+ *                 actual number of calls to `fc` is stored in `iact[0]`.
  *
  * @return `COBYLA_SUCCESS` is returned when the algorithm is successful; any
  *         other value indicates an error (use `cobyla_reason` to have an
  *         explanation).
  */
 extern cobyla_status cobyla(
-    opk_index n, opk_index m,
-    cobyla_calcfc* fc, void* data,
-    double x[], double rhobeg, double rhoend,
-    opk_index iprint, opk_index maxfun,
-    double work[], opk_index iact[]);
+    ptrdiff_t n, ptrdiff_t m, cobyla_calcfc* fc, void* data, double x[], double rhobeg,
+    double rhoend, ptrdiff_t iprint, ptrdiff_t maxfun, double work[], ptrdiff_t iact[]);
 
 /**
  * Minimize or maximize a function of many variables subject to inequality constraints
@@ -208,11 +203,9 @@ extern cobyla_status cobyla(
  *         indicates an error (use `cobyla_reason` to have an explanation).
  */
 extern cobyla_status cobyla_optimize(
-    opk_index n, opk_index m,
-    opk_bool maximize, cobyla_calcfc* fc, void* data,
-    double x[], const double scl[], double rhobeg, double rhoend,
-    opk_index iprint, opk_index maxfun,
-    double work[], opk_index iact[]);
+    ptrdiff_t n, ptrdiff_t m, bool maximize, cobyla_calcfc* fc, void* data, double x[],
+    const double scl[], double rhobeg, double rhoend, ptrdiff_t iprint, ptrdiff_t maxfun,
+    double work[], ptrdiff_t iact[]);
 
 /* Opaque structure used by the reverse communication variant of COBYLA. */
 typedef struct cobyla_context_ cobyla_context;
@@ -242,16 +235,15 @@ typedef struct cobyla_context_ cobyla_context;
    }
    ```
  */
-extern cobyla_context*
-cobyla_create(opk_index n, opk_index m, double rhobeg, double rhoend,
-              opk_index iprint, opk_index maxfun);
+extern cobyla_context* cobyla_create(
+    ptrdiff_t n, ptrdiff_t m, double rhobeg, double rhoend, ptrdiff_t iprint,
+    ptrdiff_t maxfun);
 
 /**
  * Release resources allocated for COBYLA reverse communication workspace. Argument can be
  * `NULL`.
  */
-extern void
-cobyla_delete(cobyla_context* ctx);
+extern void cobyla_delete(cobyla_context* ctx);
 
 /* Perform the next iteration of the reverse communication variant of the COBYLA
    algorithm. On entry, the workspace status must be `COBYLA_ITERATE`, `f` and `c` are the
@@ -276,20 +268,17 @@ extern cobyla_status cobyla_get_status(const cobyla_context* ctx);
 
 /* Get the current number of function evaluations. Result is -1 if something is wrong
    (e.g. CTX is NULL), nonnegative otherwise. */
-extern opk_index
-cobyla_get_nevals(const cobyla_context* ctx);
+extern ptrdiff_t cobyla_get_nevals(const cobyla_context* ctx);
 
 /* Get the current size of the trust region. Result is 0 if algorithm has not yet been
    started (before first iteration), -1 if something is wrong (e.g. CTX is NULL), strictly
    positive otherwise. */
-extern double
-cobyla_get_rho(const cobyla_context* ctx);
+extern double cobyla_get_rho(const cobyla_context* ctx);
 
 /* Get the last function value. Upon convergence of `cobyla_iterate` (i.e. return with
    status `COBYLA_SUCCESS`), this value corresponds to the function at the solution;
    otherwise, this value corresponds to the previous set of variables. */
-extern double
-cobyla_get_last_f(const cobyla_context* ctx);
+extern double cobyla_get_last_f(const cobyla_context* ctx);
 
 /* Get a textual explanation of the status returned by `cobyla`, `cobyla_get_status` and
    `cobyla_iterate`. */
@@ -347,11 +336,9 @@ extern const char* cobyla_reason(cobyla_status status);
  * so that F(X) is as small as possible subject to the constraint functions being
  * nonnegative.
  */
-extern int
-FORTRAN_NAME(cobyla,COBYLA)(opk_index* n, opk_index* m, double x[],
-                            double* rhobeg, double* rhoend,
-                            opk_index* iprint, opk_index* maxfun,
-                            double w[], opk_index iact[]);
+extern int FORTRAN_NAME(cobyla,COBYLA)(
+    ptrdiff_t* n, ptrdiff_t* m, double x[], double* rhobeg, double* rhoend,
+    ptrdiff_t* iprint, ptrdiff_t* maxfun, double w[], ptrdiff_t iact[]);
 
 #endif /* FORTRAN_LINKAGE */
 

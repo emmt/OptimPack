@@ -22,7 +22,8 @@
 #ifndef NEWUOA_H_
 #define  NEWUOA_H_ 1
 
-#include "optimpack.h"
+#include <stddef.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,7 +32,7 @@ extern "C" {
 /* Prototype of the objective function assumed by the NEWUOA routine. The returned value
    is the function value at X, the current variables, N is the number of variables and
    DATA is anything else needed by the objective function (unused by NEWUOA itself). */
-typedef double newuoa_objfun(const opk_index n, const double *x, void* data);
+typedef double newuoa_objfun(const ptrdiff_t n, const double *x, void* data);
 
 /**
  * @brief Status for NEWUOA routines.
@@ -92,10 +93,10 @@ typedef enum {
    The returned value should be NEWUOA_SUCCESS, but a different value can be returned upon
    error (see `newuoa_reason` for an explanatory message). */
 extern newuoa_status newuoa(
-    const opk_index n, const opk_index npt,
+    const ptrdiff_t n, const ptrdiff_t npt,
     newuoa_objfun* objfun, void* data,
     double* x, const double rhobeg, const double rhoend,
-    const opk_index iprint, const opk_index maxfun,
+    const ptrdiff_t iprint, const ptrdiff_t maxfun,
     double* work);
 
 /**
@@ -162,10 +163,9 @@ extern newuoa_status newuoa(
  *         returned on error (see `newuoa_reason` for an explanatory message).
  */
 extern newuoa_status newuoa_optimize(
-    opk_index n, opk_index npt,
-    opk_bool maximize, newuoa_objfun* objfun, void* data,
-    double x[], const double scl[], double rhobeg, double rhoend,
-    opk_index iprint, opk_index maxfun, double* work);
+    ptrdiff_t n, ptrdiff_t npt, bool maximize, newuoa_objfun* objfun, void* data,
+    double x[], const double scl[], double rhobeg, double rhoend, ptrdiff_t iprint,
+    ptrdiff_t maxfun, double* work);
 
 /* Get a textual explanation of the status returned by NEWUOA. */
 extern const char* newuoa_reason(newuoa_status status);
@@ -205,9 +205,8 @@ typedef struct newuoa_context_ newuoa_context;
    ```
  */
 extern newuoa_context*
-newuoa_create(const opk_index n, const opk_index npt,
-              const double rhobeg, const double rhoend,
-              const opk_index iprint, const opk_index maxfun);
+newuoa_create(const ptrdiff_t n, const ptrdiff_t npt, const double rhobeg,
+              const double rhoend, const ptrdiff_t iprint, const ptrdiff_t maxfun);
 
 /* Release resource allocated for NEWUOA reverse communication workspace. Argument can be
    `NULL`. */
@@ -233,7 +232,7 @@ extern newuoa_status newuoa_get_status(const newuoa_context* ctx);
 
 /* Get the current number of function evaluations. Result is -1 if something is wrong
    (e.g. CTX is NULL), nonnegative otherwise. */
-extern opk_index newuoa_get_nevals(const newuoa_context* ctx);
+extern ptrdiff_t newuoa_get_nevals(const newuoa_context* ctx);
 
 /* Get the current size of the trust region. Result is 0 if algorithm not yet started
    (before first iteration), -1 if something is wrong (e.g. CTX is NULL), strictly
@@ -285,18 +284,17 @@ extern double newuoa_get_rho(const newuoa_context* ctx);
    the objective function for the current values of the variables X(1),X(2),...,X(N),
    which are generated automatically by NEWUOA. */
 extern int
-FORTRAN_NAME(newuoa,NEWUOA)(const opk_index* n, const opk_index* npt,
-                            double* x, const double* rhobeg,
-                            const double* rhoend, const opk_index* iprint,
-                            const opk_index* maxfun, double* w);
+FORTRAN_NAME(newuoa,NEWUOA)(const ptrdiff_t* n, const ptrdiff_t* npt, double* x,
+                            const double* rhobeg, const double* rhoend,
+                            const ptrdiff_t* iprint, const ptrdiff_t* maxfun, double* w);
 
 /* Wrapper function to emulate `newuoa_calfun` function calling
    the user-defined `calfun_` subroutine. */
-extern double newuoa_calfun_wrapper(const opk_index n, const double* x, void* data);
+extern double newuoa_calfun_wrapper(const ptrdiff_t n, const double* x, void* data);
 
 /* Subroutine that must be defined by the application to use the FORTRAN
    wrapper to NEWUOA. */
-extern int calfun_(const opk_index* n, double *x, double *f);
+extern int calfun_(const ptrdiff_t* n, double *x, double *f);
 
 #endif /* FORTRAN_LINKAGE */
 

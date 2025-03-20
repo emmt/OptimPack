@@ -22,7 +22,8 @@
 #ifndef BOBYQA_H_
 #define  BOBYQA_H_ 1
 
-#include "optimpack.h"
+#include <stddef.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,7 +32,7 @@ extern "C" {
 /* Prototype of the objective function assumed by the BOBYQA routine. The returned value
    is the function value at X the current variables, N is the number of variables and DATA
    is anything needed by the function (unused by BOBYQA itself). */
-typedef double bobyqa_objfun(const opk_index n, const double* x, void* data);
+typedef double bobyqa_objfun(const ptrdiff_t n, const double* x, void* data);
 
 /**
  * @brief Status for BOBYQA routines.
@@ -92,9 +93,9 @@ typedef enum {
    (NPT+5)*(NPT+N)+3*N*(N+5)/2. Upon successful return, the first element of W will be set
    to the function value at the solution. */
 extern bobyqa_status bobyqa(
-    const opk_index n, const opk_index npt, bobyqa_objfun* objfun, void* data, double* x,
+    const ptrdiff_t n, const ptrdiff_t npt, bobyqa_objfun* objfun, void* data, double* x,
     const double* xl, const double* xu, const double rhobeg, const double rhoend,
-    const opk_index iprint, const opk_index maxfun, double* w);
+    const ptrdiff_t iprint, const ptrdiff_t maxfun, double* w);
 
 /*
   SCL is an array of N scaling factors or `NULL`.
@@ -105,10 +106,10 @@ extern bobyqa_status bobyqa(
   function value at the solution.
 */
 extern bobyqa_status bobyqa_optimize(
-    const opk_index n, const opk_index npt, opk_bool maximize, bobyqa_objfun* objfun,
+    const ptrdiff_t n, const ptrdiff_t npt, bool maximize, bobyqa_objfun* objfun,
     void* data, double* x, const double* xl, const double* xu, const double* scl,
-    const double rhobeg, const double rhoend, const opk_index iprint,
-    const opk_index maxfun, double* w);
+    const double rhobeg, const double rhoend, const ptrdiff_t iprint,
+    const ptrdiff_t maxfun, double* w);
 
 extern const char* bobyqa_reason(bobyqa_status status);
 
@@ -170,20 +171,20 @@ extern void bobyqa_test(void);
    XU.
 */
 extern int
-FORTRAN_NAME(bobyqa,BOBYQA)(const opk_index* n, const opk_index* npt, double* x,
+FORTRAN_NAME(bobyqa,BOBYQA)(const ptrdiff_t* n, const ptrdiff_t* npt, double* x,
                             const double* xl, const double* xu, const double* rhobeg,
-                            const double* rhoend, const opk_index* iprint,
-                            const opk_index* maxfun, double* w);
+                            const double* rhoend, const ptrdiff_t* iprint,
+                            const ptrdiff_t* maxfun, double* w);
 
 /* Wrapper function to emulate `bobyqa_objfun` objective function calling the user-defined
    `calfun_` subroutine. */
 extern double
-bobyqa_calfun_wrapper(const opk_index n, const double* x, void* data);
+bobyqa_calfun_wrapper(const ptrdiff_t n, const double* x, void* data);
 
 /* Subroutine that must be defined by the application to use the FORTRAN wrapper to
    BOBYQA. */
 extern int
-FORTRAN_NAME(calfun,CALFUN)(const opk_index* n, double* x, double* f);
+FORTRAN_NAME(calfun,CALFUN)(const ptrdiff_t* n, double* x, double* f);
 
 #endif /* FORTRAN_LINKAGE */
 

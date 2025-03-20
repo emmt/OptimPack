@@ -36,10 +36,8 @@
 
 #define OUTPUT       stdout
 
-/* Set basic types according to those in `optimpack.h` */
 #undef SINGLE_PRECISION
-#define LOGICAL opk_bool
-#define INTEGER opk_index
+#define INTEGER ptrdiff_t /* Integer type used for indexing arrays. */
 
 /* Macros to deal with single/double precision. */
 #undef REAL
@@ -72,9 +70,6 @@
 # define ACOS(x)   acos(x)
 # define ATAN(x)   atan(x)
 #endif
-
-#define TRUE    1
-#define FALSE   0
 
 /* Helper macro for simple FORTRAN-like loops. */
 #define LOOP(var,num)    for (var = 1; var <= num; ++var)
@@ -254,7 +249,7 @@ newuoa(INTEGER n, INTEGER npt,  newuoa_objfun* objfun, void* data,
        REAL* x, REAL rhobeg, REAL rhoend,
        INTEGER iprint, INTEGER maxfun, REAL* work)
 {
-    return newuoa_optimize(n, npt, FALSE, objfun, data, x, NULL,
+    return newuoa_optimize(n, npt, false, objfun, data, x, NULL,
                            rhobeg, rhoend, iprint, maxfun, work);
 }
 
@@ -730,15 +725,13 @@ const char* newuoa_reason(newuoa_status status)
    The array W will be used for working space. Its length must be at least 10*NDIM =
    10*(NPT+N). */
 
-#ifdef NEWUOA_REVCOM_
 newuoa_status
+#ifdef NEWUOA_REVCOM_
 newuoa_iterate(newuoa_context* ctx, REAL f, REAL* x)
 #else
-    newuoa_status
-    newuoa_optimize(INTEGER n, INTEGER npt,
-                    LOGICAL maximize, newuoa_objfun* objfun, void* data,
-                    REAL* x, const REAL* scl, REAL rhobeg, REAL rhoend,
-                    const INTEGER iprint, const INTEGER maxfun, REAL* work)
+newuoa_optimize(INTEGER n, INTEGER npt, bool maximize, newuoa_objfun* objfun, void* data,
+                REAL* x, const REAL* scl, REAL rhobeg, REAL rhoend, const INTEGER iprint,
+                const INTEGER maxfun, REAL* work)
 #endif /* NEWUOA_REVCOM_ */
 {
     /* Constants. */
@@ -862,14 +855,14 @@ newuoa_iterate(newuoa_context* ctx, REAL f, REAL* x)
 
     /* Decide whether scaling is needed. */
     if (scl != NULL) {
-        LOGICAL scaling = FALSE;
+        bool scaling = false;
         for (i = 0; i < n; ++i) {
             REAL s = scl[i];
             if (s != one) {
                 if (s - s != zero || s <= zero) {
                     return NEWUOA_BAD_SCALING;
                 }
-                scaling = TRUE;
+                scaling = true;
             }
         }
         if (! scaling) {
@@ -2482,7 +2475,7 @@ trsapp(const INTEGER n, const INTEGER npt, REAL* xopt,
     qred = zero;
     iterc = 0;
     itermax = n;
-    while (TRUE) {
+    while (true) {
         /* Calculate the step to the trust region boundary and the product HD. */
         ++iterc;
         temp = delsq - ss;
