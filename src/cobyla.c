@@ -14,7 +14,7 @@
  * kindly provides his code on demand and has been converted to C by É. Thiébaut.
  *
  * Copyright (c) 1992, Mike Powell (FORTRAN version).
- * Copyright (c) 2015, Éric Thiébaut (C version).
+ * Copyright (c) 2015-2025, Éric Thiébaut (C version).
  */
 
 /* To re-use as much as the code for the reverse communication routines, we use a trick

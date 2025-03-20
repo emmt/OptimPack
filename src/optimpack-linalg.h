@@ -7,7 +7,7 @@
  *
  * The OptimPack library is licensed under the MIT "Expat" License:
  *
- * Copyright (c) 2003-2014: Éric Thiébaut
+ * Copyright (c) 2003-2025, Éric Thiébaut.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this
  * software and associated documentation files (the "Software"), to deal in the Software

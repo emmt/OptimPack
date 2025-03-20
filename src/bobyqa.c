@@ -14,7 +14,7 @@
  * É. Thiébaut.
  *
  * Copyright (c) 2009, Mike Powell (FORTRAN version).
- * Copyright (c) 2015, Éric Thiébaut (C version).
+ * Copyright (c) 2015-2025, Éric Thiébaut (C version).
  *
  * Read the accompanying `LICENSE` file for details.
  */

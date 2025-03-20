@@ -8,16 +8,16 @@
  *
  * Original FORTRAN code dgqt.f and destsv.f from MINPACK-2 project.
  *
- * Copyright (C) 1993, Brett M. Averick and Jorge J. Moré (MINPACK-2 Project, Argonne
+ * Copyright (c) 1993, Brett M. Averick and Jorge J. Moré (MINPACK-2 Project, Argonne
  * National Laboratory and University of Minnesota).
  *
- * Copyright (C) 1994, Brett M. Averick, Richard Carter and Jorge J. Moré (MINPACK-2
+ * Copyright (c) 1994, Brett M. Averick, Richard Carter and Jorge J. Moré (MINPACK-2
  * Project, Argonne National Laboratory and University of Minnesota).
  *
  * C-version of GQTPAR is part of OptimPack library is licensed under the MIT "Expat"
  * License.
  *
- * Copyright (c) 2008-2015, Éric Thiébaut
+ * Copyright (c) 2008-2025, Éric Thiébaut.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this
  * software and associated documentation files (the "Software"), to deal in the Software

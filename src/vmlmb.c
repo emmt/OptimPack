@@ -32,7 +32,7 @@
  *
  * This file is part of OptimPack (https://github.com/emmt/OptimPack).
  *
- * Copyright (C) 2002, 2015-2019 Éric Thiébaut
+ * Copyright (c) 2002-2025, Éric Thiébaut.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this
  * software and associated documentation files (the "Software"), to deal in the Software
