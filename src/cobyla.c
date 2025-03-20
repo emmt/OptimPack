@@ -192,6 +192,7 @@ cobyla_context*
 cobyla_create(INTEGER n, INTEGER m, REAL rhobeg, REAL rhoend, INTEGER iprint,
               INTEGER maxfun)
 {
+    const REAL zero = FLT(0.0);
     cobyla_context* ctx;
     size_t size, offset1, offset2;
 
@@ -211,18 +212,16 @@ cobyla_create(INTEGER n, INTEGER m, REAL rhobeg, REAL rhoend, INTEGER iprint,
     if (ctx == NULL) {
         return NULL;
     }
-    memset(ctx, 0, size);
-    ctx->n = n;
-    ctx->m = m;
-    ctx->nfvals = 0; /* indicate a fresh start */
-    ctx->status = COBYLA_ITERATE;
+
+    /* Instantiate context and partition the working space array W to provide the storage
+       that is needed for the main calculation. */
+    ctx->n      = n;
+    ctx->m      = m;
     ctx->iprint = iprint;
     ctx->maxfun = maxfun;
+    ctx->nfvals = 0; /* indicate a fresh start */
     ctx->rhobeg = rhobeg;
     ctx->rhoend = rhoend;
-
-    /* Partition the working space array W to provide the storage that is needed for the
-       main calculation. */
     ctx->iact   = ADDRESS(INTEGER, ctx, offset1);
     ctx->con    = ADDRESS(REAL, ctx, offset2);
     ctx->sim    = ctx->con + (m + 2);
@@ -234,6 +233,17 @@ cobyla_create(INTEGER n, INTEGER m, REAL rhobeg, REAL rhoend, INTEGER iprint,
     ctx->sigbar = ctx->veta + n;
     ctx->dx     = ctx->sigbar + n;
     ctx->w      = ctx->dx + n;
+    ctx->parmu  = zero;
+    ctx->parsig = zero;
+    ctx->prerec = zero;
+    ctx->prerem = zero;
+    ctx->rho    = zero;
+    ctx->f      = zero;
+    ctx->ibrnch = 0;
+    ctx->iflag  = 0;
+    ctx->ifull  = 0;
+    ctx->jdrop  = 0;
+    ctx->status = COBYLA_ITERATE;
 
     return ctx;
 }
@@ -350,7 +360,7 @@ cobyla_optimize(INTEGER n, INTEGER m, bool maximize, cobyla_calcfc* calcfc, void
        the algorithm). */
     REAL parmu, parsig, prerec, prerem, rho;
     REAL barmu, cvmaxm, cvmaxp, dxsign, edgmax, error, pareta, phi, phimin,
-        ratio, resmax, resnew, sum, temp, tempa, trured, vmnew, vmold;
+        ratio, resmax, resnew, sum, temp, tempa;
     REAL *con, *sim, *simi, *datmat, *a, *vsig, *veta, *sigbar, *dx, *w;
     REAL* xs; /* rescaled variables or variables to print */
     INTEGER ibrnch, iflag, ifull, jdrop, nfvals;
@@ -390,15 +400,16 @@ cobyla_optimize(INTEGER n, INTEGER m, bool maximize, cobyla_calcfc* calcfc, void
     RESTORE(dx);
     RESTORE(w);
     RESTORE(status);
+    if (status != COBYLA_ITERATE || nfvals < 0 || n < 1 || m < 0 ||
+        rhoend <= zero || rhoend > rhobeg) {
+        errno = EINVAL;
+        ctx->status = COBYLA_CORRUPTED;
+        return ctx->status;
+    }
     if (x == NULL || (c == NULL && m > 0)) {
         errno = EFAULT;
         ctx->status = COBYLA_BAD_ADDRESS;
         return COBYLA_BAD_ADDRESS;
-    }
-    if (status != COBYLA_ITERATE || nfvals < 0) {
-        errno = EINVAL;
-        ctx->status = COBYLA_CORRUPTED;
-        return ctx->status;
     }
 
 #else
@@ -462,19 +473,20 @@ cobyla_optimize(INTEGER n, INTEGER m, bool maximize, cobyla_calcfc* calcfc, void
     mpp = m + 2;
 #ifdef COBYLA_REVCOM_
     if (nfvals == 0) {
-        /* This is the first function evaluation. Proceed with initialization. */
+        /* This is the first function evaluation. */
         status = COBYLA_INITIAL_ITERATE;
-        prerec = zero; /* avoids warnings */
-        prerem = zero; /* avoids warnings */
-        parsig = zero; /* avoids warnings */
 #else
         nfvals = 0;
 #endif
-        iflag  = 0;    /* avoids warnings */
-        rho = rhobeg;
-        parmu = zero;
-        jdrop = np;
+        parmu  = zero;
+        parsig = zero;
+        prerec = zero;
+        prerem = zero;
+        rho    = rhobeg;
         ibrnch = 0;
+        iflag  = 0;
+        ifull  = 0; /* FIXME */
+        jdrop  = np;
         temp = one/rho;
         LOOP(i,n) {
             SIM(i,np) = X(i);
@@ -825,9 +837,9 @@ cobyla_optimize(INTEGER n, INTEGER m, bool maximize, cobyla_calcfc* calcfc, void
     ibrnch = 1;
     goto call_calcfc;
  L_440:
-    vmold = DATMAT(mp,np) + parmu*DATMAT(mpp,np);
-    vmnew = f + parmu*resmax;
-    trured = vmold - vmnew;
+    REAL vmold = DATMAT(mp,np) + parmu*DATMAT(mpp,np);
+    REAL vmnew = f + parmu*resmax;
+    REAL trured = vmold - vmnew;
     if (parmu == zero && f == DATMAT(mp,np)) {
         prerem = prerec;
         trured = DATMAT(mpp,np) - resmax;

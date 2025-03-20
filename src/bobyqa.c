@@ -592,14 +592,15 @@ bobyqb(const INTEGER n, const INTEGER npt, const context* ctx,
 #define ZMAT(a1,a2) zmat[(a2)*npt + a1]
 
     /* Set uninitialized variables to avoid compiler warnings. */
-    adelt = zero;
-    alpha = zero;
+    adelt  = zero;
+    alpha  = zero;
     cauchy = zero;
-    denom = zero;
-    diff = zero;
-    diffc = zero;
-    f = zero;
-    knew = 0;
+    denom  = zero;
+    diff   = zero;
+    diffc  = zero;
+    f      = zero;
+    ratio  = zero;
+    knew   = 0;
 
     /* Set some constants. */
     np = n + 1;
