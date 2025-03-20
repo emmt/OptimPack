@@ -1,8 +1,8 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-#AC_PREREQ([2.69])
 AC_INIT([OptimPack], [3.2.0], [eric.thiebaut@univ-lyon1.fr])
+AC_PREREQ([2.71])
 AC_CONFIG_SRCDIR([src/optimpack.h])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
@@ -10,7 +10,7 @@ AM_INIT_AUTOMAKE([foreign -Wall -Werror dist-bzip2])
 
 # Checks for programs.
 AM_PROG_AR
-AC_PROG_CC_C99
+AC_PROG_CC
 
 # Turn on all warnings for gcc.  (Options -Wall -Werror in AM_INIT_AUTOMAKE
 # have no effects.)
