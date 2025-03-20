@@ -1186,7 +1186,7 @@ typedef enum {
  * @return The line search task, which is normally @link OPK_LNSRCH_SEARCH}.
  *         A different value indicates an error.
  */
-extern int
+extern opk_lnsrch_task
 opk_lnsrch_start(opk_lnsrch* ls, double f0, double df0,
                  double stp1, double stpmin, double stpmax);
 
@@ -1206,7 +1206,7 @@ opk_lnsrch_start(opk_lnsrch* ls, double f0, double df0,
  * equal to zero when searching is in progress; it is strictly positive when
  * line search has converged or cannot make any more progresses.
  */
-extern int
+extern opk_lnsrch_task
 opk_lnsrch_iterate(opk_lnsrch* ls, double* stp_ptr,
                    double f, double df);
 

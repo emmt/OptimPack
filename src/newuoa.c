@@ -244,10 +244,9 @@ scale(REAL* dst, INTEGER n, const REAL* scl, const REAL* src)
 /*--------------------------------------------------------------------------------------*/
 /* SIMPLE DRIVER */
 
-int
-newuoa(INTEGER n, INTEGER npt,  newuoa_objfun* objfun, void* data,
-       REAL* x, REAL rhobeg, REAL rhoend,
-       INTEGER iprint, INTEGER maxfun, REAL* work)
+newuoa_status
+newuoa(INTEGER n, INTEGER npt,  newuoa_objfun* objfun, void* data, REAL* x, REAL rhobeg,
+       REAL rhoend, INTEGER iprint, INTEGER maxfun, REAL* work)
 {
     return newuoa_optimize(n, npt, false, objfun, data, x, NULL,
                            rhobeg, rhoend, iprint, maxfun, work);
