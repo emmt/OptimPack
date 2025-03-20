@@ -2,6 +2,18 @@
 
 This describe the most important (user visible) changes in **OptimPack**.
 
+## Version 3.3.0 (20/03/2025)
+
+- Code source and header for each algorithm `BOBYQA`, `COBYLA`, and `NEWUOA` are now
+  independent from `OptimPack` code and headers. For a given of these algorithms, the
+  header and the library can be shipped separately.
+
+- Fix that some functions prototypes incorrectly were specifying an `int` return type
+  instead of a specific enumeration type.
+
+- Initialization of some local variables has been improved to avoid warnings.
+
+
 ## Version 3.2.0 (22/04/2022)
 
 - Status returned by `BOBYQA`, `COBYLA`, and `NEWUOA` algorithms are now
