@@ -128,7 +128,7 @@ scale(REAL* dst, INTEGER n, const REAL* scl, const REAL* src)
 /*---------------------------------------------------------------------------*/
 /* SIMPLE DRIVER */
 
-int
+cobyla_status
 cobyla(INTEGER n, INTEGER m, cobyla_calcfc* calcfc, void* data,
        REAL x[], REAL rhobeg, REAL rhoend, INTEGER iprint,
        INTEGER maxfun, REAL work[], INTEGER iact[])

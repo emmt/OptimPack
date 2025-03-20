@@ -123,7 +123,7 @@ print_error(const char* reason);
 static void
 print_x(FILE* output, const context* ctx, const REAL x[], const REAL dx[]);
 
-static int
+static bobyqa_status
 bobyqb(const INTEGER n, const INTEGER npt, const context* ctx,
        REAL* x, const REAL* xl, const REAL* xu,
        const REAL rhobeg, const REAL rhoend,
