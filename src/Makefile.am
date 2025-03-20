@@ -14,6 +14,8 @@ EXTRA_DIST = simple_vector.c
 
 # Target library.
 lib_LTLIBRARIES = libopk.la libcobyla.la libbobyqa.la libnewuoa.la
+
+libopk_la_LDFLAGS = -version-info @libopk_version@
 libopk_la_SOURCES = \
     algebra.c \
     utils.c \
@@ -32,13 +34,15 @@ libopk_la_SOURCES = \
     linalg-single.h \
     linalg-double.h
 
-libopk_la_LDFLAGS = -version-info @libopk_version@
-libcobyla_la_SOURCES = cobyla.c cobyla.h
+
 libcobyla_la_LDFLAGS = -version-info @libcobyla_version@
-libbobyqa_la_SOURCES = bobyqa.c bobyqa.h
+libcobyla_la_SOURCES = cobyla.c cobyla.h
+
 libbobyqa_la_LDFLAGS = -version-info @libbobyqa_version@
-libnewuoa_la_SOURCES = newuoa.c newuoa.h
+libbobyqa_la_SOURCES = bobyqa.c bobyqa.h
+
 libnewuoa_la_LDFLAGS = -version-info @libnewuoa_version@
+libnewuoa_la_SOURCES = newuoa.c newuoa.h
 
 noinst_PROGRAMS = $(TESTS)
 

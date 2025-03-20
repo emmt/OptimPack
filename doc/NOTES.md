@@ -4,22 +4,24 @@
 
 To prepare a new public release, follow these steps:
 
-1. If the API has changed, update the interface version number in macro
-   `libopk_la_LDFLAGS` in [src/Makefile.am](../src/Makefile.am) see [libtool
+1. If the API has changed, update the interface version number in macros `libopk_version`,
+   `libcobyla_version`, `libbobyqa_version`, and `libnewuoa_version` `libopk_la_LDFLAGS`
+   in [configure.ac](../configure.ac). See [libtool
    documentation](http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html)
-   for explanations.  The interface version number is `c:r:a` (for *current*,
-   *revision* and *age*), revisions between `c` and `c-a` are supposed to be
-   supported by the library.  If the library source code has changed at all
-   since the last update, then increment revision (`c:r:a` becomes `c:r+1:a`).
-   If any interfaces have been added, removed, or changed since the last
-   update, increment current and set revision to 0 (`c:r:a` becomes `c+1:0:0`).
-   If any interfaces have been added since the last public release, then
-   increment age.  If any interfaces have been removed or changed since the
-   last public release, then set age to 0.  **Never** try to set the interface
-   numbers so that they correspond to the release number of the package.
+   for explanations. The interface version number is `c:r:a` (for *current*, *revision*
+   and *age*), revisions between `c` and `c-a` are supposed to be supported by the
+   library. If the library source code has changed at all since the last update, then
+   increment revision (`c:r:a` becomes `c:r+1:a`). If any interfaces have been added,
+   removed, or changed since the last update, increment current and set revision to 0
+   (`c:r:a` becomes `c+1:0:0`). If any interfaces have been added since the last public
+   release, then increment age. If any interfaces have been removed or changed since the
+   last public release, then set age to 0. **Never** try to set the interface numbers so
+   that they correspond to the release number of the package.
 
-2. Bump version number in [README.md](../README.md) and
-   [configure.ac](../configure.ac) and commit the changes.
+2. Bump release numbers in [README.md](../README.md) and in the macro `project_version` in
+   file [configure.ac](../configure.ac).
+
+3. Commit the changes made in steps 1 and 2.
 
 3. Update the [CHANGES.md](./CHANGES.md) file and commit the changes.
 
@@ -36,14 +38,12 @@ To prepare a new public release, follow these steps:
    git push
    ```
 
-6. Open [OptimPack](https://github.com/emmt/OptimPack) page at GitHub and click
-   on the [releases](https://github.com/emmt/OptimPack/releases) tab and then
-   on the [Draft a new release](https://github.com/emmt/OptimPack/releases/new)
-   button.
+6. Open [OptimPack](https://github.com/emmt/OptimPack) page at GitHub and click on the
+   [releases](https://github.com/emmt/OptimPack/releases) tab and then on the [Draft a new
+   release](https://github.com/emmt/OptimPack/releases/new) button.
 
    - Tag the version.
-   - Add a brief description and a detailed description of the most important
-     changes.
+   - Add a brief description and a detailed description of the most important changes.
    - Check/uncheck **This is a pre-release**.
    - Attach the release archive.
    - Click on the green **Publish release** button.
@@ -88,35 +88,32 @@ To have binaries automatically build by [Yggdrasil](https://github.com/JuliaPack
 
 ## Prerequisites
 
-Developers under Debian/Ubuntu need the following packages: `build-essential`,
-`gcc` or `clang`, `autoconf`, `automake`, `autotools-dev` and `libtool`.
+Developers under Debian/Ubuntu need the following packages: `build-essential`, `gcc` or
+`clang`, `autoconf`, `automake`, `autotools-dev` and `libtool`.
 
 ## Initial step size/scaling
 
-The `k`-th iteration of a conjugate gradient method consists in updating the
-variables as:
+The `k`-th iteration of a conjugate gradient method consists in updating the variables as:
 
     x[k+1] = x[k] + alpha[k]*d[k]
 
-where `alpha[k] > 0` is the step length and `d[k]` is the search direction
-given by:
+where `alpha[k] > 0` is the step length and `d[k]` is the search direction given by:
 
     d[k] = -g[k] + beta[k]*d[k-1]
 
-where `g[k]` is the gradient of the objective function at `x[k]`.  Different
-formulae have been proposed to compute `beta[k]`.
+where `g[k]` is the gradient of the objective function at `x[k]`. Different formulae have
+been proposed to compute `beta[k]`.
 
-A line search method is used to find a suitable `alpha` along the search
-path.  The initial value of `alpha` can be:
+A line search method is used to find a suitable `alpha` along the search path. The initial
+value of `alpha` can be:
 
     alpha[k] = alpha[k-1]*<d[k-1],g[k-1]>/<d[k],g[k]>
 
 which is the rule used by Shanno & Phua (1978) in their CONMIN algorithm.
 
-
-In quasi-Newton methods, the initial approximation of the inverse Hessian is
-often given by a simple scaling by a parameter `gamma > 0`.  This yields to
-the following search direction:
+In quasi-Newton methods, the initial approximation of the inverse Hessian is often given
+by a simple scaling by a parameter `gamma > 0`. This yields to the following search
+direction:
 
     d[k] = -gamma[k]*g[k]
 
