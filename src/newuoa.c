@@ -36,14 +36,15 @@
 
 #define OUTPUT       stdout
 
-#undef SINGLE_PRECISION
-#define INTEGER ptrdiff_t /* Integer type used for indexing arrays. */
+/* Integer type used for indexing arrays. */
+#define INTEGER ptrdiff_t
 
-/* Macros to deal with single/double precision. */
-#undef REAL
+/* Macros to deal with single/double precision. `FLT(x)` is to make the literal real
+   number `x` (with a fractional part or an exponent part) into a floating-point
+   constant. */
 #ifdef SINGLE_PRECISION
-# define FLT(x)    x ## f  /* floating point literal constant */
 # define REAL      float
+# define FLT(x)    x ## f
 # define ABS(x)    fabsf(x)
 # define SQRT(x)   sqrtf(x)
 # define HYPOT(x)  hypotf(x)
@@ -56,8 +57,8 @@
 # define ACOS(x)   acosf(x)
 # define ATAN(x)   atanf(x)
 #else
-# define FLT(x)    x       /* floating point literal constant */
 # define REAL      double
+# define FLT(x)    x
 # define ABS(x)    fabs(x)
 # define SQRT(x)   sqrt(x)
 # define HYPOT(x)  hypot(x)
