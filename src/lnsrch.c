@@ -126,7 +126,8 @@ opk_lnsrch_start(opk_lnsrch* ls, double f0, double g0,
                  double stp, double stpmin, double stpmax)
 {
   if (ls == NULL) {
-    return OPK_ILLEGAL_ADDRESS;
+    errno = EFAULT;
+    return OPK_LNSRCH_ERROR;
   }
   if (stpmin < 0) {
     return failure(ls, OPK_STPMIN_LT_ZERO);
@@ -158,7 +159,8 @@ opk_lnsrch_iterate(opk_lnsrch* ls, double* stp_ptr,
   int bound;
 
   if (ls == NULL || stp_ptr == NULL) {
-    return OPK_ILLEGAL_ADDRESS;
+    errno = EFAULT;
+    return OPK_LNSRCH_ERROR;
   }
   if (ls->task != OPK_LNSRCH_SEARCH) {
     return failure(ls, OPK_NOT_STARTED);

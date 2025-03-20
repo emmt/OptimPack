@@ -11,6 +11,8 @@ This describe the most important (user visible) changes in **OptimPack**.
 - Fix that some functions prototypes incorrectly were specifying an `int` return type
   instead of a specific enumeration type.
 
+- Fix value returned by line-search methods when argument was a `NULL` pointer.
+
 - Initialization of some local variables has been improved to avoid warnings.
 
 
