@@ -2067,7 +2067,7 @@ opk_new_optimizer(opk_algorithm algorithm, const void* opts,
                   opk_eltype type, opk_index n,
                   opk_bound_type lower_type, void* lower,
                   opk_bound_type upper_type, void* upper,
-                  opk_lnsrch* lnschr);
+                  opk_lnsrch* lnsrch);
 
 /**
  * Destroy a reverse communication optimizer implementing a limited memory

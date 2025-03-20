@@ -298,7 +298,7 @@ opk_new_optimizer(opk_algorithm algorithm, /* optimization algorithm */
                   opk_index n, /* number of variables */
                   opk_bound_type lower_type, void* lower_addr,
                   opk_bound_type upper_type, void* upper_addr,
-                  opk_lnsrch* lnschr)
+                  opk_lnsrch* lnsrch)
 {
   opk_optimizer* opt = NULL;
   opk_bool single, bounded;
@@ -405,12 +405,10 @@ opk_new_optimizer(opk_algorithm algorithm, /* optimization algorithm */
     }
   }
   if (algorithm == OPK_ALGORITHM_NLCG) {
-    opt->optimizer = (opk_object*)opk_new_nlcg_optimizer(opts, opt->vspace,
-                                                           lnschr);
+    opt->optimizer = (opk_object*)opk_new_nlcg_optimizer(opts, opt->vspace, lnsrch);
     opt->ops = &nlcg_ops;
   } else {
-    opt->optimizer = (opk_object*)opk_new_vmlmb_optimizer(opts, opt->vspace,
-                                                            lnschr, opt->box);
+    opt->optimizer = (opk_object*)opk_new_vmlmb_optimizer(opts, opt->vspace, lnsrch, opt->box);
     opt->ops = &vmlmb_ops;
   }
   if (opt->optimizer != NULL) {
