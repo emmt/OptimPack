@@ -760,7 +760,7 @@ opk_get_vmlmb_description(char* buf, size_t size, const opk_vmlmb* opt)
         break;
 
     default:
-        strcat(str, "*** unknown method ***");
+        strcpy(str, "*** unknown method ***");
     }
 
     return opk_copy_string(buf, size, str);
