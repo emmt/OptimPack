@@ -7,6 +7,9 @@ This describe the most important (user visible) changes in **OptimPack**.
 - Fix possibly uninitialized variables detected in COBYLA test code. This has no impact on
   the algorithm itself.
 
+- Fix a small bug in VMLMB for error messages.
+
+
 ## Version 3.3.0 (20/03/2025)
 
 - Code source and header for each algorithm `BOBYQA`, `COBYLA`, and `NEWUOA` are now
