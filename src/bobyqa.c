@@ -595,6 +595,7 @@ bobyqb(const INTEGER n, const INTEGER npt, const context* ctx,
     /* Set uninitialized variables to avoid compiler warnings. */
     adelt  = zero;
     alpha  = zero;
+    beta   = zero;
     cauchy = zero;
     denom  = zero;
     diff   = zero;

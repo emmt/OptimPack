@@ -825,6 +825,10 @@ newuoa_optimize(INTEGER n, INTEGER npt, bool maximize, newuoa_objfun* objfun, vo
 
 #else
 
+    /* Initialize local variables. */
+    xipt = zero;
+    xjpt = zero;
+
     /* Check arguments. */
     if (n < 2) {
         if (iprint > 0) {
