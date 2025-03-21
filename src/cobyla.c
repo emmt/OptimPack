@@ -1610,13 +1610,20 @@ static cobyla_calcfc calcfc;
 int
 main(void)
 {
+    const INTEGER nmax = 10;
     REAL r1, rhobeg, rhoend, temp, tempa, tempb, tempc, tempd;
-    REAL x[10], xopt[10];
+    REAL x[nmax], xopt[nmax];
     INTEGER i, m, n, icase, maxfun, iprint;
 #ifndef TESTING_REVCOM
     REAL w[3000];
     INTEGER iact[51];
 #endif
+
+    /* Explicitly initialize variables to avoid warnings with some "smart" compilers. */
+    for (i = 0; i < nmax; ++i) {
+        x[i] = 0;
+        xopt[i] = 0;
+    }
 
     for (nprob = 1; nprob <= 10; ++nprob) {
 
@@ -1734,8 +1741,8 @@ main(void)
 #  undef PRT
 
         for (icase = 1; icase <= 2; ++icase) {
-            for (i = 1; i <= n; ++i) {
-                x[i - 1] = 1.0;
+            for (i = 0; i < n; ++i) {
+                x[i] = 1.0;
             }
             rhobeg = 0.5;
             rhoend = ((icase == 2) ? 1e-4 : 0.001);
@@ -1757,13 +1764,14 @@ main(void)
                 xopt[1] = tempd*tempb - tempc*tempa;
                 xopt[2] = tempd*tempa - tempc*tempb;
                 xopt[3] = tempd*tempb + tempc*tempa;
-                for (i = 1; i <= 4; ++i) {
-                    xopt[i + 3] = xopt[i - 1];
+                for (i = 0; i < 4; ++i) {
+                    xopt[i + 4] = xopt[i];
                 }
+                xopt[8] = 0; /* FIXME: this variable was not initialized in original FORTRAN code */
             }
             temp = 0.0;
-            for (i = 1; i <= n; ++i) {
-                r1 = x[i - 1] - xopt[i - 1];
+            for (i = 0; i < n; ++i) {
+                r1 = x[i] - xopt[i];
                 temp += r1*r1;
             }
             fprintf(stdout, "\n     Least squares error in variables =%16.6E\n",
