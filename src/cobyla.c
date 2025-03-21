@@ -1800,7 +1800,7 @@ calcfc(INTEGER n, INTEGER m, const REAL x[], REAL con[], void* data)
 #define X(a1)   x[a1 - 1]
 
 
-    /* Beware that order of operations may affect the result (whithin rounding errors). I
+    /* Beware that order of operations may affect the result (within rounding errors). I
        have tried to keep the same ordering as F2C which takes care of that, in particular
        when converting expressions involving powers. */
 
