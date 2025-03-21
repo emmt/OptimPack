@@ -71,7 +71,7 @@ To have binaries automatically build by [Yggdrasil](https://github.com/JuliaPack
 
 3. Check that products can be built (from the `Yggdrasil/O/OptimPack` directory):
    ```{.sh}
-   julia-1.3 build_tarballs.jl
+   julia-1.7 build_tarballs.jl
    ```
    You may upload the products (in the directory `Yggdrasil/O/OptimPack/products`) to
    the release page on GitHub.
