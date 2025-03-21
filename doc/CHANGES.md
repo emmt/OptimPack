@@ -2,6 +2,8 @@
 
 This describe the most important (user visible) changes in **OptimPack**.
 
+## Version 3.3.1 (21/03/2025)
+
 - Fix possibly uninitialized variables detected in COBYLA test code. This has no impact on
   the algorithm itself.
 

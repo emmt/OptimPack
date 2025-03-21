@@ -6,7 +6,7 @@
 #
 # The project version follows semantic versioning rules (https://semver.org).
 #
-m4_define([project_version], [3.3.0])
+m4_define([project_version], [3.3.1])
 #
 # The `-version-info` flag of LIBTOOL takes an argument of the form `current:revision:age`
 # where:
